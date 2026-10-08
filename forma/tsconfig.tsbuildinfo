@@ -1,1 +1,0 @@
-{"root":["./src/App.tsx","./src/main.tsx","./src/storage.ts","./src/types.ts","./src/components/Bench.tsx","./src/components/Calendar.tsx","./src/components/Diary.tsx","./src/components/Overview.tsx","./src/components/Settings.tsx","./src/components/Train.tsx","./src/components/common.tsx","./src/lib/calc.ts","./src/lib/format.ts"],"version":"5.9.3"}
