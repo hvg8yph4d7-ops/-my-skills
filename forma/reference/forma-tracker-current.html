@@ -1,0 +1,1160 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+.fw * { box-sizing: border-box; }
+.fw {
+  --navy: #0d1b2a;
+  --navy-2: #16293f;
+  --navy-3: #1e3a57;
+  --green: #123c31;
+  --green-2: #1b5b47;
+  --green-br: #35a67c;
+  --yellow: #f5c542;
+  --text: #eaf0f2;
+  --dim: #7d94a8;
+  --line: #24405c;
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--navy);
+  color: var(--text);
+  padding: 22px 16px 26px;
+  border-radius: 18px;
+  max-width: 430px;
+  margin: 0 auto;
+}
+.fw-head { display: flex; align-items: baseline; justify-content: space-between; }
+.fw-title { font-family: 'Oswald', sans-serif; font-size: 30px; font-weight: 600; margin: 0; line-height: 1; letter-spacing: 0.5px; }
+.fw-sub { font-size: 11px; color: var(--dim); }
+.hint { font-size: 10.5px; color: var(--dim); margin: 7px 0 14px; line-height: 1.45; }
+
+.tabs { display: flex; gap: 5px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 3px; -webkit-overflow-scrolling: touch; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex: 0 0 auto; background: var(--navy-2); border: 1px solid var(--line); color: var(--dim);
+  font-family: 'Oswald', sans-serif; font-size: 13px; font-weight: 500; letter-spacing: 0.4px;
+  padding: 8px 14px; border-radius: 9px; cursor: pointer; white-space: nowrap;
+}
+.tab-btn.active { background: var(--yellow); color: var(--navy); border-color: var(--yellow); font-weight: 600; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.card { background: var(--navy-2); border: 1px solid var(--line); border-radius: 14px; padding: 15px 16px; margin-bottom: 12px; }
+.card.green { background: var(--green); border-color: var(--green-2); }
+.card-label { font-size: 11px; color: var(--dim); margin-bottom: 7px; }
+.big-num { font-family: 'Oswald', sans-serif; font-size: 34px; font-weight: 600; line-height: 1; }
+.big-num .unit { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: var(--dim); margin-left: 4px; }
+.big-num.yellow { color: var(--yellow); }
+.row2 { display: flex; gap: 10px; }
+.row2 > .card { flex: 1; margin-bottom: 12px; }
+.sub-note { font-size: 11px; color: var(--dim); margin-top: 5px; line-height: 1.45; }
+
+.stat-strip { display: flex; gap: 10px; margin-bottom: 12px; }
+.stat-box { flex: 1; background: var(--navy-2); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; text-align: center; }
+.stat-box .n { font-family: 'Oswald', sans-serif; font-size: 22px; font-weight: 600; line-height: 1; }
+.stat-box .l { font-size: 10px; color: var(--dim); margin-top: 4px; }
+
+.avg-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.avg-box { background: var(--navy); border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; }
+.avg-box .n { font-family: 'Oswald', sans-serif; font-size: 21px; font-weight: 600; line-height: 1; }
+.avg-box .n small { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500; color: var(--dim); margin-left: 3px; }
+.avg-box .l { font-size: 10px; color: var(--dim); margin-top: 4px; }
+.avg-box .t { font-size: 9.5px; margin-top: 3px; }
+.t.ok { color: var(--green-br); }
+.t.hi { color: var(--yellow); }
+.t.lo { color: var(--dim); }
+
+.list-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 9px 0; border-top: 1px solid var(--line); gap: 10px; }
+.list-row:first-child { border-top: none; }
+.list-row .meta { color: var(--dim); font-size: 11px; margin-top: 2px; }
+.list-row .val { font-family: 'Oswald', sans-serif; font-size: 17px; font-weight: 600; white-space: nowrap; }
+.pr-badge { background: var(--yellow); color: var(--navy); font-size: 9px; font-weight: 700; padding: 2px 5px; border-radius: 4px; margin-left: 6px; }
+.count-badge { background: var(--navy-3); color: var(--text); font-size: 9.5px; padding: 2px 6px; border-radius: 5px; margin-left: 6px; vertical-align: 1px; }
+.empty { font-size: 13px; color: var(--dim); padding: 4px 0 2px; line-height: 1.5; }
+
+.chart-wrap svg { width: 100%; height: auto; display: block; }
+
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 11px; }
+.cal-title { font-family: 'Oswald', sans-serif; font-size: 16px; font-weight: 600; letter-spacing: 0.4px; }
+.nav-btn { background: none; border: none; color: var(--dim); font-size: 22px; cursor: pointer; padding: 0 8px; line-height: 1; }
+.legend { display: flex; gap: 14px; font-size: 10.5px; color: var(--dim); margin-bottom: 11px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+.weekday-row, .day-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+.weekday-row { margin-bottom: 5px; }
+.weekday { text-align: center; font-size: 10.5px; color: var(--dim); padding-bottom: 3px; }
+.weekday.plan { color: var(--yellow); font-weight: 700; }
+.day-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 5px 0 6px; border-radius: 8px; cursor: pointer; border: 1px solid transparent;
+  background: none; font-family: inherit;
+}
+.day-cell.today { border-color: var(--dim); }
+.day-cell.selected { background: var(--navy-3); border-color: var(--yellow); }
+.day-cell.empty-cell { visibility: hidden; }
+.day-num { font-size: 12px; color: var(--text); }
+.dot-row { display: flex; gap: 3px; height: 10px; align-items: center; }
+.dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--line); }
+.dot.pill.on { background: var(--yellow); border-color: var(--yellow); }
+.dot.gym.on { background: var(--green-br); border-color: var(--green-br); }
+.mini-tick { width: 4px; height: 4px; border-radius: 50%; background: var(--dim); }
+.grp-row { display: flex; gap: 2px; height: 13px; align-items: center; justify-content: center; }
+.grp { font-size: 8.5px; font-weight: 700; line-height: 13px; min-width: 13px; height: 13px; padding: 0 2px; border-radius: 4px; text-align: center; color: #0d1b2a; }
+.chip-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.chip { font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 6px; color: #0d1b2a; }
+.musc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.musc { background: var(--navy); border: 1px solid var(--line); border-radius: 11px; padding: 10px 11px; border-left-width: 3px; }
+.musc .nm { font-family: 'Oswald', sans-serif; font-size: 15px; font-weight: 600; }
+.musc .ago { font-size: 11px; color: var(--dim); margin-top: 3px; }
+.musc .st { font-size: 10.5px; font-weight: 600; margin-top: 5px; }
+.st.ready { color: #35a67c; }
+.st.soon { color: #f5c542; }
+.st.early { color: #e07a5f; }
+.st.long { color: var(--dim); }
+.ex-list { margin: 0; padding-left: 16px; font-size: 13.5px; line-height: 1.55; }
+
+.day-detail { background: var(--navy-2); border: 1px solid var(--yellow); border-radius: 14px; padding: 15px 16px; }
+.detail-date { font-family: 'Oswald', sans-serif; font-size: 19px; font-weight: 600; }
+.detail-wd { font-size: 11px; color: var(--dim); margin-bottom: 12px; }
+.detail-marks { display: flex; gap: 8px; margin-bottom: 13px; }
+.mark {
+  flex: 1; background: var(--navy); border: 1px solid var(--line); color: var(--dim);
+  border-radius: 9px; padding: 8px 6px; font-size: 12px; text-align: center;
+}
+.mark.on.pills { background: var(--yellow); color: var(--navy); border-color: var(--yellow); font-weight: 600; }
+.mark.on.gym { background: var(--green-2); color: var(--text); border-color: var(--green-br); font-weight: 600; }
+
+.blk { margin-bottom: 11px; }
+.blk:last-child { margin-bottom: 0; }
+.blk-l { font-size: 10.5px; color: var(--dim); margin-bottom: 4px; }
+.blk-b { font-size: 13.5px; line-height: 1.5; }
+.blk-b ul { margin: 0; padding-left: 16px; }
+.blk-b li { margin-bottom: 3px; }
+.verdict { border-left: 2px solid var(--yellow); padding-left: 10px; font-size: 13px; line-height: 1.5; color: #cfdae2; }
+.macro-strip { display: flex; gap: 6px; }
+.macro-box { flex: 1; background: var(--navy); border: 1px solid var(--line); border-radius: 9px; padding: 8px 3px; text-align: center; }
+.macro-box .n { font-family: 'Oswald', sans-serif; font-size: 15px; font-weight: 600; }
+.macro-box .l { font-size: 9px; color: var(--dim); margin-top: 2px; }
+.entry { background: var(--navy-2); border: 1px solid var(--line); border-radius: 14px; padding: 15px 16px; margin-bottom: 11px; }
+.entry-date { font-family: 'Oswald', sans-serif; font-size: 18px; font-weight: 600; }
+.entry-wd { font-size: 10.5px; color: var(--dim); margin-bottom: 12px; }
+.partial-tag { font-size: 9.5px; color: var(--yellow); border: 1px solid var(--yellow); border-radius: 5px; padding: 1px 5px; margin-left: 7px; vertical-align: 2px; }
+</style>
+
+<div class="fw">
+  <div class="fw-head">
+    <p class="fw-title">ФОРМА</p>
+    <span class="fw-sub" id="head-sub"></span>
+  </div>
+  <div class="hint">Всё, что ты присылаешь в чат, я вписываю сюда — виджет обновляется вместе с ответом.</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="overview" onclick="switchTab('overview')">Обзор</button>
+    <button class="tab-btn" data-tab="bench" onclick="switchTab('bench')">Жим</button>
+    <button class="tab-btn" data-tab="cal" onclick="switchTab('cal')">Календарь</button>
+    <button class="tab-btn" data-tab="train" onclick="switchTab('train')">Тренировки</button>
+    <button class="tab-btn" data-tab="diary" onclick="switchTab('diary')">Дневник</button>
+  </div>
+
+  <!-- ОБЗОР -->
+  <div class="panel active" id="panel-overview">
+    <div class="row2">
+      <div class="card">
+        <div class="card-label">Вес</div>
+        <div class="big-num" id="ov-weight">—<span class="unit">кг</span></div>
+        <div class="sub-note" id="ov-weight-note"></div>
+      </div>
+      <div class="card green">
+        <div class="card-label">Жим лёжа</div>
+        <div class="big-num yellow" id="ov-bench">—<span class="unit">кг</span></div>
+        <div class="sub-note" id="ov-bench-note"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Динамика веса</div>
+      <div class="chart-wrap" id="weight-chart"></div>
+    </div>
+
+    <div class="stat-strip">
+      <div class="stat-box"><div class="n" id="st-gym">0</div><div class="l">тренировок</div></div>
+      <div class="stat-box"><div class="n" id="st-pills">0</div><div class="l">дней с добавками</div></div>
+      <div class="stat-box"><div class="n" id="st-days">0</div><div class="l">дней в дневнике</div></div>
+    </div>
+
+    <div class="card green">
+      <div class="card-label">Без алкоголя</div>
+      <div class="big-num yellow" id="ov-sober">—<span class="unit">дней</span></div>
+      <div class="sub-note" id="ov-sober-note"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label" id="avg-label">Среднее за день</div>
+      <div class="avg-grid" id="avg-grid"></div>
+      <div class="sub-note" id="avg-note"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Ближайшая тренировка</div>
+      <div class="blk-b" id="ov-next"></div>
+      <div class="sub-note" id="ov-split"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Схема добавок</div>
+      <div id="ov-supps"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Последний вывод дня</div>
+      <div class="verdict" id="ov-verdict"></div>
+    </div>
+  </div>
+
+  <!-- ЖИМ -->
+  <div class="panel" id="panel-bench">
+    <div class="row2">
+      <div class="card green">
+        <div class="card-label">Текущий подход</div>
+        <div class="big-num yellow" id="bn-current">—<span class="unit">кг</span></div>
+        <div class="sub-note" id="bn-current-date"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Максимум</div>
+        <div class="big-num" id="bn-max">—<span class="unit">кг</span></div>
+        <div class="sub-note" id="bn-max-note"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Прогресс</div>
+      <div class="chart-wrap" id="bench-chart"></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Все подходы</div>
+      <div id="bench-list"></div>
+    </div>
+  </div>
+
+  <!-- КАЛЕНДАРЬ -->
+  <div class="panel" id="panel-cal">
+    <div class="card">
+      <div class="cal-header">
+        <button class="nav-btn" onclick="changeMonth(-1)">‹</button>
+        <div class="cal-title" id="cal-title"></div>
+        <button class="nav-btn" onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#f5c542"></span>добавки</span>
+        <span><span class="legend-dot" style="background:#35a67c"></span>зал</span>
+        <span><span class="legend-dot" style="background:#7d94a8"></span>есть запись</span>
+        <span id="grp-legend" style="display:inline-flex;gap:6px"></span>
+      </div>
+      <div class="weekday-row" id="weekday-row"></div>
+      <div class="day-grid" id="day-grid"></div>
+      <div class="sub-note" style="margin-top:10px">Нажми на дату — откроется весь день: еда, тренировка, БЖУ, вывод.</div>
+    </div>
+    <div id="day-detail"></div>
+  </div>
+
+  <!-- ТРЕНИРОВКИ -->
+  <div class="panel" id="panel-train">
+    <div class="card">
+      <div class="card-label">Восстановление мышц</div>
+      <div class="musc-grid" id="musc-grid"></div>
+      <div class="sub-note" id="musc-hint"></div>
+    </div>
+    <div class="stat-strip">
+      <div class="stat-box"><div class="n" id="tr-total">0</div><div class="l">тренировок</div></div>
+      <div class="stat-box"><div class="n" id="tr-week">0</div><div class="l">за 7 дней</div></div>
+      <div class="stat-box"><div class="n" id="tr-ex">0</div><div class="l">упражнений</div></div>
+    </div>
+    <div id="train-list"></div>
+  </div>
+
+  <!-- ДНЕВНИК -->
+  <div class="panel" id="panel-diary">
+    <div id="diary-list"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // ============================================================
+  //  ДАННЫЕ. Единственное место, которое нужно править.
+  // ============================================================
+  const DATA = {
+    oldBenchMax: 107.5,
+    benchMax: 80,
+    split: { 0: 'спина и бицепс', 2: 'грудь и трицепс', 4: 'плечи' },
+    soberSince: '2026-09-09',
+    // Отметки «ещё болит» по ощущениям: группа → дата, когда сказал. Действует 2 дня.
+    sore: { 'грудь': '2026-10-04' },
+
+    supplements: [
+      { time: 'Утро, с едой', items: 'Омега-3 — 3 капсулы · Витамин D · Магний — 2 таблетки · Витамин C. Всё с едой, где есть жир' },
+      { time: 'Днём, любой приём пищи', items: 'Креатин — 5 г. Размешать в воде или соке. Каждый день, включая дни без зала' },
+      { time: 'Вечер, за 1–2 часа до сна, с едой', items: 'Магний — 1 таблетка' }
+    ],
+
+    marks: {
+      '2026-09-14': { p: false, g: true },
+      '2026-09-15': { p: true, g: false },
+      '2026-09-16': { p: true, g: true },
+      '2026-09-17': { p: true, g: false },
+      '2026-09-18': { p: true, g: true },
+      '2026-09-19': { p: true, g: false },
+      '2026-09-20': { p: true, g: false },
+      '2026-09-21': { p: true, g: true },
+      '2026-09-22': { p: true, g: false },
+      '2026-09-23': { p: true, g: true },
+      '2026-09-24': { p: true, g: false },
+      '2026-09-25': { p: true, g: false },
+      '2026-09-26': { p: true, g: false },
+      '2026-09-27': { p: false, g: false },
+      '2026-09-28': { p: true, g: true },
+      '2026-09-29': { p: true, g: false },
+      '2026-09-30': { p: true, g: true },
+      '2026-10-01': { p: true, g: false },
+      '2026-10-02': { p: true, g: false },
+      '2026-10-03': { p: false, g: true },
+      '2026-10-04': { p: true, g: false },
+      '2026-10-05': { p: true, g: true },
+      '2026-10-06': { p: true, g: false },
+      '2026-10-07': { p: true, g: true },
+      '2026-10-08': { p: true, g: false }
+    },
+
+    weight: [
+      { date: '2026-09-14', value: 66 },
+      { date: '2026-09-16', value: 65.5 },
+      { date: '2026-09-18', value: 66.9 },
+      { date: '2026-09-23', value: 67.5 },
+      { date: '2026-09-30', value: 67.4 },
+      { date: '2026-10-05', value: 68.45 }
+    ],
+
+    bench: [
+      { date: '2026-09-18', w: 70, r: 5 },
+      { date: '2026-09-30', w: 60, r: 12 },
+      { date: '2026-10-07', w: 70, r: 5 },
+      { date: '2026-10-07', w: 60, r: 10 }
+    ],
+
+    // Продукты, которые были два раза и больше
+    products: [
+      { name: 'NEO High Protein, шоколад', portion: 'бутылка 260 г', p: 30, f: 1, c: 14, kcal: 184, fib: 0, times: 8, note: 'Лучшее соотношение белка к калориям из всего, что берёшь' },
+      { name: 'Батончик Bombbar, малиновый сорбет', portion: '60 г', p: 15, f: 6, c: 20, kcal: 200, fib: 6, times: 5, note: 'Даёт ещё и клетчатку' },
+      { name: 'Плов с курицей, Пятёрочка Кафе', portion: '250 г', p: 32, f: 14.5, c: 53, kcal: 480, fib: 3, times: 3, note: 'Лучшая коробка из линейки перед залом' },
+      { name: 'Курица терияки', portion: '100 г', p: 21, f: 5, c: 9, kcal: 170, fib: 0, times: 3, note: 'Постный белок, удобно готовить впрок' },
+      { name: 'Гречка готовая', portion: '100 г', p: 4.2, f: 1.1, c: 21, kcal: 110, fib: 2.8, times: 5, note: 'Главный источник клетчатки в твоём рационе' },
+      { name: 'Макароны готовые', portion: '100 г', p: 3.5, f: 0.5, c: 25, kcal: 130, fib: 1.5, times: 8, note: 'Сухие весят вдвое меньше готовых — не путать' },
+      { name: 'Куриная грудка готовая', portion: '100 г', p: 30, f: 3.5, c: 0, kcal: 165, fib: 0, times: 2, note: 'Самый чистый белок за свои калории' },
+      { name: 'Тефтели с фузилли, Пятёрочка Кафе', portion: '250 г', p: 20, f: 20, c: 43, kcal: 425, fib: 3, times: 4, note: 'Белка маловато, добивать коктейлем' },
+      { name: 'Биточек из индейки с гречкой, Пятёрочка Кафе', portion: '250 г', p: 22, f: 17, c: 46, kcal: 430, fib: 4, times: 2, note: 'Нормальный вариант перед залом' },
+      { name: 'Фрикассе из курицы с гречей, Пятёрочка Кафе', portion: '250 г', p: 46, f: 45.5, c: 17.5, kcal: 685, fib: 3, times: 3, note: 'Много белка, но и жира столько же — сливочный соус' },
+      { name: 'Паста карбонара, Пятёрочка Кафе', portion: '250 г', p: 47, f: 70, c: 84, kcal: 840, fib: 4, times: 3, note: 'Самая жирная коробка из всех' },
+      { name: 'Котлета по-киевски с пюре, Пятёрочка Кафе', portion: '260 г', p: 24, f: 51.5, c: 57, kcal: 785, fib: 4, times: 2, note: 'Внутри сливочное масло — отсюда жир' },
+      { name: 'Ирбитский питьевой йогурт', portion: 'бутылка 500 г', p: 14.5, f: 12.5, c: 70, kcal: 452, fib: 0, times: 5, note: 'Сахара около 50 г на бутылку' },
+      { name: 'Банан', portion: '1 шт (~120 г)', p: 1.3, f: 0.4, c: 28, kcal: 107, fib: 3, times: 5, note: 'Удобный углевод перед залом' },
+      { name: 'Биточек куриный со спагетти, Пятёрочка Кафе', portion: '250 г', p: 17.5, f: 19, c: 47.5, kcal: 425, fib: 3, times: 2, note: 'Белка мало для своих калорий' },
+      { name: 'Греческий йогурт Teos 2%', portion: 'банка 250 г', p: 20, f: 5, c: 9, kcal: 170, fib: 0, times: 1, note: 'Лучший молочный продукт из всех — белок без сахара' },
+      { name: 'Мясные чипсы из свинины Eat House', portion: '50 г', p: 22.5, f: 10, c: 0, kcal: 180, fib: 0, times: 2, note: '45 г белка на 100 г продукта, но много соли' },
+      { name: 'Удон с курицей и овощами Том Ям, Пятёрочка Кафе', portion: '250 г', p: 19, f: 17.5, c: 40, kcal: 400, fib: 2, times: 2, note: 'Курицы немного, основа — лапша' },
+      { name: 'Актибио High Protein', portion: 'стакан 260 г', p: 20, f: 2, c: 8, kcal: 130, fib: 0, times: 2, note: 'Без добавленного сахара, удобно добить белок' },
+      { name: 'Чипсы Dr. Diesel', portion: 'пачка 120 г', p: 7, f: 38, c: 64, kcal: 625, fib: 5, times: 2, note: 'Треть пачки — уже половина дневной нормы жира' },
+      { name: 'Омлет: 4 яйца + ~50 г сыра + ~100 мл молока', portion: 'порция', p: 40, f: 37, c: 6, kcal: 510, fib: 0, times: 3, note: 'Твой стандартный завтрак. Белка много, но и жира столько же — сыр можно урезать вдвое' }
+    ],
+
+    days: [
+      {
+        date: '2026-09-14',
+        groups: ['спина', 'бицепс'],
+        trainNote: 'Первая тренировка после перерыва. После молотков заболели связки — с непривычки.',
+        work: 'Работа 11:00–18:00, сразу после — зал.',
+        food: [
+          'Завтрак: макароны с курицей, немного сыра, помидор, глоток ирбитского йогурта',
+          'Перед залом: бургер с курицей и беконом (Ростикс)',
+          'Ужин: свинина 400 г — съел 2 куска из 3; макароны ⅓ от пачки 500 г сухих'
+        ],
+        training: [
+          'Спина: вертикальная тяга, хаммер, пуловер',
+          'Бицепс: молотки',
+          'После молотков заболели связки — скорее всего с непривычки'
+        ],
+        macros: { p: 148, f: 84, c: 210, kcal: 2200, fib: 10 },
+        verdict: 'Первая тренировка после перерыва — старт есть. По углеводам нормально, белка почти 150 г. Калорийность для набора низковата. Бицепс пару дней не грузить.'
+      },
+      {
+        date: '2026-09-15',
+        work: 'Работа 11:00–18:00. Зала нет.',
+        food: [
+          'Завтрак: макароны ⅓ от пачки 500 г сухих + один оставшийся кусок свинины',
+          'Обед на работе: паста карбонара 250 г + фрикассе из курицы с гречей 250 г',
+          'Ужин: ирбитский питьевой йогурт + оставшаяся ⅓ макарон',
+          'Капучино 300 мл в 14:00. От энергетика вечером отказался'
+        ],
+        training: [],
+        supps: 'Витамин D утром. Магний не успел забрать.',
+        macros: { p: 182, f: 152, c: 411, kcal: 3500, fib: 12 },
+        verdict: 'Правая грудная побаливает после хаммера — признаков травмы нет, похоже на крепатуру. Жим на максимум перенесён на пятницу. Калорий около 3500 при перекосе в жиры и сахар — многовато даже для набора.'
+      },
+      {
+        date: '2026-09-16',
+        groups: ['плечи', 'ноги'],
+        trainNote: 'Плечи только на среднюю дельту: задняя болела после спины, переднюю берёг под жим.',
+        work: 'Работа 11:00–18:00, после — зал: ноги и плечи.',
+        food: [
+          'Тефтели с фузилли в томатном соусе, 250 г',
+          'Актибио High Protein со вкусом персика — 20 г белка, без добавленного сахара',
+          'Adrenaline Rush 449 мл перед залом — 242 ккал, ~135 мг кофеина',
+          'Биточек из индейки с гречкой, 250 г — перед залом',
+          'Батончик Bombbar малиновый сорбет, 60 г — перед залом',
+          'Ужин: наггетсы Курушки 250 г + 4 яйца + ирбитский питьевой йогурт'
+        ],
+        training: [
+          'Плечи: махи в тренажёре',
+          'Плечи: махи со свободным весом',
+          'Плечи: протяжка',
+          'Плечи: махи на среднюю дельту, сет 12 → 8 кг',
+          'Ноги: сгибания сидя',
+          'Ноги: разгибания'
+        ],
+        supps: 'Витамин D утром. Магний — 2 таблетки за день, ~230 мг элементарного. Первый день магния.',
+        macros: { p: 137, f: 106, c: 309, kcal: 2900, fib: 14 },
+        verdict: 'Вторая тренировка, ноги всё-таки сделал. Плечи сознательно только на среднюю дельту: задняя болела после спины, переднюю берёг под жим. Вес 65,5.'
+      },
+      {
+        date: '2026-09-17',
+        work: 'День отдыха. Все добавки пришли.',
+        food: [
+          'Завтрак: фрикассе из курицы с гречей, 250 г',
+          'Удон с курицей и овощами в соусе Том Ям, 250 г',
+          'Биточек из индейки с гречкой, 250 г',
+          'Ужин: 2 Маэстро бургера + картошка фри'
+        ],
+        training: [],
+        supps: 'Первый полный день по схеме: омега-3 3 капсулы, витамин D, креатин 5 г, магний — утро и вечер.',
+        macros: { p: 154, f: 148, c: 220, kcal: 2840, fib: 16 },
+        verdict: 'Схема добавок запущена полностью. По белку день закрыт — 154 г. Но жиров 148 г: три коробки в соусах днём и два бургера с фри вечером.'
+      },
+      {
+        date: '2026-09-18',
+        groups: ['грудь', 'трицепс'],
+        trainNote: 'Замер жима: 70 × 5, расчётный максимум ~82 кг. Потом неделю болела грудь — лёгкое растяжение.',
+        work: 'Грудь и замер жима.',
+        food: [
+          'Завтрак: макароны 350 г + гуляш 250 г',
+          'Обед: Шефбургер оригинальный 190 г + комбо — 1 ножка, 2 стрипса, 2 острых крылышка, байтсы',
+          'Мясные чипсы из свинины Eat House, 50 г',
+          'Перед сном: паста Pasteroni Girandole с соусом — ⅔ пачки'
+        ],
+        training: [
+          'Жим штанги — замер: 70 кг × 5',
+          'Жим гантелей',
+          'Хаммер на грудь',
+          'Разгибания в кроссовере',
+          'Жим гантели из-за головы'
+        ],
+        macros: { p: 196, f: 94, c: 283, kcal: 2805, fib: 12 },
+        verdict: 'Замер сделан: 70 кг на 5 повторов, расчётный максимум около 82 кг — стартовая точка до креатина. Лучший день недели по еде: 196 г белка, углеводы после тренировки добраны. Вес 66,9.'
+      },
+      {
+        date: '2026-09-19',
+        work: 'День отдыха после жима.',
+        food: [
+          'Завтрак: остатки вчерашней пасты Pasteroni',
+          'Батончик Bombbar малиновый сорбет, 60 г',
+          'Обед: высокобелковый коктейль 260 г (30 г белка) + биточек куриный со спагетти в томатном соусе, 250 г',
+          'Котлета по-киевски с картофельным пюре, 260 г',
+          'Ужин: плов с курицей 250 г + ирбитский питьевой йогурт 500 г'
+        ],
+        training: [],
+        supps: 'Добавки по схеме: омега-3, витамин D, магний, креатин.',
+        macros: { p: 144, f: 106, c: 320, kcal: 2810, fib: 12 },
+        verdict: 'Начинался слабо — завтрак почти без белка, но к вечеру добрал: 144 г белка. Котлета по-киевски одна дала половину дневного жира.'
+      },
+      {
+        date: '2026-09-20',
+        work: 'Готовка на весь день.',
+        food: [
+          'Приготовил на весь день: макароны 500 г сухих + куриная грудка 800 г + сливки 10% 500 мл. Примерно пятую часть съела девушка — посчитан остаток'
+        ],
+        training: [],
+        supps: 'Добавки по схеме: омега-3, витамин D, магний, креатин.',
+        macros: { p: 210, f: 56, c: 298, kcal: 2580, fib: 12 },
+        verdict: 'Первый раз приготовил нормально и на весь день — шаг вперёд по сравнению с коробками. Грудка даёт огромный объём чистого белка, жиров всего 56 г, лучший показатель за неделю.'
+      },
+      {
+        date: '2026-09-21',
+        groups: ['спина', 'бицепс'],
+        trainNote: 'Грудь ещё болела, поэтому без пуловера. Подтягивания и тяга штанги как база.',
+        work: 'Зал: спина и бицепс.',
+        food: [
+          'Завтрак: бутерброды на ржаном хлебе — 1 с икрой, 1 с ветчиной из индейки, 1 маленький с индейкой, 3 с сыром и сливочным маслом',
+          'Обед: Exponenta High-Pro черника-земляника (30 г белка) + тефтели с фузилли, 250 г',
+          'За 2 часа до зала: 1 купат + плов с курицей 250 г',
+          'Батончик Bombbar малиновый сорбет, 60 г',
+          'Ужин после зала: макароны ~270 г + курица терияки ~200 г'
+        ],
+        training: [
+          'Спина: подтягивания',
+          'Спина: тяга штанги в наклоне',
+          'Спина: вертикальная тяга',
+          'Спина: горизонтальная тяга',
+          'Спина: тяга в наклоне в тренажёре',
+          'Бицепс: сгибания с супинацией',
+          'Бицепс: сгибания в кроссовере'
+        ],
+        supps: 'Добавки по схеме, плюс витамин C. Вечером магний перед сном.',
+        macros: { p: 205, f: 119, c: 277, kcal: 3090, fib: 20 },
+        verdict: 'Спина и бицепс сделаны, несмотря на болящую грудь: подтягивания и тяга штанги как база, пуловер убран. Ржаной хлеб дал рекордную за неделю клетчатку — около 20 г.'
+      },
+      {
+        date: '2026-09-22',
+        work: 'День отдыха.',
+        food: [
+          'Завтрак: макароны 250 г готовых, обжаренные с 2,5 яйцами + вчерашняя курица терияки (~150 г) + сыр (~80 г)',
+          'Обед: котлета по-киевски с пюре 260 г + NEO High Protein шоколад + миндальный батончик Nut&Go',
+          'Ужин: гречка 300 г со сливочным маслом + курица терияки 175 г'
+        ],
+        training: [],
+        supps: 'Утром с завтраком все добавки по схеме, вечером магний перед сном.',
+        macros: { p: 184, f: 140, c: 244, kcal: 3010, fib: 16 },
+        verdict: 'По белку день сильный — 184 г. Жиры снова высокие, 140 г: котлета по-киевски, сыр утром, орехи в батончике и масло в гречке сложились вместе.'
+      },
+      {
+        date: '2026-09-23',
+        groups: ['плечи', 'ноги'],
+        trainNote: 'Задняя дельта снова пропущена осознанно — болела после понедельника.',
+        work: 'Зал: ноги и плечи.',
+        food: [
+          'Завтрак: гречка 120 г + куриная грудка 100 г',
+          'Обед: блинчики Морозко «Жюльен» — пачка 370 г, кофе с 2 ложками сахара, NEO High Protein',
+          'Плов с курицей 250 г — перед залом',
+          'Батончик Bombbar малиновый сорбет + ещё один NEO High Protein',
+          'Ужин после зала: гречка 325 г + молоко 3,2% 500 мл'
+        ],
+        training: [
+          'Плечи: махи со свободным весом',
+          'Плечи: махи в тренажёре',
+          'Плечи: протяжка в кроссовере',
+          'Ноги: разгибания в тренажёре',
+          'Ноги: сгибания в тренажёре'
+        ],
+        supps: 'Все добавки по схеме, включая витамин C.',
+        macros: { p: 192, f: 83, c: 303, kcal: 2740, fib: 18 },
+        verdict: 'Лучший день за всё время: 192 г белка при 83 г жира, калории точно в цель. Два коктейля закрыли белок вместо жирного мяса. Задняя дельта пропущена осознанно — болит после понедельника. Вес 67,5.'
+      },
+      {
+        date: '2026-09-24',
+        work: 'День отдыха. Завтра зал: грудь и жим.',
+        food: [
+          'Завтрак: гречка 125 г + молоко 125 мл + 2 банана',
+          'Обед: паста карбонара 250 г + чипсы Dr. Diesel 120 г + NEO High Protein шоколад',
+          'Ужин: курица терияки 150 г + рис 80 г сухого',
+          'Добавка: ещё 80 г сухого риса + 100 г курицы',
+          'Арбуз — около 1,5 кг'
+        ],
+        training: [],
+        supps: 'Все добавки по схеме.',
+        macros: { p: 170, f: 131, c: 510, kcal: 3520, fib: 26 },
+        verdict: 'Обед был жирный — чипсы и карбонара дали 108 г жира. Ужин выправил белок, а полтора кило арбуза добавили 113 г углеводов и впервые вывели клетчатку на норму — 26 г. Калорий вышло 3520, много, но перед завтрашним жимом гликоген будет с запасом.'
+      },
+      {
+        date: '2026-09-25',
+        work: 'Зал отменён — грудь перенесена на понедельник. Сегодня футбол с друзьями и прогулка.',
+        food: [
+          'Завтрак: греческий йогурт Teos 2% натуральный (20 г белка) + 2 банана',
+          'Тефтели с фузилли в томатном соусе, 250 г',
+          'Ещё 4 куска жареного мяса (~180 г)',
+          'Биточек куриный со спагетти в томатном соусе, 250 г',
+          'NEO High Protein шоколад (30 г белка)',
+          'Ещё 6 кусков курицы (~270 г)',
+          'Батончик Bombbar малиновый сорбет, 60 г',
+          'Безалкогольная Stella'
+        ],
+        training: [],
+        supps: 'Все добавки по схеме.',
+        macros: { p: 242, f: 68, c: 212, kcal: 2470, fib: 18 },
+        verdict: 'Грудь всё ещё отзывается при отведении руки — неделя после жима, для крепатуры долго, похоже на лёгкое растяжение. Зал отменён, грудь перенесена на понедельник. По еде рекорд: 241 г белка при 68 г жира — такого соотношения ещё не было. Вытянула курица, 10 кусков за день.'
+      },
+      {
+        date: '2026-09-26',
+        work: 'Выходной. Зала нет — грудь в понедельник.',
+        food: [
+          'Завтрак: омлет из 4 яиц с 50 г сыра и небольшим количеством молока',
+          'Обед: паста «Болоньезе» с говядиной 250 г + NEO High Protein шоколад',
+          'Фрикассе из курицы с гречей, 250 г',
+          'Круассан 7DAYS с фундучным кремом',
+          'Мясные чипсы из свинины Eat House, 50 г',
+          'Ужин: печень ~120 г + макароны 300 г + салат из огурцов, сладкого перца, помидора и зелёного лука (~200 г)'
+        ],
+        training: [],
+        supps: 'Все добавки по схеме. С сегодня магний по 2 таблетки утром.',
+        macros: { p: 192, f: 134, c: 210, kcal: 2840, fib: 15 },
+        verdict: 'Первый настоящий овощной салат за всё время наблюдения — огурцы, перец, помидор, зелёный лук. Печень тоже удачно: железо и B12, которых в курице почти нет. Белок 192 г, но жиры снова 134: сыр, сливочные соусы и круассан за один день.'
+      },
+      {
+        date: '2026-09-27',
+        work: 'В другом городе. Завтра зал: грудь.',
+        food: [
+          'Завтрак: макароны 300 г + печень 150 г',
+          'Обед: Шефбургер оригинальный 190 г + Маэстро бургер оригинальный 208 г',
+          'Ужин: пельмени 300 г + блинчики с мясом 160 г + 1 банан'
+        ],
+        training: [],
+        supps: 'Добавки не пил — остались дома, ночевал не дома. Первый пропуск с момента старта.',
+        macros: { p: 149, f: 99, c: 298, kcal: 2725, fib: 11 },
+        verdict: 'Первый пропуск добавок за две недели — ночевал не дома, ничего страшного, креатин в мышцах держится неделями. Белок 149 г, жиры 99 г: два бургера днём и пельмени с блинчиками вечером дали в сумме заметный жир. Печень два дня подряд нормально, но чаще 2–3 раз в неделю не надо.'
+      },
+      {
+        date: '2026-09-28',
+        groups: ['спина', 'бицепс'],
+        trainNote: 'Спал 5 ч 45 мин — сделал спину вместо груди. Тяга лёжа с упором бережёт поясницу.',
+        work: 'Лёг в 23:00, встал в 4:45 — сон около 5 ч 45 мин. Зал: спина вместо груди — грудь переносится на среду. После тренировки хамам.',
+        food: [
+          'Небольшой кусок пирога с картошкой (~100 г)',
+          'Завтрак: омлет из 4 яиц со 100 мл молока и 45 г сыра',
+          'Обед: куриная бризоль с рисом 250 г (Пятёрочка Кафе) + капучино',
+          'Перед залом: удон с курицей и овощами в соусе Том Ям 250 г + Актибио High Protein голубика (20 г белка)',
+          'Ужин: гречка 300 г + курица 120 г + салат 275 г (капуста, сладкий перец, помидоры, огурцы)'
+        ],
+        training: [
+          'Спина: вертикальная тяга',
+          'Спина: тяга лёжа на тренажёре с упором грудью',
+          'Спина: хаммер',
+          'Спина: горизонтальная тяга',
+          'Бицепс: молотки'
+        ],
+        supps: 'Все добавки по схеме: омега-3, витамин D, магний 2 таблетки, витамин C, креатин. Вечером ещё таблетка магния.',
+        macros: { p: 159, f: 93, c: 218, kcal: 2350, fib: 18 },
+        verdict: 'Грудь восстановилась за 10 дней, но из-за недосыпа (около 5 ч 45 мин) вместо неё сделал спину — грудь переехала на среду. Четыре тяговых упражнения вместо пяти, тяга лёжа с упором бережёт поясницу — удачный выбор на невыспавшуюся голову. Ужин образцовый: гречка, курица и большой овощной салат дали 13 г клетчатки за один приём.'
+      },
+      {
+        date: '2026-09-29',
+        work: 'Выспался: лёг в 00:00, встал в 9:20. Зала нет — завтра грудь.',
+        food: [
+          'Завтрак: омлет из 4 яиц с 49 г сыра и 120 мл молока',
+          'Обед: паста карбонара 250 г (Пятёрочка Кафе)',
+          'Ужин: макароны 300 г + курица 200 г (всё в готовом виде)',
+          'NEO High Protein шоколад (30 г белка)',
+          'Перед сном: чипсы Dr. Diesel, пачка 120 г'
+        ],
+        training: [],
+        supps: 'Все добавки по схеме.',
+        macros: { p: 196, f: 156, c: 244, kcal: 2895, fib: 14 },
+        verdict: 'Омлет с сыром и карбонара подряд дали 108 г жира к обеду. Ужин правильный — курица с макаронами, 70 г белка почти без жира, но картину дня уже не выровнял. Вечером добил коктейлем, а перед сном пачка чипсов — жиры 156 г, рекорд за всё время. Калории при этом ровно в цели, 2895. Клетчатки 9 г — салата сегодня не было.'
+      },
+      {
+        date: '2026-09-30',
+        groups: ['грудь', 'трицепс', 'бицепс'],
+        trainNote: 'Первая грудь после восстановления: 60 × 12 × 3, сила не просела. Грудь немного тянуло — бабочку пока отложить.',
+        work: 'Зал: грудь — первая после восстановления. После тренировки хамам.',
+        food: [
+          'Завтрак: макароны 200 г + курица 80 г (в готовом виде)',
+          'Обед: шницель куриный с картофельным пюре 250 г + NEO High Protein ваниль (20 г белка) + 2 банана',
+          '5 крупных кусков куриной грудки (~225 г)',
+          'Ужин: макароны 92 г варёных + картошка 320 г + сыр 44 г + сливочное масло 19 г',
+          'Бананы 150 г без кожуры'
+        ],
+        training: [
+          'Жим штанги лёжа: 60 кг × 12, 3 подхода',
+          'Жим гантелей на наклонной скамье под 45°',
+          'Бабочка',
+          'Суперсет: разгибания на трицепс в кроссовере + подъём штанги на бицепс'
+        ],
+        supps: 'Все добавки по схеме.',
+        macros: { p: 161, f: 60, c: 278, kcal: 2330, fib: 23 },
+        verdict: 'Первая грудь после восстановления: 60 кг на 12 в трёх подходах — расчётный максимум около 84 кг, то есть сила после двухнедельного перерыва не просела. Грудь немного тянуло — в следующий раз без бабочки, пока ощущение не уйдёт полностью. По еде самый чистый день за всё время: 159 г белка при 59 г жира — впервые жиры ниже нормы. Масло и сыр в ужине отмерены точно по плану. Вечером добрал бананами — недобор сократился до ~470 ккал, клетчатка 23 г.'
+      },
+      {
+        date: '2026-10-01',
+        work: 'День отдыха после груди. Завтра плечи.',
+        food: [
+          'Завтрак: картошка 245 г + сливочное масло 17 г + сыр 44 г',
+          'Додо Пицца: кусок сырной + кусок пепперони',
+          'Обед: паста карбонара 250 г + Exponenta High-Pro (30 г белка) + ирбитский питьевой йогурт 500 г',
+          'Плов с курицей 250 г (Пятёрочка Кафе)',
+          'Макароны 183 г готовых',
+          'Ужин: макароны 200 г готовых + курица 150 г + овощной салат ~175 г (капуста, перец, помидоры, огурцы)'
+        ],
+        training: [],
+        supps: 'Все добавки по схеме.',
+        macros: { p: 219, f: 154, c: 410, kcal: 3675, fib: 22 },
+        verdict: 'Белок закрыт — 159 г, калории почти у цели 3100. Но жиров 147 г: картошка с маслом и сыром, пицца и карбонара за полдня. Вечером добил плов, макароны и ужин с курицей и салатом — 3675 ккал, на 575 выше цели. Белок 219 г — рекорд. Салат снова поднял клетчатку до 22 г.'
+      },
+      {
+        date: '2026-10-02',
+        work: 'Вечером поездка в другой город. Зал с плечами переносится на субботу.',
+        food: [
+          'Завтрак: макароны 280 г готовых + курица 50 г + сыр 20 г + немного сладкого перца',
+          'Обед: курица терияки с рисом и овощами 250 г (Пятёрочка Кафе) + NEO High Protein шоколад',
+          'Ирбитский питьевой йогурт 500 г',
+          'Шницель куриный с картофельным пюре 250 г (Пятёрочка Кафе)',
+          'Ужин: печень 150 г + макароны 270 г + салат 350 г (помидоры, огурцы, сметана, укроп, зелёный лук)'
+        ],
+        training: [],
+        supps: 'Все добавки по схеме — взял с собой в поездку.',
+        macros: { p: 150, f: 78, c: 343, kcal: 2735, fib: 18 },
+        verdict: 'День в дороге, но жиры 78 г — почти в норме, второй раз за всё время. Завтрак с половиной сыра и коктейль к обеду сделали своё дело. Ужин с печенью и большим салатом. Калорий 2735 — недобор около 360, на день поездки нормально.'
+      },
+      {
+        date: '2026-10-03',
+        groups: ['плечи'],
+        trainNote: 'Передняя и средняя дельта проработаны, задняя опять без нагрузки — третья тренировка плеч подряд. Две протяжки дублируют друг друга, одну можно заменить на махи в наклоне.',
+        work: 'Зал: плечи — перенесено с пятницы.',
+        food: [
+          'Завтрак: макароны 120 г готовых + печень 35 г',
+          'Ростикс: Шефбургер оригинальный 190 г + Шефбургер Де Люкс острый 201 г',
+          'После зала: шаурма XXL с курицей ~500 г',
+          'Вечером: 0,5 л воды, сушёный кальмар 70 г, безалкогольная Stella',
+          'Батончик Bombbar малиновый сорбет, 60 г',
+          'Ночью в дороге: чипсы Just Brutal 80 г + ещё одна безалкогольная Stella'
+        ],
+        training: [
+          'Жим гантелей — 20 кг × 10-12',
+          'Махи гантелями поочерёдно на переднюю дельту',
+          'Махи гантелями в стороны',
+          'Протяжка в кроссовере',
+          'Протяжка с гантелями'
+        ],
+        macros: { p: 158, f: 120, c: 356, kcal: 3140, fib: 18 },
+        verdict: 'Грудь побаливает — обычная крепатура после среды, не растяжение. Воды за день мало, к вечеру ломит ноги и колени — скорее всего от этого. По еде: два бургера дали 56 г белка при 38 г жира.'
+      },
+      {
+        date: '2026-10-04',
+        work: 'Воскресенье, полный отдых дома после ночной дороги. Завтра спина и бицепс.',
+        food: [
+          'Приготовил кастрюлю: макароны Макфа 450 г сухих + курица 336 г готовой',
+          'Съел всю кастрюлю за день: курица 336 г + все макароны (450 г сухих)',
+          'Сыр GENIfit Protein — вся пачка ~180 г',
+          'Чипсы Litenergy паприка 120 г'
+        ],
+        training: [],
+        supps: 'Все добавки по схеме.',
+        macros: { p: 218, f: 87, c: 372, kcal: 3195, fib: 18 },
+        verdict: 'До вечера самый чистый день по жирам — 39 г при 211 г белка: курица, макароны и протеиновый сыр. Вечерняя пачка чипсов добавила 48 г жира, но день всё равно в норме: жиры 87 при цели 90, калории 3195 — точно в цель, белок 218 — рекорд.'
+      },
+      {
+        date: '2026-10-05',
+        groups: ['спина', 'бицепс'],
+        trainNote: 'Четыре тяговых + два на бицепс. Пуловер вернулся — грудь его выдержала после недели отдыха.',
+        work: 'Зал: спина и бицепс. Взвешивание в зале.',
+        food: [
+          'Приготовил кастрюлю: макароны Макфа 450 г сухих + фарш Петелинка «Премиум из филе» 450 г',
+          'Съел всю кастрюлю за день',
+          'Exponenta Bio-Skyr ананас-кокос 500 г (30 г белка)',
+          'Шаурма 330 г'
+        ],
+        training: [
+          'Спина: вертикальная тяга',
+          'Спина: тяга гантели одной рукой',
+          'Спина: тяга лёжа на тренажёре с упором грудью',
+          'Спина: пуловер',
+          'Бицепс: сгибания на скамье Скотта',
+          'Бицепс: сгибания в кроссовере'
+        ],
+        supps: 'Все добавки по схеме.',
+        macros: { p: 210, f: 65, c: 418, kcal: 3080, fib: 16 },
+        verdict: 'Домашняя болоньезе из куриного фарша: на всю кастрюлю 144 г белка при 28 г жира. Съел всю, плюс скир и шаурма — 210 г белка, 3080 ккал при 65 г жира: точно в цель. Спина и бицепс сделаны.'
+      },
+      {
+        date: '2026-10-06',
+        work: 'День отдыха. Завтра грудь и трицепс.',
+        food: [
+          'Макароны — вся пачка за день (≈450 г сухих) с небольшим количеством масла, начал на завтрак',
+          'Филе грудки индейки Индилайт гриль 300 г',
+          'NEO High Protein шоколад',
+          'Вечером под турнир: чипсы Dr. Diesel 120 г'
+        ],
+        training: [],
+        supps: 'Все добавки по схеме.',
+        macros: { p: 142, f: 59, c: 407, kcal: 2725, fib: 18 },
+        verdict: 'Утром одни макароны, но в обед правильно добавил белок из Пятёрочки: индейка целой пачкой и коктейль. Вечером чипсы под турнир — и даже с ними жиры 59 г, ниже нормы. Калорий 2725, недобор около 375.'
+      },
+      {
+        date: '2026-10-07',
+        groups: ['грудь', 'трицепс'],
+        trainNote: 'Первый раз после растяжения снова 70 кг: 70 × 5 — ровно как на замере до травмы, потом 60 × 10. Бабочка вернулась — следить, не потянет ли грудь.',
+        work: 'Работа. Зал: грудь и трицепс.',
+        food: [
+          'Контейнер на день: макароны — пачка ≈450 г сухих + курица 250 г готовой — съел весь к 18:00',
+          'Вечером: курица 210 г готовой',
+          'Сыр 17 г, кешью 55 г',
+          'Бисквит «Барни» молочный 30 г, полплитки «Обыкновенное чудо» (27,5 г)'
+        ],
+        training: [
+          'Жим штанги лёжа: 70 кг × 5, 60 кг × 10',
+          'Жим гантелей',
+          'Хаммер на грудь',
+          'Бабочка',
+          'Разгибания с канатом в кроссовере',
+          'Разгибания одной рукой в кроссовере'
+        ],
+        supps: 'Все добавки по схеме.',
+        macros: { p: 209, f: 65, c: 368, kcal: 2950, fib: 15 },
+        verdict: 'Грудь вернулась к 70 кг: 70 × 5 — ровно как на замере 18 сентября, сила полностью восстановилась после травмы. По еде 209 г белка, 2950 ккал, жиры 65 — в рамках. Сладкое и кешью вечером уложились без перебора.'
+      },
+      {
+        date: '2026-10-08',
+        partial: true,
+        work: 'День отдыха после груди. Завтра плечи.',
+        food: [
+          'Завтрак: 5 яиц категории С0 (два желтка не съел) + молочный батон 55 г',
+          'Обед: куриный оладушек со спагетти и сливочным соусом 250 г (Пятёрочка Кафе) + ирбитский питьевой йогурт 500 г',
+          'Тефтели с фузилли в томатном соусе 250 г + NEO High Protein шоколад'
+        ],
+        training: [],
+        supps: 'Все добавки с завтраком.',
+        macros: { p: 116, f: 75, c: 205, kcal: 1920, fib: 6 },
+        verdict: 'Обед слабый по белку: оладушек даёт всего 15 г на коробку, йогурт — в основном сахар. Вторым приёмом тефтели и коктейль подтянули белок до 116 г.'
+      }
+    ]
+  };
+  // ============================================================
+
+  const WD = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const WDF = ['понедельник','вторник','среда','четверг','пятница','суббота','воскресенье'];
+  const PLAN = [0,2,4];
+  const M = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  const TARGET = { p: 130, f: 90, c: 390, kcal: 3100, fib: 28 };
+
+  const today = new Date();
+  let vy = today.getFullYear(), vm = today.getMonth();
+  let selected = null;
+
+  const pad = n => n < 10 ? '0'+n : ''+n;
+  const dk = (y,m,d) => y + '-' + pad(m+1) + '-' + pad(d);
+  const tk = () => dk(today.getFullYear(), today.getMonth(), today.getDate());
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const num = n => String(Math.round(n*10)/10).replace('.', ',');
+  const shortD = k => { const p = k.split('-').map(Number); return p[2] + ' ' + M[p[1]-1].slice(0,3) + '.'; };
+  const longD = k => { const p = k.split('-').map(Number); return p[2] + ' ' + M[p[1]-1]; };
+  const wdName = k => { const p = k.split('-').map(Number); return WDF[(new Date(p[0],p[1]-1,p[2]).getDay()+6)%7]; };
+  const dayFor = k => DATA.days.find(d => d.date === k);
+  const marksFor = k => DATA.marks[k] || { p:false, g:false };
+  const sortedBench = () => DATA.bench.slice().sort((a,b) => a.date.localeCompare(b.date));
+  const sortedWeight = () => DATA.weight.slice().sort((a,b) => a.date.localeCompare(b.date));
+  const e1rm = e => Math.round(e.w * (1 + e.r/30) * 10) / 10;
+
+  window.switchTab = function(n) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === n));
+    ['overview','bench','cal','train','diary'].forEach(p =>
+      document.getElementById('panel-'+p).classList.toggle('active', p === n));
+  };
+  window.selectDay = function(k) { selected = k; renderCal(); renderDetail(); };
+  window.changeMonth = function(d) {
+    vm += d; if (vm < 0) { vm = 11; vy--; } if (vm > 11) { vm = 0; vy++; }
+    renderCal();
+  };
+
+  function macroBox(n, l) { return '<div class="macro-box"><div class="n">' + n + '</div><div class="l">' + l + '</div></div>'; }
+  function macroStrip(m) {
+    return '<div class="macro-strip">' + macroBox(m.p,'Б') + macroBox(m.f,'Ж') + macroBox(m.c,'У') +
+           macroBox(m.fib != null ? m.fib : '—','клетч.') + macroBox(m.kcal,'ккал') + '</div>';
+  }
+  function blk(l, b) { return '<div class="blk"><div class="blk-l">' + l + '</div><div class="blk-b">' + b + '</div></div>'; }
+
+  function renderOverview() {
+    document.getElementById('head-sub').textContent = longD(tk());
+
+    const w = sortedWeight();
+    const lw = w.length ? w[w.length-1] : null;
+    document.getElementById('ov-weight').innerHTML = (lw ? num(lw.value) : '—') + '<span class="unit">кг</span>';
+    let wn = lw ? shortD(lw.date) : 'нет данных';
+    if (w.length > 1) {
+      const diff = Math.round((lw.value - w[0].value) * 10) / 10;
+      wn += ' · ' + (diff >= 0 ? '+' : '') + num(diff) + ' кг с начала';
+    }
+    document.getElementById('ov-weight-note').textContent = wn + ' · взвешивания в зале';
+
+    const sb = sortedBench(), last = sb.length ? sb[sb.length-1] : null;
+    document.getElementById('ov-bench').innerHTML = num(DATA.benchMax) + '<span class="unit">кг</span>';
+    document.getElementById('ov-bench-note').textContent = last
+      ? 'примерно, до проверки · последний подход ' + num(last.w) + ' × ' + last.r
+      : 'примерно, до проверки';
+
+    const marks = Object.values(DATA.marks);
+    document.getElementById('st-gym').textContent = marks.filter(m => m.g).length;
+    document.getElementById('st-pills').textContent = marks.filter(m => m.p).length;
+    document.getElementById('st-days').textContent = DATA.days.length;
+
+    if (DATA.soberSince) {
+      const sp = DATA.soberSince.split('-').map(Number);
+      const start = new Date(sp[0], sp[1]-1, sp[2]);
+      const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const days = Math.max(0, Math.round((t0 - start) / 86400000));
+      const word = (n => { const a = n % 10, b = n % 100;
+        if (a === 1 && b !== 11) return 'день';
+        if (a >= 2 && a <= 4 && (b < 12 || b > 14)) return 'дня';
+        return 'дней'; })(days);
+      document.getElementById('ov-sober').innerHTML = days + '<span class="unit">' + word + '</span>';
+      document.getElementById('ov-sober-note').textContent = 'с ' + longD(DATA.soberSince) + ' · считает сам, каждый день +1';
+    }
+
+    const twd = (today.getDay()+6)%7;
+    const nxt = PLAN.find(p => p > twd);
+    const nd = PLAN.includes(twd) ? twd : (nxt !== undefined ? nxt : PLAN[0]);
+    document.getElementById('ov-next').textContent = (PLAN.includes(twd) ? 'Сегодня ' : 'Следующая: ') +
+      WDF[nd] + ' — ' + (DATA.split[nd] || 'по плану') + '.';
+    document.getElementById('ov-split').textContent = 'План: ' +
+      PLAN.map(d => WD[d].toLowerCase() + ' — ' + (DATA.split[d] || '—')).join(' · ');
+
+    const lastDay = DATA.days.slice().sort((a,b) => b.date.localeCompare(a.date))[0];
+    document.getElementById('ov-verdict').textContent = lastDay && lastDay.verdict ? lastDay.verdict : 'Записей пока нет';
+
+    document.getElementById('ov-supps').innerHTML = (DATA.supplements || []).map(s =>
+      '<div class="blk"><div class="blk-l">' + esc(s.time) + '</div><div class="blk-b">' + esc(s.items) + '</div></div>'
+    ).join('');
+
+    renderAverages();
+    drawChart('weight-chart', sortedWeight().map(e => ({ date: e.date, v: e.value })), 'кг');
+  }
+
+  function renderAverages() {
+    const full = DATA.days.filter(d => d.macros && !d.partial);
+    const el = document.getElementById('avg-grid');
+    if (!full.length) { el.innerHTML = '<div class="empty">Нет данных</div>'; return; }
+    const sum = full.reduce((a, d) => ({
+      p: a.p + (d.macros.p||0), f: a.f + (d.macros.f||0), c: a.c + (d.macros.c||0),
+      kcal: a.kcal + (d.macros.kcal||0), fib: a.fib + (d.macros.fib||0)
+    }), { p:0, f:0, c:0, kcal:0, fib:0 });
+    const n = full.length;
+    const avg = { p: sum.p/n, f: sum.f/n, c: sum.c/n, kcal: sum.kcal/n, fib: sum.fib/n };
+
+    function box(val, unit, label, target, dir) {
+      // dir: 'up' — надо больше, 'down' — надо меньше
+      let cls = 'ok', txt = 'в норме';
+      const ratio = val / target;
+      if (dir === 'up' && ratio < 0.8) { cls = 'lo'; txt = 'мало, цель ' + target; }
+      else if (dir === 'down' && ratio > 1.2) { cls = 'hi'; txt = 'много, цель ' + target; }
+      else if (dir === 'up' && ratio > 1.5) { cls = 'hi'; txt = 'с запасом'; }
+      return '<div class="avg-box"><div class="n">' + num(val) + '<small>' + unit + '</small></div>' +
+             '<div class="l">' + label + '</div><div class="t ' + cls + '">' + txt + '</div></div>';
+    }
+
+    el.innerHTML =
+      box(avg.kcal, 'ккал', 'калории', TARGET.kcal, 'up') +
+      box(avg.p, 'г', 'белки', TARGET.p, 'up') +
+      box(avg.f, 'г', 'жиры', TARGET.f, 'down') +
+      box(avg.c, 'г', 'углеводы', TARGET.c, 'up') +
+      box(avg.fib, 'г', 'клетчатка', TARGET.fib, 'up');
+
+    document.getElementById('avg-label').textContent = 'Среднее за день — ' + n + ' полных дней';
+    document.getElementById('avg-note').textContent = 'Незакрытые дни в среднее не входят. Клетчатка считается примерно.';
+  }
+
+  function renderBench() {
+    const sb = sortedBench(), last = sb.length ? sb[sb.length-1] : null;
+    document.getElementById('bn-current').innerHTML = (last ? num(last.w) : '—') + '<span class="unit">кг</span>';
+    document.getElementById('bn-current-date').textContent = last
+      ? shortD(last.date) + ' · ' + last.r + ' повт. · расч. макс ' + num(e1rm(last)) + ' кг'
+      : 'нет данных';
+    document.getElementById('bn-max').innerHTML = num(DATA.benchMax) + '<span class="unit">кг</span>';
+    document.getElementById('bn-max-note').textContent = 'примерно, на максимум ещё не жал · раньше было ' + num(DATA.oldBenchMax);
+
+    const list = document.getElementById('bench-list');
+    if (!sb.length) {
+      list.innerHTML = '<div class="empty">Пока пусто.</div>';
+    } else {
+      const pr = DATA.bench.reduce((m,e) => (!m || e.w > m.w) ? e : m, null);
+      list.innerHTML = sb.slice().reverse().map(e =>
+        '<div class="list-row"><div>' + shortD(e.date) +
+        '<div class="meta">' + e.r + ' повт. · расч. макс ' + num(e1rm(e)) + ' кг</div></div>' +
+        '<div class="val">' + num(e.w) + ' кг' + (pr && e === pr ? '<span class="pr-badge">РЕКОРД</span>' : '') + '</div></div>'
+      ).join('');
+    }
+    drawChart('bench-chart', sb.map(e => ({ date: e.date, v: e.w })), 'кг');
+  }
+
+  function drawChart(elId, points, unit) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (points.length < 2) {
+      el.innerHTML = '<div class="empty">График появится, когда будет две записи.</div>';
+      return;
+    }
+    const W = 340, H = 150, P = 26;
+    const vals = points.map(e => e.v);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const span = (max - min) || 5;
+    const lo = min - span*0.3, hi = max + span*0.3;
+    const x = i => P + (W - P*2) * (i/(points.length-1));
+    const y = v => H - P - (H - P*2) * ((v - lo)/(hi - lo));
+    const pts = points.map((e,i) => x(i) + ',' + y(e.v));
+
+    let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
+    s += '<defs><linearGradient id="g-' + elId + '" x1="0" y1="0" x2="0" y2="1">' +
+         '<stop offset="0%" stop-color="#35a67c" stop-opacity="0.35"/>' +
+         '<stop offset="100%" stop-color="#35a67c" stop-opacity="0"/></linearGradient></defs>';
+    [0,0.5,1].forEach(f => {
+      const yy = P + (H - P*2)*f;
+      s += '<line x1="'+P+'" y1="'+yy+'" x2="'+(W-P)+'" y2="'+yy+'" stroke="#24405c" stroke-width="1"/>';
+    });
+    s += '<path d="M'+x(0)+','+(H-P)+' L'+pts.join(' L')+' L'+x(points.length-1)+','+(H-P)+' Z" fill="url(#g-'+elId+')"/>';
+    s += '<polyline points="'+pts.join(' ')+'" fill="none" stroke="#35a67c" stroke-width="2.5" stroke-linejoin="round"/>';
+    points.forEach((e,i) => { s += '<circle cx="'+x(i)+'" cy="'+y(e.v)+'" r="4" fill="#0d1b2a" stroke="#f5c542" stroke-width="2"/>'; });
+    s += '<text x="'+P+'" y="14" fill="#7d94a8" font-size="10">'+num(max)+' '+unit+'</text>';
+    s += '<text x="'+P+'" y="'+(H-6)+'" fill="#7d94a8" font-size="10">'+shortD(points[0].date)+'</text>';
+    s += '<text x="'+(W-P)+'" y="'+(H-6)+'" fill="#7d94a8" font-size="10" text-anchor="end">'+shortD(points[points.length-1].date)+'</text>';
+    el.innerHTML = s + '</svg>';
+  }
+
+  function renderProducts() {
+    const list = document.getElementById('products-list');
+    const ps = DATA.products.slice().sort((a,b) => b.times - a.times);
+    if (!ps.length) { list.innerHTML = '<div class="card"><div class="empty">Пока пусто</div></div>'; return; }
+    list.innerHTML = ps.map(p => {
+      let h = '<div class="entry"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">';
+      h += '<div><div class="entry-date" style="font-size:15px">' + esc(p.name) + '</div>' +
+           '<div class="entry-wd" style="margin-bottom:8px">' + esc(p.portion) +
+           '<span class="count-badge">' + p.times + '×</span></div></div></div>';
+      h += macroStrip(p);
+      if (p.note) h += '<div class="sub-note">' + esc(p.note) + '</div>';
+      return h + '</div>';
+    }).join('');
+  }
+
+  const GROUPS = [
+    { k: 'грудь',   l: 'Грудь',   s: 'Г', c: '#f5c542', big: true },
+    { k: 'спина',   l: 'Спина',   s: 'С', c: '#35a67c', big: true },
+    { k: 'ноги',    l: 'Ноги',    s: 'Н', c: '#6fa8dc', big: true },
+    { k: 'плечи',   l: 'Плечи',   s: 'П', c: '#e07a5f', big: true },
+    { k: 'бицепс',  l: 'Бицепс',  s: 'Б', c: '#b39ddb', big: false },
+    { k: 'трицепс', l: 'Трицепс', s: 'Т', c: '#9ccc65', big: false }
+  ];
+  const G = k => GROUPS.find(g => g.k === k);
+  function chip(k) { const g = G(k); return g ? '<span class="chip" style="background:' + g.c + '">' + g.l + '</span>' : ''; }
+  function grpBadges(k) {
+    const e = dayFor(k);
+    if (!e || !e.groups || !e.groups.length) return '';
+    const big = e.groups.map(G).filter(g => g && g.big);
+    const show = big.length ? big : e.groups.map(G).filter(Boolean);
+    return '<div class="grp-row">' + show.slice(0,3).map(g =>
+      '<span class="grp" style="background:' + g.c + '">' + g.s + '</span>').join('') + '</div>';
+  }
+  function daysBetween(a, b) {
+    const pa = a.split('-').map(Number), pb = b.split('-').map(Number);
+    return Math.round((new Date(pb[0],pb[1]-1,pb[2]) - new Date(pa[0],pa[1]-1,pa[2])) / 86400000);
+  }
+
+  function renderTrain() {
+    const gymDays = DATA.days.filter(d => d.groups && d.groups.length).sort((a,b) => b.date.localeCompare(a.date));
+    const t = tk();
+
+    // карта мышц
+    document.getElementById('musc-grid').innerHTML = GROUPS.map(g => {
+      const last = gymDays.find(d => d.groups.includes(g.k));
+      const times = gymDays.filter(d => d.groups.includes(g.k)).length;
+      if (!last) return '<div class="musc" style="border-left-color:' + g.c + '"><div class="nm">' + g.l + '</div>' +
+        '<div class="ago">ещё не было</div><div class="st long">можно начинать</div></div>';
+      const ago = daysBetween(last.date, t);
+      const need = g.big ? 3 : 2;
+      let cls, txt;
+      const soreAt = DATA.sore && DATA.sore[g.k];
+      const soreNow = soreAt && soreAt >= last.date && daysBetween(soreAt, t) <= 1;
+      if (soreNow)           { cls = 'early'; txt = 'ещё болит — по ощущениям'; }
+      else if (ago > 8)      { cls = 'long';  txt = 'давно не было'; }
+      else if (ago >= need)  { cls = 'ready'; txt = 'восстановилась'; }
+      else if (ago === need - 1) { cls = 'soon'; txt = 'почти готова'; }
+      else                   { cls = 'early'; txt = 'ещё рано'; }
+      const agoTxt = ago === 0 ? 'сегодня' : ago === 1 ? 'вчера' : ago + ' дн. назад';
+      return '<div class="musc" style="border-left-color:' + g.c + '"><div class="nm">' + g.l + '</div>' +
+        '<div class="ago">' + agoTxt + ' · ' + shortD(last.date) + ' · ' + times + '×</div>' +
+        '<div class="st ' + cls + '">' + txt + '</div></div>';
+    }).join('');
+    document.getElementById('musc-hint').textContent = 'Большим группам нужно минимум 3 дня отдыха, рукам — 2. Если мышца ещё болит — напиши, и я отмечу её вручную, это важнее календаря.';
+
+    // статистика
+    document.getElementById('tr-total').textContent = gymDays.length;
+    document.getElementById('tr-week').textContent = gymDays.filter(d => daysBetween(d.date, t) < 7).length;
+    document.getElementById('tr-ex').textContent = gymDays.reduce((a,d) => a + (d.training ? d.training.filter(x => !/заболел|болел/i.test(x)).length : 0), 0);
+
+    // история
+    const list = document.getElementById('train-list');
+    if (!gymDays.length) { list.innerHTML = '<div class="card"><div class="empty">Тренировок пока нет</div></div>'; return; }
+    list.innerHTML = gymDays.map(d => {
+      let h = '<div class="entry"><div class="entry-date">' + longD(d.date) + '</div>' +
+              '<div class="entry-wd">' + wdName(d.date) + '</div>';
+      h += '<div class="chip-row">' + d.groups.map(chip).join('') + '</div>';
+      const ex = (d.training || []);
+      if (ex.length) h += '<ul class="ex-list">' + ex.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+      const b = DATA.bench.filter(x => x.date === d.date);
+      if (b.length) h += '<div class="sub-note" style="margin-top:8px">Жим: ' + b.map(x => num(x.w) + ' кг × ' + x.r + ' · расч. макс ' + num(e1rm(x)) + ' кг').join(', ') + '</div>';
+      if (d.trainNote) h += '<div class="verdict" style="margin-top:10px">' + esc(d.trainNote) + '</div>';
+      return h + '</div>';
+    }).join('');
+  }
+
+  function renderCal() {
+    document.getElementById('cal-title').textContent = M[vm].charAt(0).toUpperCase() + M[vm].slice(1) + ' ' + vy;
+    document.getElementById('grp-legend').innerHTML = GROUPS.filter(g => g.big).map(g =>
+      '<span style="display:inline-flex;align-items:center;gap:3px"><span class="grp" style="background:' + g.c + '">' + g.s + '</span>' + g.l.toLowerCase() + '</span>').join('');
+    document.getElementById('weekday-row').innerHTML = WD.map((w,i) =>
+      '<div class="weekday' + (PLAN.includes(i) ? ' plan' : '') + '">' + w + '</div>').join('');
+
+    const first = (new Date(vy, vm, 1).getDay()+6)%7;
+    const dim = new Date(vy, vm+1, 0).getDate();
+    let h = '';
+    for (let i = 0; i < first; i++) h += '<div class="day-cell empty-cell"></div>';
+    for (let d = 1; d <= dim; d++) {
+      const k = dk(vy, vm, d), m = marksFor(k);
+      const has = !!dayFor(k);
+      h += '<div class="day-cell' + (k === tk() ? ' today' : '') + (k === selected ? ' selected' : '') + '" onclick="selectDay(\'' + k + '\')">' +
+        '<div class="day-num">' + d + '</div>' +
+        '<div class="dot-row"><div class="dot pill' + (m.p?' on':'') + '"></div><div class="dot gym' + (m.g?' on':'') + '"></div></div>' +
+        (grpBadges(k) || (has ? '<div class="grp-row"><div class="mini-tick"></div></div>' : '<div class="grp-row"></div>')) +
+      '</div>';
+    }
+    document.getElementById('day-grid').innerHTML = h;
+  }
+
+  function renderDetail() {
+    const el = document.getElementById('day-detail');
+    if (!selected) { el.innerHTML = ''; return; }
+    const k = selected, m = marksFor(k), e = dayFor(k);
+    const w = DATA.weight.find(x => x.date === k);
+    const b = DATA.bench.filter(x => x.date === k);
+
+    let h = '<div class="day-detail"><div class="detail-date">' + longD(k) +
+            (e && e.partial ? '<span class="partial-tag">не закрыт</span>' : '') + '</div>' +
+            '<div class="detail-wd">' + wdName(k) + '</div>';
+    h += '<div class="detail-marks">' +
+      '<div class="mark pills' + (m.p?' on':'') + '">' + (m.p ? '✓ Добавки' : 'Добавки') + '</div>' +
+      '<div class="mark gym' + (m.g?' on':'') + '">' + (m.g ? '✓ Зал' : 'Зал') + '</div></div>';
+    const dg = (e && e.groups) || [];
+    if (dg.length) h += '<div class="chip-row">' + dg.map(g => chip(g)).join('') + '</div>';
+    if (w) h += blk('Вес', num(w.value) + ' кг');
+    if (b.length) h += blk('Жим', '<ul>' + b.map(x => '<li>' + num(x.w) + ' кг × ' + x.r + '</li>').join('') + '</ul>');
+    if (e) {
+      if (e.work) h += blk('День', esc(e.work));
+      if (e.food && e.food.length) h += blk('Еда', '<ul>' + e.food.map(x => '<li>'+esc(x)+'</li>').join('') + '</ul>');
+      if (e.training && e.training.length) h += blk('Тренировка', '<ul>' + e.training.map(x => '<li>'+esc(x)+'</li>').join('') + '</ul>');
+      if (e.supps) h += blk('Добавки', esc(e.supps));
+      if (e.macros) h += '<div class="blk"><div class="blk-l">БЖУ и клетчатка</div>' + macroStrip(e.macros) + '</div>';
+      if (e.verdict) h += '<div class="blk"><div class="blk-l">Вывод дня</div><div class="verdict">' + esc(e.verdict) + '</div></div>';
+    }
+    if (!e && !w && !b.length) h += '<div class="empty">За этот день записей нет.</div>';
+    el.innerHTML = h + '</div>';
+  }
+
+  function renderDiary() {
+    const list = document.getElementById('diary-list');
+    const days = DATA.days.slice().sort((a,b) => b.date.localeCompare(a.date));
+    if (!days.length) { list.innerHTML = '<div class="card"><div class="empty">Записей пока нет</div></div>'; return; }
+    list.innerHTML = days.map(e => {
+      let h = '<div class="entry"><div class="entry-date">' + longD(e.date) +
+              (e.partial ? '<span class="partial-tag">не закрыт</span>' : '') + '</div>' +
+              '<div class="entry-wd">' + wdName(e.date) + '</div>';
+      if (e.work) h += blk('День', esc(e.work));
+      if (e.food && e.food.length) h += blk('Еда', '<ul>' + e.food.map(x => '<li>'+esc(x)+'</li>').join('') + '</ul>');
+      if (e.training && e.training.length) h += blk('Тренировка', '<ul>' + e.training.map(x => '<li>'+esc(x)+'</li>').join('') + '</ul>');
+      if (e.supps) h += blk('Добавки', esc(e.supps));
+      if (e.macros) h += '<div class="blk"><div class="blk-l">БЖУ и клетчатка</div>' + macroStrip(e.macros) + '</div>';
+      if (e.verdict) h += '<div class="blk"><div class="blk-l">Вывод дня</div><div class="verdict">' + esc(e.verdict) + '</div></div>';
+      return h + '</div>';
+    }).join('');
+  }
+
+  selected = tk();
+  renderOverview(); renderBench(); renderTrain(); renderCal(); renderDetail(); renderDiary();
+})();
+</script>

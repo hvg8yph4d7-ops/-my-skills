@@ -1,0 +1,82 @@
+import type { ReactNode } from 'react';
+import type { Day, Macros } from '../types';
+import { groupOf } from '../lib/calc';
+import { num, shortD } from '../lib/format';
+
+export function Blk({ l, children }: { l: string; children: ReactNode }) {
+  return (
+    <div className="blk">
+      <div className="blk-l">{l}</div>
+      <div className="blk-b">{children}</div>
+    </div>
+  );
+}
+
+export function BigNum({ v, unit, yellow }: { v: ReactNode; unit: string; yellow?: boolean }) {
+  return <div className={'big-num' + (yellow ? ' yellow' : '')}>{v}<span className="unit">{unit}</span></div>;
+}
+
+export function MacroStrip({ m }: { m: Macros }) {
+  const box = (n: ReactNode, l: string) => <div className="macro-box"><div className="n">{n}</div><div className="l">{l}</div></div>;
+  return (
+    <div className="macro-strip">
+      {box(m.p, 'Б')}{box(m.f, 'Ж')}{box(m.c, 'У')}{box(m.fib != null ? m.fib : '—', 'клетч.')}{box(m.kcal, 'ккал')}
+    </div>
+  );
+}
+
+export function Chip({ k }: { k: string }) {
+  const g = groupOf(k);
+  return g ? <span className="chip" style={{ background: g.c }}>{g.l}</span> : null;
+}
+
+const List = ({ items }: { items: string[] }) => <ul>{items.map((x, i) => <li key={i}>{x}</li>)}</ul>;
+
+/** Содержимое дня: день, еда, тренировка, добавки, БЖУ, вывод. Общее для дневника и календаря. */
+export function DayBody({ e }: { e: Day }) {
+  return (
+    <>
+      {e.work && <Blk l="День">{e.work}</Blk>}
+      {!!e.food?.length && <Blk l="Еда"><List items={e.food} /></Blk>}
+      {!!e.training?.length && <Blk l="Тренировка"><List items={e.training} /></Blk>}
+      {e.supps && <Blk l="Добавки">{e.supps}</Blk>}
+      {e.macros && <div className="blk"><div className="blk-l">БЖУ и клетчатка</div><MacroStrip m={e.macros} /></div>}
+      {e.verdict && <div className="blk"><div className="blk-l">Вывод дня</div><div className="verdict">{e.verdict}</div></div>}
+    </>
+  );
+}
+
+/** Линейный график как в старом трекере. */
+export function Chart({ id, points, unit }: { id: string; points: { date: string; v: number }[]; unit: string }) {
+  if (points.length < 2) return <div className="empty">График появится, когда будет две записи.</div>;
+  const W = 340, H = 150, P = 26;
+  const vals = points.map(e => e.v);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = (max - min) || 5;
+  const lo = min - span * 0.3, hi = max + span * 0.3;
+  const x = (i: number) => P + (W - P * 2) * (i / (points.length - 1));
+  const y = (v: number) => H - P - (H - P * 2) * ((v - lo) / (hi - lo));
+  const pts = points.map((e, i) => x(i) + ',' + y(e.v));
+  return (
+    <div className="chart-wrap">
+      <svg viewBox={`0 0 ${W} ${H}`} xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id={'g-' + id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#35a67c" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#35a67c" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0, 0.5, 1].map(f => {
+          const yy = P + (H - P * 2) * f;
+          return <line key={f} x1={P} y1={yy} x2={W - P} y2={yy} stroke="#24405c" strokeWidth="1" />;
+        })}
+        <path d={`M${x(0)},${H - P} L${pts.join(' L')} L${x(points.length - 1)},${H - P} Z`} fill={`url(#g-${id})`} />
+        <polyline points={pts.join(' ')} fill="none" stroke="#35a67c" strokeWidth="2.5" strokeLinejoin="round" />
+        {points.map((e, i) => <circle key={i} cx={x(i)} cy={y(e.v)} r="4" fill="#0d1b2a" stroke="#f5c542" strokeWidth="2" />)}
+        <text x={P} y="14" fill="#7d94a8" fontSize="10">{num(max)} {unit}</text>
+        <text x={P} y={H - 6} fill="#7d94a8" fontSize="10">{shortD(points[0].date)}</text>
+        <text x={W - P} y={H - 6} fill="#7d94a8" fontSize="10" textAnchor="end">{shortD(points[points.length - 1].date)}</text>
+      </svg>
+    </div>
+  );
+}
