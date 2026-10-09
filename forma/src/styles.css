@@ -20,7 +20,7 @@ body { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent;
   font-family: 'Inter', -apple-system, sans-serif;
   background: var(--navy);
   color: var(--text);
-  padding: calc(18px + env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom));
+  padding: 0 16px calc(96px + env(safe-area-inset-bottom));
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
@@ -32,7 +32,7 @@ button { font-family: inherit; }
 .fw-sub { font-size: 11px; color: var(--dim); }
 .hint { font-size: 10.5px; color: var(--dim); margin: 7px 0 14px; line-height: 1.45; }
 
-.tabs { display: flex; gap: 5px; overflow-x: auto; margin-bottom: 18px; padding-bottom: 3px; -webkit-overflow-scrolling: touch; }
+.tabs { display: flex; gap: 5px; overflow-x: auto; margin-top: 12px; padding-bottom: 3px; -webkit-overflow-scrolling: touch; }
 .tabs::-webkit-scrollbar { display: none; }
 .tab-btn {
   flex: 0 0 auto; background: var(--navy-2); border: 1px solid var(--line); color: var(--dim);
@@ -221,3 +221,11 @@ select.inp { -webkit-appearance: none; appearance: none; }
 .splash { position: fixed; inset: 0; background: var(--navy); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; z-index: 50; }
 .splash-title { font-family: 'Oswald', sans-serif; font-size: 34px; font-weight: 600; letter-spacing: 1px; color: var(--text); margin-top: 8px; }
 .splash-sub { font-family: 'Inter', -apple-system, sans-serif; font-size: 13px; color: var(--dim); }
+
+/* Верхняя панель (название, ⚙, плашка клиента, вкладки) всегда видна при прокрутке. */
+.top { position: sticky; top: 0; z-index: 6; margin: 0 -16px 16px; padding: calc(18px + env(safe-area-inset-top)) 16px 10px; background: rgba(13, 27, 42, 0.97); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: box-shadow .2s, padding .2s; }
+.top.scrolled { border-bottom: 1px solid var(--line); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35); }
+.top .viewing { margin: 10px 0 0; }
+.top + .hint { margin-top: -6px; }
+/* Кнопка «вниз» в переписке, над строкой ввода. */
+.to-end { position: fixed; right: max(16px, calc(50vw - 224px)); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 6; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--navy-2); color: var(--yellow); font-size: 18px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); cursor: pointer; }

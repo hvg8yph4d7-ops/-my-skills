@@ -23,6 +23,45 @@ const SUGGESTIONS = [
   'Проверь дневник за неделю — есть ошибки?',
 ];
 
+/**
+ * Прокрутка переписки как в мессенджерах: при открытии — сразу к последнему сообщению,
+ * при новом сообщении — плавно вниз (если читаешь старое — не дёргаем, кроме своих сообщений).
+ * Возвращает, видно ли сейчас конец переписки.
+ */
+function useChatScroll(endRef: React.RefObject<HTMLDivElement | null>, count: number, always = false, busy = false) {
+  const [atEnd, setAtEnd] = useState(true);
+  const first = useRef(true);
+  const endVisible = () => {
+    const el = endRef.current;
+    return !el || el.getBoundingClientRect().top <= window.innerHeight - 40;
+  };
+  useEffect(() => {
+    const on = () => setAtEnd(endVisible());
+    on();
+    window.addEventListener('scroll', on, { passive: true });
+    window.addEventListener('resize', on);
+    return () => { window.removeEventListener('scroll', on); window.removeEventListener('resize', on); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const wasAtEnd = useRef(true);
+  wasAtEnd.current = atEnd;
+  useEffect(() => {
+    if (!count) return;
+    if (first.current) { first.current = false; toBottom('auto'); return; }
+    if (always || wasAtEnd.current) toBottom('smooth');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [count, busy]);
+  return atEnd;
+}
+
+/** В самый низ страницы: последнее сообщение оказывается над строкой ввода. */
+const toBottom = (behavior: ScrollBehavior) => window.scrollTo({ top: document.documentElement.scrollHeight, behavior });
+
+/** Круглая кнопка «вниз», когда листаешь старые сообщения. */
+function ToEnd() {
+  return <button className="to-end" aria-label="К последнему сообщению" onClick={() => toBottom('smooth')}>↓</button>;
+}
+
 /** Простое оформление ответа: **жирный** и списки «- …». */
 export function Rich({ text }: { text: string }) {
   return (
@@ -53,7 +92,7 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatKey]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns.length, busy]);
+  const atEnd = useChatScroll(endRef, turns.length, true, busy);
 
   const persist = (next: StoredTurn[]) => {
     setTurns(next);
@@ -155,6 +194,7 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
       </div>
       {turns.length > 0 && <button className="btn ghost" style={{ width: '100%', marginTop: 4 }} onClick={clear}>Очистить переписку</button>}
 
+      {!atEnd && <ToEnd />}
       <div className="entry-bar">
         <form className="entry-row" onSubmit={ev => { ev.preventDefault(); send(text.trim()); }}>
           <textarea className="inp entry-inp" rows={1} placeholder={busy ? 'Советник думает…' : 'Спроси или попроси поправить…'}
@@ -171,6 +211,8 @@ export function ClientChat({ name, pull }: { name: string; pull: () => Promise<S
   const [turns, setTurns] = useState<StoredTurn[] | null>(null);
   const [err, setErr] = useState('');
   const [at, setAt] = useState('');
+  const endRef = useRef<HTMLDivElement>(null);
+  const atEnd = useChatScroll(endRef, turns?.length ?? 0);
 
   useEffect(() => {
     let alive = true;
@@ -205,7 +247,9 @@ export function ClientChat({ name, pull }: { name: string; pull: () => Promise<S
             )}
           </div>
         ))}
+        <div ref={endRef} />
       </div>
+      {!atEnd && <ToEnd />}
     </>
   );
 }

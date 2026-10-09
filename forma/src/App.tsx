@@ -49,6 +49,13 @@ export function App() {
   const [sync, setSync] = useState<SyncState>('off');
   // Заставка при запуске держится ~2 с, даже если данные загрузились раньше.
   const [splash, setSplash] = useState(true);
+  // Страница прокручена — у верхней панели появляется тень, как в мессенджерах.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const on = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', on, { passive: true });
+    return () => window.removeEventListener('scroll', on);
+  }, []);
   useEffect(() => { const t = setTimeout(() => setSplash(false), 2200); return () => clearTimeout(t); }, []);
   const chatTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -234,8 +241,10 @@ export function App() {
 
   if (splash || (!data && !error && !firstRun)) return <Splash />;
 
+
   return (
     <div className="fw">
+      <div className={'top' + (scrolled ? ' scrolled' : '')}>
       <div className="fw-head">
         <p className="fw-title">ФОРМА</p>
         <div className="fw-head-r">
@@ -252,7 +261,7 @@ export function App() {
                 <button className="btn ghost" onClick={exitOther}>Выйти</button></div>
             : viewing
               ? <div className="viewing">👀 Дневник: <b>{viewing.profile?.name || 'без имени'}</b> · только просмотр <button className="btn ghost" onClick={exitOther}>Выйти</button></div>
-              : <div className="hint">Пиши внизу, что ел и что делал, — ИИ разберёт и запишет. {session ? 'Дневник сохраняется в аккаунте.' : 'Данные хранятся на телефоне, копия — в ⚙.'}</div>}
+              : null}
           <div className="tabs">
             {tabs.map(t => (
               <button key={t.id} className={'tab-btn' + (tab === t.id ? ' active' : '')} onClick={() => pick(t.id)}>{t.l}</button>
@@ -260,6 +269,9 @@ export function App() {
           </div>
         </>
       )}
+      </div>
+      {data && !client && !viewing && tab !== 'advisor' && tab !== 'settings' &&
+        <div className="hint">Пиши внизу, что ел и что делал, — ИИ разберёт и запишет. {session ? 'Дневник сохраняется в аккаунте.' : 'Данные хранятся на телефоне, копия — в ⚙.'}</div>}
 
       {error && <div className="card"><div className="empty">Не удалось открыть данные: {error}</div></div>}
       {!data && !error && !firstRun && <div className="empty">Загрузка…</div>}
@@ -282,7 +294,7 @@ export function App() {
           )}
           {tab === 'settings' && !client && <Settings data={data} settings={settings} saveSettings={changeSettings} persisted={persisted} replace={replace} update={update} notify={notify}
             view={d => { setClient(null); setViewing(d); pick('overview'); }} session={session} sync={sync} openClient={openClient} />}
-{!viewing && tab === 'advisor' && client && <ClientChat name={client.data.profile?.name || 'Клиент'} pull={pullClientChat} />}
+          {!viewing && tab === 'advisor' && client && <ClientChat name={client.data.profile?.name || 'Клиент'} pull={pullClientChat} />}
           {!viewing && tab === 'advisor' && !client && <Advisor key="own" data={shown} settings={settings} today={today} update={edit}
             chatKey="chat" sync={ownChatSync} notify={notify} openSettings={() => pick('settings')} />}
           {!viewing && tab !== 'advisor' && tab !== 'settings' && <EntryBar data={shown} settings={settings} today={today} update={edit} notify={notify} openSettings={() => pick('settings')} />}
