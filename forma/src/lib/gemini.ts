@@ -3,6 +3,7 @@
 
 import * as z from 'zod/v4';
 import type { Settings } from '../storage';
+import { logError } from './bugs';
 import { AiError, EntrySchema, type ChatTurn, type Entry, type ImageInput } from './ai';
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -15,15 +16,25 @@ class GeminiHttpError extends Error {
 }
 
 async function call(key: string, path: string, body?: unknown) {
+  const send = () => fetch(BASE + path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'x-goog-api-key': key, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
   let res: Response;
   try {
-    res = await fetch(BASE + path, {
-      method: body ? 'POST' : 'GET',
-      headers: { 'x-goog-api-key': key, ...(body ? { 'Content-Type': 'application/json' } : {}) },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-  } catch {
-    throw new AiError('Нет связи с Gemini. Проверь интернет и что VPN включён.');
+    res = await send();
+  } catch (first) {
+    // Сеть через VPN иногда моргает — одна повторная попытка через секунду.
+    await new Promise(r => setTimeout(r, 1000));
+    try {
+      res = await send();
+    } catch (e) {
+      // Настоящая причина — в журнал для «Сообщить об ошибке» (ключ туда не попадает).
+      const why = (x: unknown) => `${(x as Error)?.name || ''}: ${(x as Error)?.message || String(x)}`;
+      logError(`Gemini fetch ${path.split('?')[0]} (${body ? 'POST' : 'GET'}, online=${navigator.onLine}): ${why(first)} / повтор: ${why(e)}`);
+      throw new AiError('Нет связи с Gemini. Проверь интернет и что VPN включён.');
+    }
   }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
