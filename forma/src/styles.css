@@ -217,10 +217,7 @@ select.inp { -webkit-appearance: none; appearance: none; }
 .action-btns .btn { padding: 6px 12px; font-size: 12px; }
 .chat-time { font-size: 10px; color: var(--dim); margin-bottom: 3px; }
 
-/* ---- Шутка при запуске ---- */
-.prank { position: fixed; inset: 0; background: var(--navy); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px; z-index: 50; font-family: 'Inter', -apple-system, sans-serif; color: var(--text); }
-.prank-q { font-family: 'Oswald', sans-serif; font-size: 42px; font-weight: 700; text-align: center; color: var(--yellow); }
-.prank-hint { font-size: 15px; color: var(--dim); }
-.prank-btns { display: flex; gap: 14px; }
-.prank-btns .btn { font-size: 20px; padding: 14px 34px; }
-.prank-no { transition: left 0.15s, top 0.15s; z-index: 51; }
+/* ---- Заставка при запуске ---- */
+.splash { position: fixed; inset: 0; background: var(--navy); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; z-index: 50; }
+.splash-title { font-family: 'Oswald', sans-serif; font-size: 34px; font-weight: 600; letter-spacing: 1px; color: var(--text); margin-top: 8px; }
+.splash-sub { font-family: 'Inter', -apple-system, sans-serif; font-size: 13px; color: var(--dim); }

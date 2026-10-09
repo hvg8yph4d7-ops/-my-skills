@@ -13,7 +13,7 @@ import { EntryBar } from './components/EntryBar';
 import { Advisor, ClientChat } from './components/Advisor';
 import { Onboarding } from './components/Onboarding';
 import { ProfileSettings } from './components/ProfileSettings';
-import { Prank } from './components/Prank';
+import { Splash } from './components/Splash';
 import { logError } from './lib/bugs';
 import { CloudError, cloudEnabled, getSession, onAuth, pullChat, pullClient, pullOwn, pushChat, pushDiary } from './lib/cloud';
 
@@ -47,7 +47,9 @@ export function App() {
   const [client, setClient] = useState<ClientView | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [sync, setSync] = useState<SyncState>('off');
-  const [prankDone, setPrankDone] = useState(false);
+  // Заставка при запуске держится ~2 с, даже если данные загрузились раньше.
+  const [splash, setSplash] = useState(true);
+  useEffect(() => { const t = setTimeout(() => setSplash(false), 2200); return () => clearTimeout(t); }, []);
   const chatTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const dataRef = useRef<FormaData | null>(null);
@@ -230,8 +232,7 @@ export function App() {
   const tabs = viewing ? TABS.filter(t => t.id !== 'advisor') : TABS;
   const exitOther = () => { setClient(null); setViewing(null); pick('overview'); };
 
-  // Шутка: вопрос при каждом запуске у всех пользователей.
-  if (data && !prankDone) return <Prank onYes={() => setPrankDone(true)} />;
+  if (splash || (!data && !error && !firstRun)) return <Splash />;
 
   return (
     <div className="fw">
