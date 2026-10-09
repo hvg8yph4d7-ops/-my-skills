@@ -60,6 +60,7 @@ export interface Profile {
   weight: number | null; // кг, на момент анкеты
   goal: Goal;
   note?: string; // свободный текст о себе для ИИ
+  talk?: string; // как советнику со мной разговаривать (стиль)
 }
 
 export interface FormaData {

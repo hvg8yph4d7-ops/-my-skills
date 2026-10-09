@@ -220,7 +220,7 @@ export function applyAction(d: FormaData, a: Action): FormaData {
     case 'set_profile': {
       const p = a.profile;
       if (!p || !p.name.trim()) throw new Error('нет анкеты');
-      return { ...d, profile: { ...d.profile, ...p, name: p.name.trim(), note: d.profile?.note } };
+      return { ...d, profile: { ...d.profile, ...p, name: p.name.trim(), note: d.profile?.note, talk: d.profile?.talk } };
     }
   }
 }

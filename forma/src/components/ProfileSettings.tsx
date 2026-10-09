@@ -18,11 +18,12 @@ export function ProfileSettings({ data, update, notify }: Props) {
   const [weight, setWeight] = useState(str(p0.weight));
   const [goal, setGoal] = useState<Goal>(p0.goal);
   const [note, setNote] = useState(p0.note || '');
+  const [talk, setTalk] = useState(p0.talk || '');
   const [t, setT] = useState({ ...data.targets });
   const [split, setSplit] = useState<Record<string, string>>({ ...data.split });
   const [sober, setSober] = useState(data.soberSince || '');
 
-  const profile: Profile = { ...p0, name: name.trim(), sex, age: num(age), height: num(height), weight: num(weight), goal, note: note.trim() || undefined };
+  const profile: Profile = { ...p0, name: name.trim(), sex, age: num(age), height: num(height), weight: num(weight), goal, note: note.trim() || undefined, talk: talk.trim() || undefined };
 
   const save = () => {
     const cleanSplit = Object.fromEntries(Object.entries(split).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v));
@@ -73,6 +74,9 @@ export function ProfileSettings({ data, update, notify }: Props) {
 
       <div className="blk-l">О себе для ИИ (необязательно)</div>
       <textarea className="inp full" rows={3} value={note} onChange={e => setNote(e.target.value)} placeholder="Например: тренируюсь 3 раза в неделю, не ем свинину, колено побаливает" />
+
+      <div className="blk-l">Как советнику со мной говорить (необязательно)</div>
+      <textarea className="inp full" rows={3} value={talk} onChange={e => setTalk(e.target.value)} placeholder="Например: коротко, без воды, можно с юмором и матом, сразу цифры" />
 
       <button className="btn full" onClick={save}>Сохранить профиль</button>
     </div>
