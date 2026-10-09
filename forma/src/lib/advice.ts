@@ -148,3 +148,20 @@ const STATUS_TEXT = { applied: 'применено', skipped: 'пропущен�
 export function actionsNote(actions: Action[], status: (keyof typeof STATUS_TEXT | null)[] | undefined) {
   return '\n[Мои предложения: ' + actions.map((a, j) => `«${a.summary}» — ${STATUS_TEXT[status?.[j] as keyof typeof STATUS_TEXT] || 'ещё не решено'}`).join('; ') + ']';
 }
+
+const norm = (x: string) => x.toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim();
+
+/** Это уже есть в дневнике на эту дату? Тогда предложение не показываем (модель любит повторять). */
+export function alreadyDone(d: FormaData, a: Action): boolean {
+  const day = a.date ? d.days.find(x => x.date === a.date) : undefined;
+  if (a.type === 'add_exercise' && a.exercise) {
+    const name = norm(a.exercise.name);
+    return !!day && [...(day.exercises || []).map(e => e.name), ...(day.training || [])].some(n => norm(n).includes(name));
+  }
+  if (a.type === 'add_food' && a.food?.length) {
+    const have = (day?.meals || []).map(m => norm(m.name));
+    return a.food.every(f => have.includes(norm(f.name)));
+  }
+  if (a.type === 'set_weight') return d.weight.some(w => w.date === a.date && w.value === a.number);
+  return false;
+}

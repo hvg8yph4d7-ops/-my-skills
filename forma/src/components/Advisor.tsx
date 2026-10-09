@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormaData } from '../types';
 import { loadChat, saveChat, type Settings, type StoredTurn } from '../storage';
 import { AiError, askAdvisor, hasKey } from '../lib/ai';
-import { actionDetails, actionsNote, applyAction, type Action } from '../lib/advice';
+import { actionDetails, actionsNote, alreadyDone, applyAction, type Action } from '../lib/advice';
 
 type Props = {
   data: FormaData;
@@ -118,6 +118,7 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
     try {
       const history = withQ.map(t => ({ role: t.role, text: t.text + (t.actions?.length ? actionsNote(t.actions, t.status) : '') }));
       const a = await askAdvisor({ settings, data, today, history });
+      a.actions = a.actions.filter(x => !alreadyDone(data, x));
       // Пришли новые предложения — старые нерешённые больше не показываем с кнопками, чтобы не применить дважды.
       const prev = a.actions.length
         ? withQ.map(t => (t.actions?.some((_, j) => !t.status?.[j]) ? { ...t, status: t.actions.map((_, j) => t.status?.[j] ?? 'stale' as const) } : t))
