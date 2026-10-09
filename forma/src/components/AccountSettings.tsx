@@ -46,10 +46,16 @@ export function AccountSettings({ session, sync, notify, openClient }: Props) {
   const [coachEmail, setCoachEmail] = useState('');
   const uid = session?.user.id;
 
+  const refreshClients = () => {
+    if (!uid) return;
+    setClients(null);
+    listClients(uid).then(setClients).catch(e => { setClients([]); notify(errText(e), true); });
+  };
+
   useEffect(() => {
     if (!uid) return;
     listCoaches(uid).then(setCoaches).catch(e => notify(errText(e), true));
-    listClients(uid).then(setClients).catch(e => notify(errText(e), true));
+    listClients(uid).then(setClients).catch(e => { setClients([]); notify(errText(e), true); });
   }, [uid, notify]);
 
   if (!cloudEnabled) return null;
@@ -103,17 +109,22 @@ export function AccountSettings({ session, sync, notify, openClient }: Props) {
         </form>
       </div>
 
-      {clients && clients.length > 0 && (
-        <div className="card">
-          <div className="card-label">Мои клиенты</div>
-          {clients.map(c => (
-            <div key={c.userId} className="list-row">
-              <div>{c.name}<div className="meta">{c.email} · обновлён {new Date(c.updatedAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div></div>
-              <button className="btn" onClick={() => openClient(c.userId)}>Открыть</button>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="card">
+        <div className="card-label">Мои клиенты</div>
+        {clients === null && <div className="empty">Загружаю…</div>}
+        {clients?.length === 0 && (
+          <div className="blk-b" style={{ marginBottom: 12 }}>
+            Пока никого. Пусть друг войдёт в свой аккаунт и в ⚙ → «Доступ тренеру» впишет твою почту: <b>{session.user.email}</b>
+          </div>
+        )}
+        {clients?.map(c => (
+          <div key={c.userId} className="list-row">
+            <div>{c.name}<div className="meta">{c.email} · обновлён {new Date(c.updatedAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div></div>
+            <button className="btn" onClick={() => openClient(c.userId)}>Открыть</button>
+          </div>
+        ))}
+        <button className="btn ghost full" style={{ marginTop: 10, marginBottom: 0 }} onClick={refreshClients}>Обновить список</button>
+      </div>
     </>
   );
 }
