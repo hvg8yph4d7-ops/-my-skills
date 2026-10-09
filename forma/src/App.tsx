@@ -13,6 +13,7 @@ import { EntryBar } from './components/EntryBar';
 import { Advisor, ClientChat } from './components/Advisor';
 import { Onboarding } from './components/Onboarding';
 import { ProfileSettings } from './components/ProfileSettings';
+import { Prank } from './components/Prank';
 import { logError } from './lib/bugs';
 import { CloudError, cloudEnabled, getSession, onAuth, pullChat, pullClient, pullOwn, pushChat, pushDiary } from './lib/cloud';
 
@@ -46,6 +47,7 @@ export function App() {
   const [client, setClient] = useState<ClientView | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [sync, setSync] = useState<SyncState>('off');
+  const [prankDone, setPrankDone] = useState(false);
   const chatTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const dataRef = useRef<FormaData | null>(null);
@@ -227,6 +229,9 @@ export function App() {
   const edit = client ? updateClient : viewing ? readOnly : update;
   const tabs = viewing ? TABS.filter(t => t.id !== 'advisor') : TABS;
   const exitOther = () => { setClient(null); setViewing(null); pick('overview'); };
+
+  // Шутка для друзей: у всех, кроме дневника Давида (у него seedRev), при каждом запуске.
+  if (data && !data.seedRev && !prankDone) return <Prank onYes={() => setPrankDone(true)} />;
 
   return (
     <div className="fw">
