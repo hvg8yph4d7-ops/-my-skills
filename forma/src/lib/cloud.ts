@@ -3,7 +3,7 @@
 
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_KEY, SUPABASE_URL } from '../config';
-import { migrate } from '../storage';
+import { migrate, type StoredTurn } from '../storage';
 import type { FormaData } from '../types';
 
 export const cloudEnabled = !!(SUPABASE_URL && SUPABASE_KEY);
@@ -107,4 +107,23 @@ export async function pullClient(userId: string): Promise<FormaData> {
   const { data, error } = await supa().from('diaries').select('data').eq('user_id', userId).single();
   if (error) explain(error, 'Не получилось открыть дневник');
   return migrate(data.data);
+}
+
+// ---- Переписка с советником ----
+
+
+/** Сохранить свою переписку с советником в аккаунт (строка дневника уже должна существовать). */
+export async function pushChat(userId: string, turns: StoredTurn[]) {
+  const { error } = await supa().from('diaries').update({ chat: turns }).eq('user_id', userId);
+  if (error) explain(error, 'Не получилось сохранить переписку');
+}
+
+/** Переписка с советником: своя или клиента. Пусто, если её ещё нет на сервере. */
+export async function pullChat(userId: string): Promise<StoredTurn[]> {
+  const { data, error } = await supa().from('diaries').select('chat').eq('user_id', userId).maybeSingle();
+  if (error) {
+    if (/column .*chat/i.test(error.message)) throw new CloudError('В Supabase нет колонки для переписки — нужно выполнить новую строку из schema.sql.');
+    explain(error, 'Не получилось загрузить переписку');
+  }
+  return (data?.chat as StoredTurn[] | null) || [];
 }

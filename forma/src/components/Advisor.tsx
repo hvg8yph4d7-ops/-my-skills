@@ -10,6 +10,8 @@ type Props = {
   today: string;
   update: (fn: (d: FormaData) => FormaData) => void;
   chatKey: string; // своя переписка или переписка о клиенте
+  /** Своя переписка: подтянуть из аккаунта, если на телефоне пусто, и сохранять туда после каждого ответа. */
+  sync?: { pull: () => Promise<StoredTurn[]>; push: (t: StoredTurn[]) => void };
   notify: (msg: string, err?: boolean) => void;
   openSettings: () => void;
 };
@@ -22,7 +24,7 @@ const SUGGESTIONS = [
 ];
 
 /** Простое оформление ответа: **жирный** и списки «- …». */
-function Rich({ text }: { text: string }) {
+export function Rich({ text }: { text: string }) {
   return (
     <>
       {text.split('\n').map((line, i) => {
@@ -36,16 +38,28 @@ function Rich({ text }: { text: string }) {
   );
 }
 
-export function Advisor({ data, settings, today, update, chatKey, notify, openSettings }: Props) {
+export function Advisor({ data, settings, today, update, chatKey, sync, notify, openSettings }: Props) {
   const [turns, setTurns] = useState<StoredTurn[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { loadChat(chatKey).then(setTurns).catch(() => {}); }, [chatKey]);
+  useEffect(() => {
+    loadChat(chatKey).then(async local => {
+      if (local.length || !sync) { setTurns(local); return; }
+      const remote = await sync.pull().catch(() => []);
+      setTurns(remote);
+      if (remote.length) saveChat(remote, chatKey).catch(() => {});
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatKey]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns.length, busy]);
 
-  const persist = (next: StoredTurn[]) => { setTurns(next); saveChat(next, chatKey).catch(() => {}); };
+  const persist = (next: StoredTurn[]) => {
+    setTurns(next);
+    saveChat(next, chatKey).catch(() => {});
+    sync?.push(next.slice(-60));
+  };
 
   const send = async (q: string) => {
     if (!q || busy) return;
@@ -147,6 +161,50 @@ export function Advisor({ data, settings, today, update, chatKey, notify, openSe
             value={text} disabled={busy} onChange={e => setText(e.target.value)} />
           <button className="btn" type="submit" disabled={busy || !text.trim()}>{busy ? '…' : '➤'}</button>
         </form>
+      </div>
+    </>
+  );
+}
+
+/** Переписка клиента с его советником — у тренера, только чтение, обновляется сама. */
+export function ClientChat({ name, pull }: { name: string; pull: () => Promise<StoredTurn[]> }) {
+  const [turns, setTurns] = useState<StoredTurn[] | null>(null);
+  const [err, setErr] = useState('');
+  const [at, setAt] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    const load = () => pull()
+      .then(t => { if (alive) { setTurns(t); setErr(''); setAt(new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })); } })
+      .catch(e => { if (alive) setErr((e as Error).message); });
+    load();
+    const id = setInterval(load, 20_000);
+    return () => { alive = false; clearInterval(id); };
+  }, [pull]);
+
+  return (
+    <>
+      <div className="sub-note" style={{ marginBottom: 10 }}>
+        Переписка {name} с советником — только чтение, обновляется сама каждые 20 секунд{at ? ` · обновлено в ${at}` : ''}.
+      </div>
+      {err && <div className="card"><div className="empty">{err}</div></div>}
+      {turns === null && !err && <div className="empty">Загружаю…</div>}
+      {turns?.length === 0 && <div className="card"><div className="empty">{name} пока ничего не писал советнику.</div></div>}
+      <div className="chat">
+        {turns?.map((t, i) => (
+          <div key={i} className={'bubble ' + t.role}>
+            <div className="chat-time">{new Date(t.at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+            {t.role === 'assistant' ? <Rich text={t.text} /> : t.text}
+            {!!t.actions?.length && (
+              <div className="actions">
+                {t.actions.map((a, j) => {
+                  const st = t.status?.[j];
+                  return <div key={j} className="action done"><div className="action-text">{st === 'applied' ? '✓ ' : st === 'skipped' ? '✗ ' : '… '}{a.summary}</div></div>;
+                })}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </>
   );

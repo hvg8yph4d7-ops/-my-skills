@@ -48,3 +48,6 @@ create policy "owner manages coaches" on public.coaches for all
   using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
 create policy "coach sees links" on public.coaches for select
   using (lower(coach_email) = lower(auth.jwt() ->> 'email'));
+
+-- Переписка с советником (видит владелец и его тренер). Добавлено 10.10.2026.
+alter table public.diaries add column if not exists chat jsonb;

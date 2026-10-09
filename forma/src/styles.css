@@ -215,3 +215,4 @@ select.inp { -webkit-appearance: none; appearance: none; }
 .action-text { font-size: 13px; }
 .action-btns { display: flex; gap: 6px; margin-top: 7px; }
 .action-btns .btn { padding: 6px 12px; font-size: 12px; }
+.chat-time { font-size: 10px; color: var(--dim); margin-bottom: 3px; }
