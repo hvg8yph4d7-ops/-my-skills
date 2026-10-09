@@ -155,3 +155,15 @@ export async function loadSettings(): Promise<Settings> {
 export async function saveSettings(s: Settings): Promise<void> {
   await tx('readwrite', st => st.put(s, SETTINGS_KEY));
 }
+
+// ---- История чата с советником (только на телефоне, не в резервной копии) ----
+const CHAT_KEY = 'chat';
+export type StoredTurn = { role: 'user' | 'assistant'; text: string; at: string };
+
+export async function loadChat(): Promise<StoredTurn[]> {
+  return (await tx<StoredTurn[] | undefined>('readonly', st => st.get(CHAT_KEY))) || [];
+}
+
+export async function saveChat(turns: StoredTurn[]): Promise<void> {
+  await tx('readwrite', st => st.put(turns.slice(-60), CHAT_KEY));
+}

@@ -3,7 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { Settings } from '../storage';
-import { AiError, EntrySchema, type Entry, type ImageInput } from './ai';
+import { AiError, EntrySchema, type ChatTurn, type Entry, type ImageInput } from './ai';
 
 function client(s: Settings) {
   return new Anthropic({ apiKey: s.apiKey, dangerouslyAllowBrowser: true });
@@ -49,14 +49,17 @@ export async function claudeEntry(settings: Settings, system: string, user: stri
   }
 }
 
-export async function claudeText(settings: Settings, system: string, user: string): Promise<string> {
+export const claudeText = (settings: Settings, system: string, user: string) =>
+  claudeChat(settings, system, [{ role: 'user', text: user }]);
+
+export async function claudeChat(settings: Settings, system: string, turns: ChatTurn[]): Promise<string> {
   try {
     const res = await client(settings).beta.messages.create({
       model: settings.model,
       max_tokens: 16000,
       output_config: { effort: 'low' },
       system,
-      messages: [{ role: 'user', content: user }],
+      messages: turns.map(t => ({ role: t.role, content: t.text })),
       ...fallbackParams(settings),
     });
     if (res.stop_reason === 'refusal') throw new AiError('Claude не смог ответить. Попробуй ещё раз.');

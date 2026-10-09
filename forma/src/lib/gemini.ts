@@ -3,7 +3,7 @@
 
 import * as z from 'zod/v4';
 import type { Settings } from '../storage';
-import { AiError, EntrySchema, type Entry, type ImageInput } from './ai';
+import { AiError, EntrySchema, type ChatTurn, type Entry, type ImageInput } from './ai';
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -113,11 +113,14 @@ export async function geminiEntry(settings: Settings, system: string, user: stri
   }
 }
 
-export async function geminiText(settings: Settings, system: string, user: string): Promise<string> {
+export const geminiText = (settings: Settings, system: string, user: string) =>
+  geminiChat(settings, system, [{ role: 'user', text: user }]);
+
+export async function geminiChat(settings: Settings, system: string, turns: ChatTurn[]): Promise<string> {
   try {
     const json = await call(settings.geminiKey, `/models/${settings.geminiModel}:generateContent`, {
       systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
+      contents: turns.map(t => ({ role: t.role === 'user' ? 'user' : 'model', parts: [{ text: t.text }] })),
     });
     return answerText(json);
   } catch (e) {

@@ -9,6 +9,7 @@ import { Train } from './components/Train';
 import { Diary } from './components/Diary';
 import { Settings } from './components/Settings';
 import { EntryBar } from './components/EntryBar';
+import { Advisor } from './components/Advisor';
 
 const TABS = [
   { id: 'overview', l: 'Обзор' },
@@ -16,6 +17,7 @@ const TABS = [
   { id: 'cal', l: 'Календарь' },
   { id: 'train', l: 'Тренировки' },
   { id: 'diary', l: 'Дневник' },
+  { id: 'advisor', l: 'Советник' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'] | 'settings';
 
@@ -95,7 +97,8 @@ export function App() {
           {tab === 'train' && <Train data={data} today={today} update={update} />}
           {tab === 'diary' && <Diary data={data} />}
           {tab === 'settings' && <Settings data={data} settings={settings} saveSettings={changeSettings} persisted={persisted} replace={replace} notify={notify} />}
-          <EntryBar data={data} settings={settings} today={today} update={update} notify={notify} openSettings={() => pick('settings')} />
+          {tab === 'advisor' && <Advisor data={data} settings={settings} today={today} notify={notify} openSettings={() => pick('settings')} />}
+          {tab !== 'advisor' && <EntryBar data={data} settings={settings} today={today} update={update} notify={notify} openSettings={() => pick('settings')} />}
         </>
       )}
 

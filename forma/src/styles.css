@@ -190,3 +190,13 @@ button { font-family: inherit; }
 .del-btn { margin-left: 6px; background: none; border: none; color: var(--red); font-size: 15px; line-height: 1; padding: 0 4px; cursor: pointer; }
 .mark-sub { font-size: 10px; font-weight: 400; margin-top: 2px; }
 select.inp { -webkit-appearance: none; appearance: none; }
+
+/* ---- Советник ---- */
+.chat { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.bubble { max-width: 88%; padding: 10px 13px; border-radius: 14px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubble.user { align-self: flex-end; background: var(--green-2); border-bottom-right-radius: 4px; }
+.bubble.assistant { align-self: flex-start; background: var(--navy-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; white-space: normal; }
+.bubble.dim { color: var(--dim); }
+.chat-li { padding-left: 14px; position: relative; }
+.chat-li::before { content: '•'; position: absolute; left: 2px; color: var(--yellow); }
+.sugg { cursor: pointer; color: var(--text); font-family: inherit; text-align: left; }
