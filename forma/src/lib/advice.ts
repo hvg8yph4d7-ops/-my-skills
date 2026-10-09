@@ -1,9 +1,9 @@
 // Действия советника: ИИ предлагает изменения дневника, пользователь применяет их кнопкой.
 
 import * as z from 'zod/v4';
-import type { FormaData } from '../types';
+import type { Day, FormaData } from '../types';
 import { GROUPS } from './calc';
-import { applyEntry, removeExercise, removeMeal } from './entry';
+import { addMacros, applyEntry, removeExercise, removeMeal } from './entry';
 import type { Entry } from './ai';
 
 const GROUP_KEYS = GROUPS.map(g => g.k) as [string, ...string[]];
@@ -18,12 +18,20 @@ export const ActionSchema = z.object({
   type: z.enum([
     'add_food', 'remove_food', 'add_exercise', 'remove_exercise', 'set_weight', 'set_marks',
     'close_day', 'reopen_day', 'set_targets', 'set_split', 'set_sore', 'set_note', 'set_bench_max', 'set_supplements',
+    'update_food', 'update_exercise', 'set_day_text', 'set_day_macros', 'set_groups', 'clear_sore', 'remove_weight',
+    'remove_bench', 'set_sober_since', 'set_profile',
   ]).describe(
     'add_food: date + food; remove_food: date + index (номер позиции «Записано в приложении»); ' +
     'add_exercise: date + exercise; remove_exercise: date + index; set_weight: date + number (кг); ' +
     'set_marks: date + supps и/или gym (true/false); close_day: date + text (вывод дня); reopen_day: date; ' +
     'set_targets: targets; set_split: split (7 строк Пн..Вс, пусто = отдых); set_sore: group; ' +
-    'set_note: text (ВЕСЬ новый текст «о себе»: прежний + новое); set_bench_max: number; set_supplements: supplements',
+    'set_note: text (ВЕСЬ новый текст «о себе»: прежний + новое); set_bench_max: number; set_supplements: supplements; ' +
+    'update_food: date + index (#N «записано в приложении») + food (одна позиция — новая версия); ' +
+    'update_exercise: date + index (#N упражнения) + exercise (новая версия); ' +
+    'set_day_text: date + field + для food/training — lines (ВЕСЬ новый список строк), для остальных полей — text (пусто = удалить); ' +
+    'set_day_macros: date + macros (новый итог дня, когда правишь старые строки еды); set_groups: date + groups (группы мышц дня, пусто = не тренировался); ' +
+    'clear_sore: group (снять «ещё болит»); remove_weight: date; remove_bench: date + index (номер подхода жима в этот день, с 0); ' +
+    'set_sober_since: date (с какого дня без алкоголя); set_profile: profile (анкета: имя, пол, возраст, рост, вес, цель)',
   ),
   summary: z.string().describe('Коротко по-русски, что изменится, например «Вес 68,6 кг на 10 октября»'),
   date: z.string().nullable().describe('YYYY-MM-DD'),
@@ -41,6 +49,15 @@ export const ActionSchema = z.object({
   targets: z.object({ kcal: z.number(), p: z.number(), f: z.number(), c: z.number(), fib: z.number() }).nullable(),
   split: z.array(z.string()).nullable(),
   supplements: z.array(z.object({ time: z.string(), items: z.string() })).nullable(),
+  field: z.enum(['food', 'training', 'work', 'supps', 'trainNote', 'verdict']).nullable()
+    .describe('Для set_day_text: food — строки еды, training — строки тренировки, work — описание дня, supps — добавки, trainNote — заметка о тренировке, verdict — вывод дня'),
+  lines: z.array(z.string()).nullable(),
+  groups: z.array(z.enum(GROUP_KEYS)).nullable(),
+  macros: z.object({ p: z.number(), f: z.number(), c: z.number(), kcal: z.number(), fib: z.number() }).nullable(),
+  profile: z.object({
+    name: z.string(), sex: z.enum(['m', 'f']), age: z.number().nullable(), height: z.number().nullable(),
+    weight: z.number().nullable(), goal: z.enum(['gain', 'lose', 'keep']),
+  }).nullable(),
 });
 export type Action = z.infer<typeof ActionSchema>;
 
@@ -79,7 +96,7 @@ export function applyAction(d: FormaData, a: Action): FormaData {
     case 'remove_food': {
       const date = needDate(a);
       const day = d.days.find(x => x.date === date);
-      if (a.index == null || !day?.meals?.[a.index]) throw new Error('такой позиции нет (старые записи из чата удалять нельзя)');
+      if (a.index == null || !day?.meals?.[a.index]) throw new Error('такой позиции нет');
       return removeMeal(d, date, a.index);
     }
     case 'remove_exercise': {
@@ -123,6 +140,88 @@ export function applyAction(d: FormaData, a: Action): FormaData {
     case 'set_supplements':
       if (!a.supplements) throw new Error('нет схемы');
       return { ...d, supplements: a.supplements.filter(s => s.time.trim() || s.items.trim()) };
+    case 'update_food': {
+      const date = needDate(a);
+      const day = d.days.find(x => x.date === date);
+      const f = a.food?.[0];
+      if (a.index == null || !day?.meals?.[a.index]) throw new Error('такой позиции нет');
+      if (!f) throw new Error('нет новой версии продукта');
+      const old = day.meals[a.index];
+      const item = { ...old, name: f.name, grams: f.grams, p: r(f.p), f: r(f.f), c: r(f.c), kcal: r(f.kcal), fib: r(f.fib) };
+      return mapDay(d, date, x => ({
+        ...x,
+        meals: x.meals!.map((m, i) => (i === a.index ? item : m)),
+        macros: addMacros(addMacros(x.macros, [old], -1), [item]),
+      }));
+    }
+    case 'update_exercise': {
+      const date = needDate(a);
+      const day = d.days.find(x => x.date === date);
+      if (a.index == null || !day?.exercises?.[a.index]) throw new Error('такого упражнения нет');
+      if (!a.exercise) throw new Error('нет новой версии упражнения');
+      const ex = { name: a.exercise.name, group: a.exercise.group, sets: a.exercise.sets };
+      return mapDay(d, date, x => {
+        const groups = new Set(x.groups || []);
+        if (ex.group) groups.add(ex.group);
+        return { ...x, exercises: x.exercises!.map((e, i) => (i === a.index ? ex : e)), ...(groups.size ? { groups: [...groups] } : {}) };
+      });
+    }
+    case 'set_day_text': {
+      const date = needDate(a);
+      if (!a.field) throw new Error('не указано, что менять в дне');
+      const field = a.field;
+      const value = field === 'food' || field === 'training'
+        ? (a.lines || []).map(s => s.trim()).filter(Boolean)
+        : (a.text || '').trim();
+      const day = d.days.find(x => x.date === date);
+      const set = (x: Day): Day => {
+        const n: Record<string, unknown> = { ...x };
+        if ((Array.isArray(value) && !value.length) || value === '') delete n[field];
+        else n[field] = value;
+        return n as unknown as Day;
+      };
+      // День ещё не заведён — создаём (например, вписать описание сегодняшнего дня).
+      if (!day) return { ...d, days: [...d.days, set({ date, partial: true })].sort((x, y) => x.date.localeCompare(y.date)) };
+      return mapDay(d, date, set);
+    }
+    case 'set_day_macros': {
+      const m = a.macros;
+      if (!m || !(m.kcal >= 0 && m.kcal < 15000)) throw new Error('странный итог дня');
+      return mapDay(d, needDate(a), x => ({ ...x, macros: { p: r(m.p), f: r(m.f), c: r(m.c), kcal: r(m.kcal), fib: r(m.fib) } }));
+    }
+    case 'set_groups': {
+      const groups = a.groups || [];
+      return mapDay(d, needDate(a), x => {
+        const n = { ...x };
+        if (groups.length) n.groups = [...new Set(groups)]; else delete n.groups;
+        return n;
+      });
+    }
+    case 'clear_sore': {
+      if (!a.group) throw new Error('не указана группа мышц');
+      const sore = { ...d.sore };
+      delete sore[a.group];
+      return { ...d, sore };
+    }
+    case 'remove_weight': {
+      const date = needDate(a);
+      if (!d.weight.some(w => w.date === date)) throw new Error('в этот день веса нет');
+      return { ...d, weight: d.weight.filter(w => w.date !== date) };
+    }
+    case 'remove_bench': {
+      const date = needDate(a);
+      const idx = d.bench.map((b, i) => (b.date === date ? i : -1)).filter(i => i >= 0);
+      const kill = idx[a.index ?? -1];
+      if (kill == null) throw new Error('такого подхода жима нет');
+      return { ...d, bench: d.bench.filter((_, i) => i !== kill) };
+    }
+    case 'set_sober_since':
+      return { ...d, soberSince: needDate(a) };
+    case 'set_profile': {
+      const p = a.profile;
+      if (!p || !p.name.trim()) throw new Error('нет анкеты');
+      return { ...d, profile: { ...d.profile, ...p, name: p.name.trim(), note: d.profile?.note } };
+    }
   }
 }
 
@@ -137,6 +236,14 @@ export function actionDetails(a: Action): string[] {
     }
     return lines;
   }
+  if (a.type === 'update_food' && a.food?.[0]) {
+    const f = a.food[0];
+    return [`Станет: ${f.name}${f.grams ? `, ${r(f.grams)} г` : ''} — Б ${r(f.p)} · Ж ${r(f.f)} · У ${r(f.c)} · ${r(f.kcal)} ккал`];
+  }
+  if (a.type === 'set_day_macros' && a.macros) return [`Итог дня: Б ${r(a.macros.p)} · Ж ${r(a.macros.f)} · У ${r(a.macros.c)} · ${r(a.macros.kcal)} ккал`];
+  if (a.type === 'set_day_text') return a.lines?.length ? a.lines.map(l => '• ' + l) : a.text ? [a.text] : ['(будет удалено)'];
+  if (a.type === 'set_groups') return [a.groups?.length ? a.groups.join(', ') : '(без групп)'];
+  if (a.type === 'update_exercise' && a.exercise) return [`Станет: ${a.exercise.name} — ${a.exercise.sets.map(s => (s.weight != null ? `${s.weight}×${s.reps}` : `${s.reps} повт.`)).join(', ') || 'без подходов'}`];
   if (a.type === 'add_exercise' && a.exercise?.sets.length) {
     return [a.exercise.sets.map(s => (s.weight != null ? `${s.weight}×${s.reps}` : `${s.reps} повт.`)).join(', ')];
   }
