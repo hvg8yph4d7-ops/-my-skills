@@ -3,13 +3,16 @@ import type { FormaData, Goal, Profile } from '../types';
 import { migrate, seedData } from '../storage';
 import { GOALS, calcTargets, emptyData } from '../lib/profile';
 import { todayKey } from '../lib/format';
+import type { Session } from '@supabase/supabase-js';
+import { cloudEnabled } from '../lib/cloud';
+import { LoginForm } from './AccountSettings';
 
-type Props = { onDone: (d: FormaData) => void; notify: (msg: string, err?: boolean) => void };
+type Props = { onDone: (d: FormaData) => void; notify: (msg: string, err?: boolean) => void; session: Session | null };
 
 const num = (v: string) => { const n = parseFloat(v.replace(',', '.')); return n > 0 ? n : null; };
 
 /** Первый запуск: короткая анкета → пустой дневник со своими нормами. */
-export function Onboarding({ onDone, notify }: Props) {
+export function Onboarding({ onDone, notify, session }: Props) {
   const [name, setName] = useState('');
   const [sex, setSex] = useState<'m' | 'f'>('m');
   const [age, setAge] = useState('');
@@ -32,6 +35,15 @@ export function Onboarding({ onDone, notify }: Props) {
 
   return (
     <>
+      {cloudEnabled && !session && (
+        <div className="card">
+          <div className="card-label">Уже есть аккаунт?</div>
+          <div className="blk-b" style={{ marginBottom: 12 }}>Войди — дневник загрузится с сервера. Новичку — заполнить анкету ниже, аккаунт можно создать потом в ⚙.</div>
+          <LoginForm notify={notify} />
+        </div>
+      )}
+      {session && <div className="card"><div className="blk-b">Вход: <b>{session.user.email}</b>. В аккаунте пока нет дневника — заполни анкету, и он сохранится онлайн.</div></div>}
+
       <div className="card">
         <div className="card-label">Добро пожаловать</div>
         <div className="blk-b">Это твой личный дневник еды, тренировок и веса. Ответь на пару вопросов — посчитаю твои нормы КБЖУ. Всё хранится только на этом телефоне.</div>

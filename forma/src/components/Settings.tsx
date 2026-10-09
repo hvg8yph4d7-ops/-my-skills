@@ -4,6 +4,9 @@ import type { FormaData } from '../types';
 import { migrate, seedData, type Settings as AppSettings } from '../storage';
 import { AiSettings } from './AiSettings';
 import { ProfileSettings } from './ProfileSettings';
+import { AccountSettings } from './AccountSettings';
+import type { Session } from '@supabase/supabase-js';
+import type { SyncState } from '../App';
 import { todayKey } from '../lib/format';
 
 type Props = {
@@ -14,10 +17,13 @@ type Props = {
   replace: (d: FormaData) => void;
   update: (fn: (d: FormaData) => FormaData) => void;
   view: (d: FormaData) => void;
+  session: Session | null;
+  sync: SyncState;
+  openClient: (userId: string) => void;
   notify: (msg: string, err?: boolean) => void;
 };
 
-export function Settings({ data, settings, saveSettings, persisted, replace, update, view, notify }: Props) {
+export function Settings({ data, settings, saveSettings, persisted, replace, update, view, notify, session, sync, openClient }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const viewRef = useRef<HTMLInputElement>(null);
   const [what, setWhat] = useState('');
@@ -85,6 +91,8 @@ export function Settings({ data, settings, saveSettings, persisted, replace, upd
 
   return (
     <>
+      <AccountSettings session={session} sync={sync} notify={notify} openClient={openClient} />
+
       <AiSettings settings={settings} saveSettings={saveSettings} notify={notify} />
 
       <ProfileSettings key={data.profile?.name ?? ''} data={data} update={update} notify={notify} />
