@@ -23,7 +23,7 @@ export const ActionSchema = z.object({
     'add_exercise: date + exercise; remove_exercise: date + index; set_weight: date + number (кг); ' +
     'set_marks: date + supps и/или gym (true/false); close_day: date + text (вывод дня); reopen_day: date; ' +
     'set_targets: targets; set_split: split (7 строк Пн..Вс, пусто = отдых); set_sore: group; ' +
-    'set_note: text (о пользователе для ИИ); set_bench_max: number; set_supplements: supplements',
+    'set_note: text (ВЕСЬ новый текст «о себе»: прежний + новое); set_bench_max: number; set_supplements: supplements',
   ),
   summary: z.string().describe('Коротко по-русски, что изменится, например «Вес 68,6 кг на 10 октября»'),
   date: z.string().nullable().describe('YYYY-MM-DD'),
