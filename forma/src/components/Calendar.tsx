@@ -60,9 +60,9 @@ export function Calendar({ data, today, update, ai }: { data: FormaData; today: 
           <button className="nav-btn" onClick={() => changeMonth(1)} aria-label="Следующий месяц">›</button>
         </div>
         <div className="legend">
-          <span><span className="legend-dot" style={{ background: '#f5c542' }} />добавки</span>
-          <span><span className="legend-dot" style={{ background: '#35a67c' }} />зал</span>
-          <span><span className="legend-dot" style={{ background: '#7d94a8' }} />есть запись</span>
+          <span><span className="legend-dot" style={{ background: 'var(--yellow)' }} />добавки</span>
+          <span><span className="legend-dot" style={{ background: 'var(--green-br)' }} />зал</span>
+          <span><span className="legend-dot" style={{ background: 'var(--dim)' }} />есть запись</span>
           <span style={{ display: 'inline-flex', gap: 6 }}>
             {GROUPS.filter(g => g.big).map(g => (
               <span key={g.k} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>

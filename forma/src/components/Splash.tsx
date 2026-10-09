@@ -75,7 +75,7 @@ function Peach() {
         <animate attributeName="opacity" values="0;0;1;0;0;1;1" keyTimes="0;0.25;0.27;0.4;0.67;0.69;1" dur={D} fill="freeze" />
       </text>
       {/* «ЕЩЁ!» между шлепками */}
-      <text x="236" y="175" fill="#e63946" stroke="#0d1b2a" strokeWidth="2" paintOrder="stroke" fontFamily="Oswald, sans-serif" fontSize="46" fontWeight="700" textAnchor="middle" opacity="0" transform="rotate(10 236 175)">
+      <text x="236" y="175" fill="#e63946" stroke="#1f1e1c" strokeWidth="2" paintOrder="stroke" fontFamily="Oswald, sans-serif" fontSize="46" fontWeight="700" textAnchor="middle" opacity="0" transform="rotate(10 236 175)">
         ЕЩЁ!
         <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.42;0.45;0.6;0.65;1" dur={D} fill="freeze" />
       </text>

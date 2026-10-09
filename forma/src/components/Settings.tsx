@@ -21,9 +21,10 @@ type Props = {
   sync: SyncState;
   openClient: (userId: string) => void;
   notify: (msg: string, err?: boolean) => void;
+  clearChat: () => void;
 };
 
-export function Settings({ data, settings, saveSettings, persisted, replace, update, view, notify, session, sync, openClient }: Props) {
+export function Settings({ data, settings, saveSettings, persisted, replace, update, view, notify, session, sync, openClient, clearChat }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const viewRef = useRef<HTMLInputElement>(null);
   const [what, setWhat] = useState('');
@@ -131,6 +132,12 @@ export function Settings({ data, settings, saveSettings, persisted, replace, upd
         <button className="btn ghost full" onClick={() => viewRef.current?.click()}>Посмотреть чужой дневник</button>
         <input ref={viewRef} type="file" accept="application/json,.json" hidden
           onChange={e => { const f = e.target.files?.[0]; if (f) openFriend(f); e.target.value = ''; }} />
+      </div>
+
+      <div className="card">
+        <div className="card-label">Советник</div>
+        <div className="blk-b" style={{ marginBottom: 12 }}>Переписка хранится на телефоне{session ? ' и в аккаунте' : ''}. Дневник при очистке не меняется.</div>
+        <button className="btn ghost full" onClick={clearChat}>Очистить переписку с советником</button>
       </div>
 
       <div className="card">

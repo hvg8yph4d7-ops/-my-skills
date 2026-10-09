@@ -37,12 +37,12 @@ export function rate(val: number, target: number, dir: 'up' | 'down'): { cls: 'o
 }
 
 export const GROUPS = [
-  { k: 'грудь', l: 'Грудь', s: 'Г', c: '#f5c542', big: true },
-  { k: 'спина', l: 'Спина', s: 'С', c: '#35a67c', big: true },
-  { k: 'ноги', l: 'Ноги', s: 'Н', c: '#6fa8dc', big: true },
-  { k: 'плечи', l: 'Плечи', s: 'П', c: '#e07a5f', big: true },
-  { k: 'бицепс', l: 'Бицепс', s: 'Б', c: '#b39ddb', big: false },
-  { k: 'трицепс', l: 'Трицепс', s: 'Т', c: '#9ccc65', big: false },
+  { k: 'грудь', l: 'Грудь', s: 'Г', c: '#d97757', big: true },
+  { k: 'спина', l: 'Спина', s: 'С', c: '#8fae7e', big: true },
+  { k: 'ноги', l: 'Ноги', s: 'Н', c: '#7f9cb5', big: true },
+  { k: 'плечи', l: 'Плечи', s: 'П', c: '#d4a95a', big: true },
+  { k: 'бицепс', l: 'Бицепс', s: 'Б', c: '#a993c4', big: false },
+  { k: 'трицепс', l: 'Трицепс', s: 'Т', c: '#b3ad78', big: false },
 ];
 export type Group = (typeof GROUPS)[number];
 export const groupOf = (k: string) => GROUPS.find(g => g.k === k);

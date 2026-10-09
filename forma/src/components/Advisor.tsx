@@ -161,22 +161,16 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
     notify(`Применено изменений: ${ok}`);
   };
 
-  const clear = () => {
-    if (!confirm('Очистить переписку с советником?')) return;
-    persist([]);
-  };
-
   return (
     <>
-      <div className="card">
+      {turns.length === 0 && <div className="card">
         <div className="card-label">Советник</div>
         <div className="blk-b">Спроси что угодно про еду, тренировки и восстановление — или попроси что-то поправить в дневнике. Советник видит дневник за 2 недели, вес, жим и цели. Изменения он только предлагает — применяешь ты.</div>
-        {turns.length === 0 && (
-          <div className="chip-row" style={{ marginTop: 12, marginBottom: 0 }}>
-            {SUGGESTIONS.map(s => <button key={s} className="tag sugg" onClick={() => send(s)} disabled={busy}>{s}</button>)}
-          </div>
-        )}
-      </div>
+        <div className="chip-row" style={{ marginTop: 12, marginBottom: 0 }}>
+          {SUGGESTIONS.map(s => <button key={s} className="tag sugg" onClick={() => send(s)} disabled={busy}>{s}</button>)}
+        </div>
+        <div className="sub-note" style={{ marginBottom: 0 }}>Очистить переписку можно в ⚙.</div>
+      </div>}
 
       <div className="chat">
         {turns.map((t, i) => (
@@ -209,7 +203,6 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
         {busy && <div className="bubble assistant dim">Думаю…</div>}
         <div ref={endRef} />
       </div>
-      {turns.length > 0 && <button className="btn ghost" style={{ width: '100%', marginTop: 4 }} onClick={clear}>Очистить переписку</button>}
 
       {!atEnd && <ToEnd />}
       <div className="entry-bar">

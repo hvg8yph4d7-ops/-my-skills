@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { FormaData } from './types';
-import { DEFAULT_SETTINGS, load, loadSettings, requestPersist, save, saveSettings, type Settings as AppSettings, type StoredTurn } from './storage';
+import { DEFAULT_SETTINGS, load, loadSettings, requestPersist, save, saveChat, saveSettings, type Settings as AppSettings, type StoredTurn } from './storage';
 import { longD, todayKey } from './lib/format';
 import { Overview } from './components/Overview';
 import { Bench } from './components/Bench';
@@ -231,6 +231,17 @@ export function App() {
       chatTimer.current = setTimeout(() => pushChat(session.user.id, t).catch(e => logError(String(e?.message || e))), 1500);
     },
   } : undefined, [session]);
+  const clearChat = async () => {
+    if (!confirm('Очистить переписку с советником? Дневник не изменится.')) return;
+    clearTimeout(chatTimer.current);
+    try {
+      await saveChat([], 'chat');
+      if (session) await pushChat(session.user.id, []);
+      notify('Переписка очищена');
+    } catch (e) {
+      notify('Не получилось очистить: ' + (e as Error).message, true);
+    }
+  };
   const pullClientChat = useCallback(() => (client ? pullChat(client.userId) : Promise.resolve([])), [client?.userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const shown = client?.data ?? viewing ?? data;
@@ -293,7 +304,7 @@ export function App() {
             </>
           )}
           {tab === 'settings' && !client && <Settings data={data} settings={settings} saveSettings={changeSettings} persisted={persisted} replace={replace} update={update} notify={notify}
-            view={d => { setClient(null); setViewing(d); pick('overview'); }} session={session} sync={sync} openClient={openClient} />}
+            view={d => { setClient(null); setViewing(d); pick('overview'); }} session={session} sync={sync} openClient={openClient} clearChat={clearChat} />}
           {!viewing && tab === 'advisor' && client && <ClientChat name={client.data.profile?.name || 'Клиент'} pull={pullClientChat} />}
           {!viewing && tab === 'advisor' && !client && <Advisor key="own" data={shown} settings={settings} today={today} update={edit}
             chatKey="chat" sync={ownChatSync} notify={notify} openSettings={() => pick('settings')} />}

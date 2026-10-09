@@ -77,20 +77,20 @@ export function Chart({ id, points, unit }: { id: string; points: { date: string
       <svg viewBox={`0 0 ${W} ${H}`} xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id={'g-' + id} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#35a67c" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#35a67c" stopOpacity="0" />
+            <stop offset="0%" stopColor="#d97757" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#d97757" stopOpacity="0" />
           </linearGradient>
         </defs>
         {[0, 0.5, 1].map(f => {
           const yy = P + (H - P * 2) * f;
-          return <line key={f} x1={P} y1={yy} x2={W - P} y2={yy} stroke="#24405c" strokeWidth="1" />;
+          return <line key={f} x1={P} y1={yy} x2={W - P} y2={yy} stroke="#3a3833" strokeWidth="1" />;
         })}
         <path d={`M${x(0)},${H - P} L${pts.join(' L')} L${x(points.length - 1)},${H - P} Z`} fill={`url(#g-${id})`} />
-        <polyline points={pts.join(' ')} fill="none" stroke="#35a67c" strokeWidth="2.5" strokeLinejoin="round" />
-        {points.map((e, i) => <circle key={i} cx={x(i)} cy={y(e.v)} r="4" fill="#0d1b2a" stroke="#f5c542" strokeWidth="2" />)}
-        <text x={P} y="14" fill="#7d94a8" fontSize="10">{num(max)} {unit}</text>
-        <text x={P} y={H - 6} fill="#7d94a8" fontSize="10">{shortD(points[0].date)}</text>
-        <text x={W - P} y={H - 6} fill="#7d94a8" fontSize="10" textAnchor="end">{shortD(points[points.length - 1].date)}</text>
+        <polyline points={pts.join(' ')} fill="none" stroke="#d97757" strokeWidth="2.5" strokeLinejoin="round" />
+        {points.map((e, i) => <circle key={i} cx={x(i)} cy={y(e.v)} r="4" fill="#1f1e1c" stroke="#f0ece4" strokeWidth="2" />)}
+        <text x={P} y="14" fill="#9c968b" fontSize="10">{num(max)} {unit}</text>
+        <text x={P} y={H - 6} fill="#9c968b" fontSize="10">{shortD(points[0].date)}</text>
+        <text x={W - P} y={H - 6} fill="#9c968b" fontSize="10" textAnchor="end">{shortD(points[points.length - 1].date)}</text>
       </svg>
     </div>
   );
