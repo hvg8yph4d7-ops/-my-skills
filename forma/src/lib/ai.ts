@@ -5,6 +5,7 @@ import type { Day, FormaData } from '../types';
 import type { Settings } from '../storage';
 import { GROUPS, averages, recovery, sortedBench, sortedWeight, e1rm } from './calc';
 import { WDF, daysBetween, longD, wdName } from './format';
+import { aboutUser, goalText, userName } from './profile';
 
 const GROUP_KEYS = GROUPS.map(g => g.k) as [string, ...string[]];
 
@@ -39,11 +40,11 @@ export function systemPrompt(data: FormaData) {
   const products = data.products
     .map(p => `- ${p.name} (${p.portion}): Б ${p.p}, Ж ${p.f}, У ${p.c}, ${p.kcal} ккал, клетч. ${p.fib ?? 0}${p.note ? ' — ' + p.note : ''}`)
     .join('\n');
-  return `Ты ведёшь дневник питания и тренировок Давида в приложении «Форма». Он пишет коротко, по-русски, часто с опечатками и голосовым вводом, иногда присылает фото этикеток. Твоя задача — превратить сообщение в структурированную запись.
+  return `Ты ведёшь дневник питания и тренировок в приложении «Форма». Пользователь пишет коротко, по-русски, часто с опечатками и голосовым вводом, иногда присылает фото этикеток. Твоя задача — превратить сообщение в структурированную запись.
 
-О пользователе: рост ~180 см, вес ~68 кг, цель — набор массы. Цели в день: ${t.kcal} ккал, белок ≥ ${t.p} г, жиры до ~${t.f} г, углеводы ~${t.c} г, клетчатка ${t.fib} г. Взвешивается в зале во время тренировки.
+О пользователе: ${aboutUser(data)} Нормы в день: ${t.kcal} ккал, белок ≥ ${t.p} г, жиры до ~${t.f} г, углеводы ~${t.c} г, клетчатка ${t.fib} г.
 
-Правила расчёта КБЖУ (выработаны вместе с ним, соблюдай):
+Правила расчёта КБЖУ (соблюдай):
 - Этикетка важнее базы: если на фото есть КБЖУ с упаковки — бери с неё и пересчитывай на съеденный вес (source = "label").
 - Макароны: если не сказано, сухой или готовый вес — задай вопрос в questions, а в расчёте прими готовый вес. Готовые ≈ в 2,5 раза тяжелее сухих. Сухие (Макфа) на 100 г: Б 12, Ж 1,3, У 70,5, 342 ккал. Готовые: Б 3,5, Ж 0,5, У 25, 130 ккал. «Пачка» = 450–500 г сухих, уточни.
 - Курица/грудка готовая на 100 г: Б 30, Ж 3,5, 165 ккал. Сырая ≈ Б 23.
@@ -93,7 +94,7 @@ export function entryUserText(data: FormaData, today: string, text: string) {
     `Сообщение:\n${text || '(только фото)'}`;
 }
 
-export const VERDICT_SYSTEM = 'Ты пишешь короткий «вывод дня» для дневника питания и тренировок Давида. 2–3 предложения по-русски, на «ты»: что хорошо, что подтянуть завтра. Честно указывай на проблемы (перебор жира, мало белка или калорий), но без занудства и без списков. Только сам вывод, без заголовков.';
+export const verdictSystem = (data: FormaData) => `Ты пишешь короткий «вывод дня» для дневника питания и тренировок. Пользователь: ${aboutUser(data)} 2–3 предложения по-русски, на «ты»: что хорошо, что подтянуть завтра. Честно указывай на проблемы (перебор жира, мало белка или калорий), но без занудства и без списков. Только сам вывод, без заголовков.`;
 
 export function verdictUserText(data: FormaData, day: Day) {
   const t = data.targets, m = day.macros;
@@ -102,7 +103,7 @@ export function verdictUserText(data: FormaData, day: Day) {
     dayContext(day),
     day.training?.length ? 'Тренировка: ' + day.training.join('; ') : '',
     m ? `Итог: Б ${m.p} г, Ж ${m.f} г, У ${m.c} г, ${m.kcal} ккал, клетчатка ${m.fib ?? 0} г.` : 'КБЖУ не посчитаны.',
-    `Цели: ${t.kcal} ккал, белок ≥ ${t.p}, жиры до ~${t.f}, углеводы ~${t.c}, клетчатка ${t.fib}. Цель — набор массы.`,
+    `Цели: ${t.kcal} ккал, белок ≥ ${t.p}, жиры до ~${t.f}, углеводы ~${t.c}, клетчатка ${t.fib}. Цель — ${goalText(data)}.`,
   ].filter(Boolean).join('\n');
 }
 
@@ -122,10 +123,10 @@ export async function dayVerdict(opts: { settings: Settings; data: FormaData; da
   const user = verdictUserText(opts.data, opts.day);
   if (opts.settings.provider === 'claude') {
     const { claudeText } = await import('./claude');
-    return claudeText(opts.settings, VERDICT_SYSTEM, user);
+    return claudeText(opts.settings, verdictSystem(opts.data), user);
   }
   const { geminiText } = await import('./gemini');
-  return geminiText(opts.settings, VERDICT_SYSTEM, user);
+  return geminiText(opts.settings, verdictSystem(opts.data), user);
 }
 
 /** Сжимает фото до 1568 px по длинной стороне — так дешевле и быстрее. */
@@ -161,25 +162,25 @@ export function advisorContext(data: FormaData, today: string) {
   const sober = data.soberSince ? daysBetween(data.soberSince, today) : null;
   return [
     `Сегодня ${today}, ${wdName(today)}.`,
-    `Цели в день: ${t.kcal} ккал, белок ≥ ${t.p} г, жиры до ~${t.f} г, углеводы ~${t.c} г, клетчатка ${t.fib} г. Цель — набор массы, ориентир +0,25–0,5 кг в неделю.`,
+    `Цели в день: ${t.kcal} ккал, белок ≥ ${t.p} г, жиры до ~${t.f} г, углеводы ~${t.c} г, клетчатка ${t.fib} г. Цель — ${goalText(data)}.`,
     av ? `Среднее по ${av.n} закрытым дням: ${Math.round(av.avg.kcal)} ккал, Б ${Math.round(av.avg.p)}, Ж ${Math.round(av.avg.f)}, У ${Math.round(av.avg.c)}, клетч. ${Math.round(av.avg.fib)}.` : '',
-    `Вес (взвешивания в зале): ${sortedWeight(data).map(w => `${w.date} ${w.value}`).join(', ')}.`,
-    `Жим штанги лёжа: ${sortedBench(data).map(b => `${b.date} ${b.w}×${b.r} (расч. макс ${e1rm(b)})`).join(', ')}. Текущий примерный максимум ${data.benchMax} кг, до перерыва было ${data.oldBenchMax}.`,
-    `План тренировок: ${Object.entries(data.split).map(([d, v]) => WDF[+d] + ' — ' + v).join('; ')}.`,
+    data.weight.length ? `Вес: ${sortedWeight(data).map(w => `${w.date} ${w.value}`).join(', ')}.` : 'Взвешиваний пока нет.',
+    data.bench.length ? `Жим штанги лёжа: ${sortedBench(data).map(b => `${b.date} ${b.w}×${b.r} (расч. макс ${e1rm(b)})`).join(', ')}.` + (data.benchMax ? ` Текущий примерный максимум ${data.benchMax} кг.` : '') + (data.oldBenchMax ? ` До перерыва было ${data.oldBenchMax}.` : '') : '',
+    Object.keys(data.split).length ? `План тренировок: ${Object.entries(data.split).map(([d, v]) => WDF[+d] + ' — ' + v).join('; ')}.` : 'Плана тренировок нет.',
     `Восстановление мышц сегодня (большим группам нужно 3 дня, рукам 2): ${muscles}.`,
-    `Добавки: ${data.supplements.map(s => s.time + ': ' + s.items).join(' | ')}.`,
+    data.supplements.length ? `Добавки: ${data.supplements.map(s => s.time + ': ' + s.items).join(' | ')}.` : '',
     sober != null ? `Без алкоголя ${sober} дн. (с ${data.soberSince}).` : '',
-    `Частые продукты: ${data.products.map(p => `${p.name} (${p.portion}: Б ${p.p} Ж ${p.f} У ${p.c} ${p.kcal} ккал)`).join('; ')}.`,
+    data.products.length && `Частые продукты: ${data.products.map(p => `${p.name} (${p.portion}: Б ${p.p} Ж ${p.f} У ${p.c} ${p.kcal} ккал)`).join('; ')}.`,
     `Последние 14 дней дневника:\n${days}`,
   ].filter(Boolean).join('\n');
 }
 
-const ADVISOR_SYSTEM = `Ты — личный советник Давида по питанию, тренировкам и восстановлению в приложении «Форма». Давиду ~180 см, ~68 кг, цель — набор массы; вернулся в зал 14.09.2026 после перерыва; бросил пить 9.09.2026. Он пишет коротко, по-русски, иногда с опечатками.
+const advisorSystem = (data: FormaData) => `Ты — личный советник по питанию, тренировкам и восстановлению в приложении «Форма». Пользователь: ${aboutUser(data)} Пишет коротко, по-русски, иногда с опечатками.
 
-Отвечай по-русски, на «ты», коротко и по делу: обычно 2–6 предложений или короткий список. Опирайся на его данные ниже и называй конкретные цифры и продукты, которые он реально ест. Честно указывай на проблемы (перебор жира, мало белка, мало калорий для набора), но без занудства. Не выдумывай данные, которых нет. Ты не врач: при боли в суставах, травмах или тревожных симптомах советуй обратиться к врачу. Если он хочет что-то записать в дневник — подскажи, что это делается строкой ввода на других вкладках. Без таблиц и заголовков.`;
+Отвечай по-русски, на «ты», коротко и по делу: обычно 2–6 предложений или короткий список. Опирайся на его данные ниже и называй конкретные цифры и продукты, которые он реально ест. Честно указывай на проблемы (перебор жира, мало белка, калории не под цель), но без занудства. Не выдумывай данные, которых нет. Ты не врач: при боли в суставах, травмах или тревожных симптомах советуй обратиться к врачу. Если он хочет что-то записать в дневник — подскажи, что это делается строкой ввода на других вкладках. Без таблиц и заголовков.`;
 
 export async function askAdvisor(opts: { settings: Settings; data: FormaData; today: string; history: ChatTurn[] }): Promise<string> {
-  const system = ADVISOR_SYSTEM + '\n\nДанные Давида:\n' + advisorContext(opts.data, opts.today);
+  const system = advisorSystem(opts.data) + `\n\nДанные (${userName(opts.data)}):\n` + advisorContext(opts.data, opts.today);
   // История должна начинаться с вопроса пользователя.
   const turns = opts.history.slice(-20);
   while (turns.length && turns[0].role !== 'user') turns.shift();

@@ -5,6 +5,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 // Сайт живёт по адресу https://<логин>.github.io/-my-skills/ — отсюда base.
 export default defineConfig({
   base: '/-my-skills/',
+  // Время сборки — видно в ⚙ и в отчёте об ошибке.
+  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC') },
   plugins: [
     react(),
     VitePWA({

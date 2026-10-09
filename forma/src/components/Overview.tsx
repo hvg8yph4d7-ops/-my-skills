@@ -44,13 +44,15 @@ export function Overview({ data, today }: { data: FormaData; today: string }) {
         <div className="card">
           <div className="card-label">Вес</div>
           <BigNum v={lw ? num(lw.value) : '—'} unit="кг" />
-          <div className="sub-note">{wn} · взвешивания в зале</div>
+          <div className="sub-note">{wn}{data.profile?.note?.includes('в зале') ? ' · взвешивания в зале' : ''}</div>
         </div>
         <div className="card green">
           <div className="card-label">Жим лёжа</div>
-          <BigNum v={num(data.benchMax)} unit="кг" yellow />
+          <BigNum v={data.benchMax ? num(data.benchMax) : last ? num(last.w) : '—'} unit="кг" yellow />
           <div className="sub-note">
-            {last ? `примерно, до проверки · последний подход ${num(last.w)} × ${last.r}` : 'примерно, до проверки'}
+            {data.benchMax
+              ? (last ? `примерно, до проверки · последний подход ${num(last.w)} × ${last.r}` : 'примерно, до проверки')
+              : (last ? `последний подход · ${last.r} повт.` : 'запиши жим — появится здесь')}
           </div>
         </div>
       </div>
@@ -102,12 +104,12 @@ export function Overview({ data, today }: { data: FormaData; today: string }) {
         </div>
       )}
 
-      <div className="card">
+      {data.supplements.length > 0 && <div className="card">
         <div className="card-label">Схема добавок</div>
         {data.supplements.map((s, i) => (
           <div className="blk" key={i}><div className="blk-l">{s.time}</div><div className="blk-b">{s.items}</div></div>
         ))}
-      </div>
+      </div>}
 
       <div className="card">
         <div className="card-label">Последний вывод дня</div>

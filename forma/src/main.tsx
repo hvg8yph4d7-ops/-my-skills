@@ -17,9 +17,11 @@ import '@fontsource/inter/latin-700.css';
 import '@fontsource/inter/cyrillic-700.css';
 import './styles.css';
 import { App } from './App';
+import { installErrorLog } from './lib/bugs';
 
 // Офлайн-режим и автообновление приложения.
 registerSW({ immediate: true });
+installErrorLog();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

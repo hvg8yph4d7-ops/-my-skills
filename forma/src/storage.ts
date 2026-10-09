@@ -98,6 +98,7 @@ export function mergeSeed(cur: FormaData, fresh: FormaData): FormaData {
   for (const o of cur.products) if (!products.some(p => p.name === o.name)) products.push(o);
   return {
     ...cur,
+    profile: cur.profile ?? fresh.profile,
     days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
     marks, weight, bench, sore, products,
     supplements: fresh.supplements, split: fresh.split, benchMax: fresh.benchMax, oldBenchMax: fresh.oldBenchMax,
@@ -106,18 +107,19 @@ export function mergeSeed(cur: FormaData, fresh: FormaData): FormaData {
   };
 }
 
-export async function load(): Promise<FormaData> {
+/**
+ * Данные с телефона или null, если это первый запуск (тогда показывается анкета).
+ * Данные Давида (из чата) доливаются новой выгрузкой только к его же дневнику — по seedRev.
+ */
+export async function load(): Promise<FormaData | null> {
   const stored = await tx<unknown>('readonly', s => s.get(KEY));
-  if (stored) {
-    const cur = migrate(stored);
-    if (cur.seedRev === SEED_REV) return cur;
-    const merged = mergeSeed(cur, seedData());
-    await save(merged);
-    return merged;
-  }
-  const fresh = seedData();
-  await save(fresh);
-  return fresh;
+  if (!stored) return null;
+  let cur = migrate(stored);
+  if (!cur.seedRev) return cur; // дневник нового пользователя — выгрузки из чата его не касаются
+  if (!cur.profile) cur = { ...cur, profile: seedData().profile };
+  if (cur.seedRev !== SEED_REV) cur = mergeSeed(cur, seedData());
+  await save(cur);
+  return cur;
 }
 
 export async function save(data: FormaData): Promise<void> {

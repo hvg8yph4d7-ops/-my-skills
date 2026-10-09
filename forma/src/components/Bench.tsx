@@ -21,8 +21,11 @@ export function Bench({ data }: { data: FormaData }) {
         </div>
         <div className="card">
           <div className="card-label">Максимум</div>
-          <BigNum v={num(data.benchMax)} unit="кг" />
-          <div className="sub-note">примерно, на максимум ещё не жал · раньше было {num(data.oldBenchMax)}</div>
+          <BigNum v={data.benchMax ? num(data.benchMax) : pr ? num(e1rm(pr)) : '—'} unit="кг" />
+          <div className="sub-note">
+            {data.benchMax ? 'примерно, на максимум ещё не жал' : 'расчётный по лучшему подходу'}
+            {data.oldBenchMax ? ` · раньше было ${num(data.oldBenchMax)}` : ''}
+          </div>
         </div>
       </div>
       <div className="card">

@@ -49,7 +49,21 @@ export interface Product extends Macros {
   note?: string;
 }
 
+export type Goal = 'gain' | 'lose' | 'keep';
+
+/** Анкета пользователя: от неё считаются нормы и на неё опирается ИИ. */
+export interface Profile {
+  name: string;
+  sex: 'm' | 'f';
+  age: number | null;
+  height: number | null; // см
+  weight: number | null; // кг, на момент анкеты
+  goal: Goal;
+  note?: string; // свободный текст о себе для ИИ
+}
+
 export interface FormaData {
+  profile?: Profile;
   schemaVersion: number;
   seedRev?: string; // какая выгрузка из чата уже влита (exportedAt из forma-data.json)
   exportedAt?: string;

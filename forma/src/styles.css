@@ -200,3 +200,10 @@ select.inp { -webkit-appearance: none; appearance: none; }
 .chat-li { padding-left: 14px; position: relative; }
 .chat-li::before { content: '•'; position: absolute; left: 2px; color: var(--yellow); }
 .sugg { cursor: pointer; color: var(--text); font-family: inherit; text-align: left; }
+
+/* ---- Анкета и профиль ---- */
+.inp.full, .btn.full { width: 100%; display: block; margin-bottom: 12px; }
+.row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
+.viewing { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--yellow); border: 1px solid var(--yellow); border-radius: 10px; padding: 8px 10px; margin: 7px 0 14px; }
+.viewing .btn { padding: 5px 10px; font-size: 12px; margin-left: auto; }
