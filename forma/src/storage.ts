@@ -4,7 +4,7 @@
 import seed from './data/seed.json';
 import type { FormaData } from './types';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 const DB_NAME = 'forma';
 const STORE = 'state';
 const KEY = 'main';
@@ -45,6 +45,8 @@ export function migrate(raw: unknown): FormaData {
     d.split ??= {};
     d.schemaVersion = 1;
   }
+  // v1 → v2: у дня появились необязательные meals и exercises — преобразовывать нечего.
+  if (d.schemaVersion === 1) d.schemaVersion = 2;
   if (d.schemaVersion > SCHEMA_VERSION) {
     throw new Error('Файл сделан более новой версией приложения. Обнови приложение.');
   }
@@ -75,4 +77,23 @@ export async function requestPersist(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ---- Настройки (ключ API и модель). Хранятся отдельно и НЕ попадают в резервную копию. ----
+
+export type ModelId = 'claude-opus-5-5' | 'claude-haiku-5-5';
+export interface Settings {
+  apiKey: string;
+  model: ModelId;
+}
+const SETTINGS_KEY = 'settings';
+export const DEFAULT_SETTINGS: Settings = { apiKey: '', model: 'claude-opus-5-5' };
+
+export async function loadSettings(): Promise<Settings> {
+  const s = await tx<Partial<Settings> | undefined>('readonly', st => st.get(SETTINGS_KEY));
+  return { ...DEFAULT_SETTINGS, ...(s || {}) };
+}
+
+export async function saveSettings(s: Settings): Promise<void> {
+  await tx('readwrite', st => st.put(s, SETTINGS_KEY));
 }

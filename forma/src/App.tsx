@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormaData } from './types';
-import { load, requestPersist, save } from './storage';
+import { DEFAULT_SETTINGS, load, loadSettings, requestPersist, save, saveSettings, type Settings as AppSettings } from './storage';
 import { longD, todayKey } from './lib/format';
 import { Overview } from './components/Overview';
 import { Bench } from './components/Bench';
@@ -8,6 +8,7 @@ import { Calendar } from './components/Calendar';
 import { Train } from './components/Train';
 import { Diary } from './components/Diary';
 import { Settings } from './components/Settings';
+import { EntryBar } from './components/EntryBar';
 
 const TABS = [
   { id: 'overview', l: 'Обзор' },
@@ -24,10 +25,12 @@ export function App() {
   const [tab, setTab] = useState<Tab>('overview');
   const [today, setToday] = useState(todayKey);
   const [persisted, setPersisted] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
 
   useEffect(() => {
     load().then(setData).catch(e => setError(String(e?.message || e)));
+    loadSettings().then(setSettings).catch(() => {});
     requestPersist().then(setPersisted);
     // Приложение может висеть открытым с вечера до утра — обновляем «сегодня».
     const onShow = () => setToday(todayKey());
@@ -57,6 +60,11 @@ export function App() {
     });
   }, [notify]);
 
+  const changeSettings = useCallback((s: AppSettings) => {
+    setSettings(s);
+    saveSettings(s).catch(() => notify('Не удалось сохранить настройки', true));
+  }, [notify]);
+
   const pick = (t: Tab) => { setTab(t); window.scrollTo(0, 0); };
 
   return (
@@ -69,7 +77,7 @@ export function App() {
             onClick={() => pick(tab === 'settings' ? 'overview' : 'settings')}>⚙</button>
         </div>
       </div>
-      <div className="hint">Твой трекер зала, еды и добавок. Данные хранятся на телефоне — не забывай делать копию (⚙).</div>
+      <div className="hint">Пиши внизу, что ел и что делал, — Claude разберёт и запишет. Данные хранятся на телефоне, копия — в ⚙.</div>
 
       <div className="tabs">
         {TABS.map(t => (
@@ -83,10 +91,11 @@ export function App() {
         <>
           {tab === 'overview' && <Overview data={data} today={today} />}
           {tab === 'bench' && <Bench data={data} />}
-          {tab === 'cal' && <Calendar data={data} today={today} update={update} />}
+          {tab === 'cal' && <Calendar data={data} today={today} update={update} ai={{ settings, notify }} />}
           {tab === 'train' && <Train data={data} today={today} update={update} />}
           {tab === 'diary' && <Diary data={data} />}
-          {tab === 'settings' && <Settings data={data} persisted={persisted} replace={replace} notify={notify} />}
+          {tab === 'settings' && <Settings data={data} settings={settings} saveSettings={changeSettings} persisted={persisted} replace={replace} notify={notify} />}
+          <EntryBar data={data} settings={settings} today={today} update={update} notify={notify} openSettings={() => pick('settings')} />
         </>
       )}
 

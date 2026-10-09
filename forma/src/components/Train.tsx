@@ -2,6 +2,7 @@ import type { FormaData } from '../types';
 import { GROUPS, e1rm, exerciseCount, gymDays, recovery } from '../lib/calc';
 import { daysBetween, longD, num, shortD, wdName } from '../lib/format';
 import { Chip } from './common';
+import { exerciseLine } from '../lib/entry';
 
 type Update = (fn: (d: FormaData) => FormaData) => void;
 
@@ -56,7 +57,12 @@ export function Train({ data, today, update }: { data: FormaData; today: string;
             <div className="entry-date">{longD(d.date)}</div>
             <div className="entry-wd">{wdName(d.date)}</div>
             <div className="chip-row">{d.groups!.map(g => <Chip key={g} k={g} />)}</div>
-            {!!d.training?.length && <ul className="ex-list">{d.training.map((x, i) => <li key={i}>{x}</li>)}</ul>}
+            {(!!d.training?.length || !!d.exercises?.length) && (
+              <ul className="ex-list">
+                {(d.training || []).map((x, i) => <li key={i}>{x}</li>)}
+                {(d.exercises || []).map((x, i) => <li key={'e' + i}>{exerciseLine(x)}</li>)}
+              </ul>
+            )}
             {b.length > 0 && (
               <div className="sub-note" style={{ marginTop: 8 }}>
                 Жим: {b.map(x => `${num(x.w)} кг × ${x.r} · расч. макс ${num(e1rm(x))} кг`).join(', ')}

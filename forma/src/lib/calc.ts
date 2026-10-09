@@ -76,4 +76,4 @@ export function recovery(d: FormaData, g: Group, today: string) {
 
 /** Количество упражнений: строки тренировок без заметок про боль. */
 export const exerciseCount = (d: FormaData) =>
-  gymDays(d).reduce((a, x) => a + (x.training ? x.training.filter(t => !/заболел|болел/i.test(t)).length : 0), 0);
+  gymDays(d).reduce((a, x) => a + (x.training ? x.training.filter(t => !/заболел|болел/i.test(t)).length : 0) + (x.exercises?.length || 0), 0);

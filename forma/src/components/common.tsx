@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Day, Macros } from '../types';
 import { groupOf } from '../lib/calc';
+import { exerciseLine, foodLine } from '../lib/entry';
 import { num, shortD } from '../lib/format';
 
 export function Blk({ l, children }: { l: string; children: ReactNode }) {
@@ -30,15 +31,29 @@ export function Chip({ k }: { k: string }) {
   return g ? <span className="chip" style={{ background: g.c }}>{g.l}</span> : null;
 }
 
-const List = ({ items }: { items: string[] }) => <ul>{items.map((x, i) => <li key={i}>{x}</li>)}</ul>;
+type Remove = { meal: (i: number) => void; exercise: (i: number) => void };
+
+/** Строки старого формата + записи через Claude; во вкладке календаря новые можно удалить. */
+function Items({ lines, items, onRemove }: { lines?: string[]; items: string[]; onRemove?: (i: number) => void }) {
+  return (
+    <ul>
+      {(lines || []).map((x, i) => <li key={'l' + i}>{x}</li>)}
+      {items.map((x, i) => (
+        <li key={'i' + i}>{x}{onRemove && <button className="del-btn" aria-label="Удалить" onClick={() => onRemove(i)}>×</button>}</li>
+      ))}
+    </ul>
+  );
+}
 
 /** Содержимое дня: день, еда, тренировка, добавки, БЖУ, вывод. Общее для дневника и календаря. */
-export function DayBody({ e }: { e: Day }) {
+export function DayBody({ e, remove }: { e: Day; remove?: Remove }) {
+  const meals = (e.meals || []).map(foodLine);
+  const exs = (e.exercises || []).map(exerciseLine);
   return (
     <>
       {e.work && <Blk l="День">{e.work}</Blk>}
-      {!!e.food?.length && <Blk l="Еда"><List items={e.food} /></Blk>}
-      {!!e.training?.length && <Blk l="Тренировка"><List items={e.training} /></Blk>}
+      {(!!e.food?.length || meals.length > 0) && <Blk l="Еда"><Items lines={e.food} items={meals} onRemove={remove?.meal} /></Blk>}
+      {(!!e.training?.length || exs.length > 0) && <Blk l="Тренировка"><Items lines={e.training} items={exs} onRemove={remove?.exercise} /></Blk>}
       {e.supps && <Blk l="Добавки">{e.supps}</Blk>}
       {e.macros && <div className="blk"><div className="blk-l">БЖУ и клетчатка</div><MacroStrip m={e.macros} /></div>}
       {e.verdict && <div className="blk"><div className="blk-l">Вывод дня</div><div className="verdict">{e.verdict}</div></div>}

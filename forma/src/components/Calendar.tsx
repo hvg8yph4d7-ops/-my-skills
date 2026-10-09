@@ -3,8 +3,12 @@ import type { FormaData } from '../types';
 import { GROUPS, dayFor, groupOf, marksFor, planDays } from '../lib/calc';
 import { MONTHS, WD, dk, longD, num, wdName } from '../lib/format';
 import { Blk, Chip, DayBody } from './common';
+import type { Settings } from '../storage';
+import { ClaudeError, dayVerdict } from '../lib/claude';
+import { removeExercise, removeMeal } from '../lib/entry';
 
 type Update = (fn: (d: FormaData) => FormaData) => void;
+type Ai = { settings: Settings; notify: (msg: string, err?: boolean) => void };
 
 function GrpBadges({ data, k }: { data: FormaData; k: string }) {
   const e = dayFor(data, k);
@@ -19,7 +23,7 @@ function GrpBadges({ data, k }: { data: FormaData; k: string }) {
   );
 }
 
-export function Calendar({ data, today, update }: { data: FormaData; today: string; update: Update }) {
+export function Calendar({ data, today, update, ai }: { data: FormaData; today: string; update: Update; ai: Ai }) {
   const [view, setView] = useState(() => { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth() }; });
   const [selected, setSelected] = useState(today);
   const plan = planDays(data);
@@ -73,16 +77,36 @@ export function Calendar({ data, today, update }: { data: FormaData; today: stri
         <div className="day-grid">{cells}</div>
         <div className="sub-note" style={{ marginTop: 10 }}>Нажми на дату — откроется весь день: еда, тренировка, БЖУ, вывод.</div>
       </div>
-      <DayDetail key={selected} data={data} k={selected} update={update} />
+      <DayDetail key={selected} data={data} k={selected} update={update} ai={ai} />
     </>
   );
 }
 
-function DayDetail({ data, k, update }: { data: FormaData; k: string; update: Update }) {
+function DayDetail({ data, k, update, ai }: { data: FormaData; k: string; update: Update; ai: Ai }) {
   const m = marksFor(data, k), e = dayFor(data, k);
   const w = data.weight.find(x => x.date === k);
   const b = data.bench.filter(x => x.date === k);
   const [weightInput, setWeightInput] = useState('');
+  const [closing, setClosing] = useState(false);
+
+  const setDay = (patch: Partial<NonNullable<typeof e>>) =>
+    update(d => ({ ...d, days: d.days.map(x => (x.date === k ? { ...x, ...patch } : x)) }));
+
+  // Закрыть день: Claude пишет вывод, день начинает учитываться в средних.
+  const closeDay = async () => {
+    if (!e) return;
+    if (!ai.settings.apiKey) { setDay({ partial: false }); ai.notify('День закрыт. Для вывода от Claude добавь ключ в ⚙'); return; }
+    setClosing(true);
+    try {
+      const verdict = await dayVerdict({ settings: ai.settings, data, day: e });
+      setDay({ partial: false, verdict });
+      ai.notify('День закрыт');
+    } catch (err) {
+      ai.notify(err instanceof ClaudeError ? err.message : 'Не получилось: ' + (err as Error).message, true);
+    } finally {
+      setClosing(false);
+    }
+  };
 
   const toggle = (key: 'p' | 'g') => update(d => ({ ...d, marks: { ...d.marks, [k]: { ...marksFor(d, k), [key]: !marksFor(d, k)[key] } } }));
 
@@ -108,8 +132,15 @@ function DayDetail({ data, k, update }: { data: FormaData; k: string; update: Up
         <button className="btn" type="submit">Записать</button>
       </form>
       {b.length > 0 && <Blk l="Жим"><ul>{b.map((x, i) => <li key={i}>{num(x.w)} кг × {x.r}</li>)}</ul></Blk>}
-      {e && <DayBody e={e} />}
+      {e && <DayBody e={e} remove={{ meal: i => update(d => removeMeal(d, k, i)), exercise: i => update(d => removeExercise(d, k, i)) }} />}
       {!e && !w && !b.length && <div className="empty">За этот день записей нет.</div>}
+      {e && (
+        <div className="btn-col" style={{ marginTop: 12 }}>
+          {e.partial
+            ? <button className="btn" onClick={closeDay} disabled={closing}>{closing ? 'Claude пишет вывод…' : 'Закрыть день и получить вывод'}</button>
+            : <button className="btn ghost" onClick={() => setDay({ partial: true })}>Открыть день снова</button>}
+        </div>
+      )}
     </div>
   );
 }

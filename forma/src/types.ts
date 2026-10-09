@@ -8,6 +8,25 @@ export interface Macros {
   fib?: number;
 }
 
+/** Позиция еды, распознанная Claude (этап 2). Старые дни хранят еду строками в `food`. */
+export interface FoodItem {
+  name: string;
+  grams: number | null;
+  p: number;
+  f: number;
+  c: number;
+  kcal: number;
+  fib: number;
+  source: 'label' | 'base' | 'estimate'; // этикетка / справочник / оценка
+  note?: string | null;
+}
+
+export interface Exercise {
+  name: string;
+  group: string | null;
+  sets: { weight: number | null; reps: number }[];
+}
+
 export interface Day {
   date: string; // YYYY-MM-DD
   partial?: boolean; // день ещё не закрыт — в средние не идёт
@@ -17,8 +36,10 @@ export interface Day {
   food?: string[];
   training?: string[];
   supps?: string;
-  macros?: Macros;
+  macros?: Macros; // итог дня: старые строки + сумма meals
   verdict?: string;
+  meals?: FoodItem[];
+  exercises?: Exercise[];
 }
 
 export interface Product extends Macros {
