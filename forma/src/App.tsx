@@ -46,8 +46,6 @@ export function App() {
   const [client, setClient] = useState<ClientView | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [sync, setSync] = useState<SyncState>('off');
-  // В режиме клиента во «Советнике»: его переписка или мой чат о нём.
-  const [chatView, setChatView] = useState<'his' | 'mine'>('his');
   const chatTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const dataRef = useRef<FormaData | null>(null);
@@ -278,15 +276,9 @@ export function App() {
           )}
           {tab === 'settings' && !client && <Settings data={data} settings={settings} saveSettings={changeSettings} persisted={persisted} replace={replace} update={update} notify={notify}
             view={d => { setClient(null); setViewing(d); pick('overview'); }} session={session} sync={sync} openClient={openClient} />}
-          {!viewing && tab === 'advisor' && client && (
-            <div className="detail-marks">
-              <button className={'mark pills' + (chatView === 'his' ? ' on' : '')} onClick={() => setChatView('his')}>Его переписка</button>
-              <button className={'mark pills' + (chatView === 'mine' ? ' on' : '')} onClick={() => setChatView('mine')}>Мой чат о нём</button>
-            </div>
-          )}
-          {!viewing && tab === 'advisor' && client && chatView === 'his' && <ClientChat name={client.data.profile?.name || 'Клиент'} pull={pullClientChat} />}
-          {!viewing && tab === 'advisor' && (!client || chatView === 'mine') && <Advisor key={client?.userId ?? 'own'} data={shown} settings={settings} today={today} update={edit}
-            chatKey={client ? 'chat:' + client.userId : 'chat'} sync={client ? undefined : ownChatSync} notify={notify} openSettings={() => pick('settings')} />}
+{!viewing && tab === 'advisor' && client && <ClientChat name={client.data.profile?.name || 'Клиент'} pull={pullClientChat} />}
+          {!viewing && tab === 'advisor' && !client && <Advisor key="own" data={shown} settings={settings} today={today} update={edit}
+            chatKey="chat" sync={ownChatSync} notify={notify} openSettings={() => pick('settings')} />}
           {!viewing && tab !== 'advisor' && tab !== 'settings' && <EntryBar data={shown} settings={settings} today={today} update={edit} notify={notify} openSettings={() => pick('settings')} />}
         </>
       )}
