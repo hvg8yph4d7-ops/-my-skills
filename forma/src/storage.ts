@@ -165,7 +165,7 @@ export type StoredTurn = {
   text: string;
   at: string;
   actions?: import('./lib/advice').Action[]; // что советник предложил изменить
-  status?: ('applied' | 'skipped' | null)[]; // что с этим сделали
+  status?: ('applied' | 'skipped' | 'stale' | null)[]; // что с этим сделали (stale — устарело: пришли новые предложения)
 };
 
 export async function loadChat(key = 'chat'): Promise<StoredTurn[]> {

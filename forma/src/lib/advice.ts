@@ -125,3 +125,26 @@ export function applyAction(d: FormaData, a: Action): FormaData {
       return { ...d, supplements: a.supplements.filter(s => s.time.trim() || s.items.trim()) };
   }
 }
+
+/** Подробности действия для карточки: что именно добавится (с КБЖУ), чтобы было видно до «Применить». */
+export function actionDetails(a: Action): string[] {
+  const r = Math.round;
+  if (a.type === 'add_food' && a.food?.length) {
+    const lines = a.food.map(f => `${f.name}${f.grams ? `, ${r(f.grams)} г` : ''} — Б ${r(f.p)} · Ж ${r(f.f)} · У ${r(f.c)} · ${r(f.kcal)} ккал`);
+    if (a.food.length > 1) {
+      const sum = (k: 'p' | 'f' | 'c' | 'kcal') => r(a.food!.reduce((s, f) => s + f[k], 0));
+      lines.push(`Итого: Б ${sum('p')} · Ж ${sum('f')} · У ${sum('c')} · ${sum('kcal')} ккал`);
+    }
+    return lines;
+  }
+  if (a.type === 'add_exercise' && a.exercise?.sets.length) {
+    return [a.exercise.sets.map(s => (s.weight != null ? `${s.weight}×${s.reps}` : `${s.reps} повт.`)).join(', ')];
+  }
+  return [];
+}
+
+const STATUS_TEXT = { applied: 'применено', skipped: 'пропущено', stale: 'устарело' } as const;
+/** Как предложения прошлого ответа выглядят для модели в истории — чтобы не предлагала то же самое снова. */
+export function actionsNote(actions: Action[], status: (keyof typeof STATUS_TEXT | null)[] | undefined) {
+  return '\n[Мои предложения: ' + actions.map((a, j) => `«${a.summary}» — ${STATUS_TEXT[status?.[j] as keyof typeof STATUS_TEXT] || 'ещё не решено'}`).join('; ') + ']';
+}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormaData } from '../types';
 import { loadChat, saveChat, type Settings, type StoredTurn } from '../storage';
 import { AiError, askAdvisor, hasKey } from '../lib/ai';
-import { applyAction } from '../lib/advice';
+import { actionDetails, actionsNote, applyAction, type Action } from '../lib/advice';
 
 type Props = {
   data: FormaData;
@@ -62,6 +62,16 @@ function ToEnd() {
   return <button className="to-end" aria-label="К последнему сообщению" onClick={() => toBottom('smooth')}>↓</button>;
 }
 
+const mark = (st?: string | null) =>
+  st === 'applied' ? '✓ ' : st === 'skipped' ? '✗ ' : st === 'stale' ? '⌛ ' : '✎ ';
+
+/** Что именно добавится — продукты с КБЖУ, подходы. */
+function Details({ a }: { a: Action }) {
+  const lines = actionDetails(a);
+  if (!lines.length) return null;
+  return <div className="action-details">{lines.map((l, i) => <div key={i} className={l.startsWith('Итого') ? 'total' : ''}>{l}</div>)}</div>;
+}
+
 /** Простое оформление ответа: **жирный** и списки «- …». */
 export function Rich({ text }: { text: string }) {
   return (
@@ -106,8 +116,13 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
     const withQ: StoredTurn[] = [...turns, { role: 'user', text: q, at: new Date().toISOString() }];
     setTurns(withQ); setText(''); setBusy(true);
     try {
-      const a = await askAdvisor({ settings, data, today, history: withQ.map(({ role, text }) => ({ role, text })) });
-      persist([...withQ, { role: 'assistant', text: a.reply, at: new Date().toISOString(), actions: a.actions, status: a.actions.map(() => null) }]);
+      const history = withQ.map(t => ({ role: t.role, text: t.text + (t.actions?.length ? actionsNote(t.actions, t.status) : '') }));
+      const a = await askAdvisor({ settings, data, today, history });
+      // Пришли новые предложения — старые нерешённые больше не показываем с кнопками, чтобы не применить дважды.
+      const prev = a.actions.length
+        ? withQ.map(t => (t.actions?.some((_, j) => !t.status?.[j]) ? { ...t, status: t.actions.map((_, j) => t.status?.[j] ?? 'stale' as const) } : t))
+        : withQ;
+      persist([...prev, { role: 'assistant', text: a.reply, at: new Date().toISOString(), actions: a.actions, status: a.actions.map(() => null) }]);
     } catch (e) {
       // Вопрос без ответа убираем, текст возвращаем в поле — можно отправить ещё раз.
       setTurns(turns); setText(q);
@@ -172,7 +187,8 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
                   const st = t.status?.[j];
                   return (
                     <div key={j} className={'action' + (st ? ' done' : '')}>
-                      <div className="action-text">{st === 'applied' ? '✓ ' : st === 'skipped' ? '✗ ' : '✎ '}{a.summary}</div>
+                      <div className="action-text">{mark(st)}{a.summary}</div>
+                      <Details a={a} />
                       {!st && (
                         <div className="action-btns">
                           <button className="btn" onClick={() => decide(i, j, true)}>Применить</button>
@@ -241,7 +257,7 @@ export function ClientChat({ name, pull }: { name: string; pull: () => Promise<S
               <div className="actions">
                 {t.actions.map((a, j) => {
                   const st = t.status?.[j];
-                  return <div key={j} className="action done"><div className="action-text">{st === 'applied' ? '✓ ' : st === 'skipped' ? '✗ ' : '… '}{a.summary}</div></div>;
+                  return <div key={j} className="action done"><div className="action-text">{st ? mark(st) : '… '}{a.summary}</div><Details a={a} /></div>;
                 })}
               </div>
             )}
