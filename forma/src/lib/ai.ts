@@ -6,6 +6,7 @@ import type { Settings } from '../storage';
 import { GROUPS, averages, recovery, sortedBench, sortedWeight, e1rm } from './calc';
 import { WDF, daysBetween, longD, wdName } from './format';
 import { aboutUser, goalText, userName } from './profile';
+import { AdviceSchema, type Advice } from './advice';
 
 const GROUP_KEYS = GROUPS.map(g => g.k) as [string, ...string[]];
 
@@ -149,8 +150,14 @@ export function advisorContext(data: FormaData, today: string) {
   const av = averages(data);
   const days = data.days.slice().sort((a, b) => a.date.localeCompare(b.date)).slice(-14).map(d => {
     const m = d.macros;
-    const food = [...(d.food || []), ...(d.meals || []).map(x => x.name + (x.grams ? ` ${x.grams} г` : ''))].join('; ');
-    const tr = [...(d.training || []), ...(d.exercises || []).map(x => x.name + ': ' + x.sets.map(s => (s.weight ?? '') + '×' + s.reps).join(', '))].join('; ');
+    const food = [
+      ...(d.food || []),
+      ...(d.meals || []).map((x, i) => `[записано в приложении #${i}] ${x.name}${x.grams ? ` ${x.grams} г` : ''} (Б ${x.p} Ж ${x.f} У ${x.c} ${x.kcal} ккал)`),
+    ].join('; ');
+    const tr = [
+      ...(d.training || []),
+      ...(d.exercises || []).map((x, i) => `[упражнение #${i}] ${x.name}: ` + x.sets.map(s => (s.weight ?? '') + '×' + s.reps).join(', ')),
+    ].join('; ');
     return `${d.date} (${wdName(d.date)})${d.partial ? ' [не закрыт]' : ''}: ` +
       (m ? `Б ${m.p} Ж ${m.f} У ${m.c} ${m.kcal} ккал клетч. ${m.fib ?? 0}. ` : '') +
       (food ? `Еда: ${food}. ` : '') + (tr ? `Тренировка: ${tr}. ` : '') + (d.verdict ? `Вывод: ${d.verdict}` : '');
@@ -177,17 +184,19 @@ export function advisorContext(data: FormaData, today: string) {
 
 const advisorSystem = (data: FormaData) => `Ты — личный советник по питанию, тренировкам и восстановлению в приложении «Форма». Пользователь: ${aboutUser(data)} Пишет коротко, по-русски, иногда с опечатками.
 
-Отвечай по-русски, на «ты», коротко и по делу: обычно 2–6 предложений или короткий список. Опирайся на его данные ниже и называй конкретные цифры и продукты, которые он реально ест. Честно указывай на проблемы (перебор жира, мало белка, калории не под цель), но без занудства. Не выдумывай данные, которых нет. Ты не врач: при боли в суставах, травмах или тревожных симптомах советуй обратиться к врачу. Если он хочет что-то записать в дневник — подскажи, что это делается строкой ввода на других вкладках. Без таблиц и заголовков.`;
+Отвечай по-русски, на «ты», коротко и по делу: обычно 2–6 предложений или короткий список. Опирайся на его данные ниже и называй конкретные цифры и продукты, которые он реально ест. Честно указывай на проблемы (перебор жира, мало белка, калории не под цель), но без занудства. Не выдумывай данные, которых нет. Ты не врач: при боли в суставах, травмах или тревожных симптомах советуй обратиться к врачу. Без таблиц и заголовков.
 
-export async function askAdvisor(opts: { settings: Settings; data: FormaData; today: string; history: ChatTurn[] }): Promise<string> {
+Ты можешь менять дневник: в поле actions предложи конкретные изменения, если пользователь о них просит или если явно нашёл ошибку (неверный вес, лишняя запись, незакрытый прошедший день, нормы не под цель). Каждое изменение пользователь подтвердит кнопкой — в reply коротко скажи, что предлагаешь. Если ничего менять не нужно — actions пустой. Старые строки еды из чата удалить нельзя, только позиции с пометкой «записано в приложении #N» (index = N). Для еды считай КБЖУ на съеденный вес. Даты — в формате YYYY-MM-DD.`;
+
+export async function askAdvisor(opts: { settings: Settings; data: FormaData; today: string; history: ChatTurn[] }): Promise<Advice> {
   const system = advisorSystem(opts.data) + `\n\nДанные (${userName(opts.data)}):\n` + advisorContext(opts.data, opts.today);
   // История должна начинаться с вопроса пользователя.
   const turns = opts.history.slice(-20);
   while (turns.length && turns[0].role !== 'user') turns.shift();
   if (opts.settings.provider === 'claude') {
-    const { claudeChat } = await import('./claude');
-    return claudeChat(opts.settings, system, turns);
+    const { claudeStructured } = await import('./claude');
+    return claudeStructured(opts.settings, system, turns, AdviceSchema);
   }
-  const { geminiChat } = await import('./gemini');
-  return geminiChat(opts.settings, system, turns);
+  const { geminiStructured } = await import('./gemini');
+  return geminiStructured(opts.settings, system, turns, AdviceSchema);
 }

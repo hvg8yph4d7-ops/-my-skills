@@ -159,13 +159,19 @@ export async function saveSettings(s: Settings): Promise<void> {
 }
 
 // ---- История чата с советником (только на телефоне, не в резервной копии) ----
-const CHAT_KEY = 'chat';
-export type StoredTurn = { role: 'user' | 'assistant'; text: string; at: string };
+// Своя переписка — 'chat', переписка о клиенте — 'chat:<id клиента>'.
+export type StoredTurn = {
+  role: 'user' | 'assistant';
+  text: string;
+  at: string;
+  actions?: import('./lib/advice').Action[]; // что советник предложил изменить
+  status?: ('applied' | 'skipped' | null)[]; // что с этим сделали
+};
 
-export async function loadChat(): Promise<StoredTurn[]> {
-  return (await tx<StoredTurn[] | undefined>('readonly', st => st.get(CHAT_KEY))) || [];
+export async function loadChat(key = 'chat'): Promise<StoredTurn[]> {
+  return (await tx<StoredTurn[] | undefined>('readonly', st => st.get(key))) || [];
 }
 
-export async function saveChat(turns: StoredTurn[]): Promise<void> {
-  await tx('readwrite', st => st.put(turns.slice(-60), CHAT_KEY));
+export async function saveChat(turns: StoredTurn[], key = 'chat'): Promise<void> {
+  await tx('readwrite', st => st.put(turns.slice(-60), key));
 }

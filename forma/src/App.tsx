@@ -214,8 +214,7 @@ export function App() {
   const shown = client?.data ?? viewing ?? data;
   const readOnly = useCallback(() => notify('Это чужой дневник — только просмотр'), [notify]);
   const edit = client ? updateClient : viewing ? readOnly : update;
-  const other = !!(client || viewing);
-  const tabs = other ? TABS.filter(t => t.id !== 'advisor') : TABS;
+  const tabs = viewing ? TABS.filter(t => t.id !== 'advisor') : TABS;
   const exitOther = () => { setClient(null); setViewing(null); pick('overview'); };
 
   return (
@@ -266,7 +265,7 @@ export function App() {
           )}
           {tab === 'settings' && !client && <Settings data={data} settings={settings} saveSettings={changeSettings} persisted={persisted} replace={replace} update={update} notify={notify}
             view={d => { setClient(null); setViewing(d); pick('overview'); }} session={session} sync={sync} openClient={openClient} />}
-          {!other && tab === 'advisor' && <Advisor data={data} settings={settings} today={today} notify={notify} openSettings={() => pick('settings')} />}
+          {!viewing && tab === 'advisor' && <Advisor key={client?.userId ?? 'own'} data={shown} settings={settings} today={today} update={edit} chatKey={client ? 'chat:' + client.userId : 'chat'} notify={notify} openSettings={() => pick('settings')} />}
           {!viewing && tab !== 'advisor' && tab !== 'settings' && <EntryBar data={shown} settings={settings} today={today} update={edit} notify={notify} openSettings={() => pick('settings')} />}
         </>
       )}

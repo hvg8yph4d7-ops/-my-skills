@@ -2,6 +2,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
+import type * as z from 'zod/v4';
 import type { Settings } from '../storage';
 import { AiError, EntrySchema, type ChatTurn, type Entry, type ImageInput } from './ai';
 
@@ -66,6 +67,25 @@ export async function claudeChat(settings: Settings, system: string, turns: Chat
     const text = res.content.map(b => (b.type === 'text' ? b.text : '')).join('').trim();
     if (!text) throw new AiError('Claude вернул пустой ответ. Попробуй ещё раз.');
     return text;
+  } catch (e) {
+    explain(e);
+  }
+}
+
+/** Ответ строго по zod-схеме (для советника). */
+export async function claudeStructured<T>(settings: Settings, system: string, turns: ChatTurn[], schema: z.ZodType<T>): Promise<T> {
+  try {
+    const res = await client(settings).beta.messages.parse({
+      model: settings.model,
+      max_tokens: 16000,
+      output_config: { effort: 'medium', format: betaZodOutputFormat(schema) },
+      system,
+      messages: turns.map(t => ({ role: t.role, content: t.text })),
+      ...fallbackParams(settings),
+    });
+    if (res.stop_reason === 'refusal') throw new AiError('Claude не смог ответить. Попробуй сформулировать иначе.');
+    if (res.stop_reason === 'max_tokens' || !res.parsed_output) throw new AiError('Claude ответил не полностью. Попробуй ещё раз.');
+    return res.parsed_output as T;
   } catch (e) {
     explain(e);
   }

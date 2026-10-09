@@ -147,3 +147,32 @@ export function pickDefaultModel(models: { id: string }[]) {
   const stable = models.filter(m => !/preview|exp/i.test(m.id));
   return (stable.find(m => /lite/i.test(m.id)) || stable[0] || models[0])?.id || '';
 }
+
+/** Ответ строго по zod-схеме (для советника). При 400 — повтор со схемой в тексте промпта. */
+export async function geminiStructured<T>(settings: Settings, system: string, turns: ChatTurn[], schema: z.ZodType<T>): Promise<T> {
+  const { $schema: _s, ...json } = z.toJSONSchema(schema) as Record<string, unknown>;
+  const contents = turns.map(t => ({ role: t.role === 'user' ? 'user' : 'model', parts: [{ text: t.text }] }));
+  const body = (strict: boolean) => ({
+    systemInstruction: { parts: [{ text: strict ? system : system + '\n\nОтветь только JSON по этой схеме, без пояснений:\n' + JSON.stringify(json) }] },
+    contents,
+    generationConfig: { responseMimeType: 'application/json', ...(strict ? { responseJsonSchema: json } : {}) },
+  });
+  const path = `/models/${settings.geminiModel}:generateContent`;
+  try {
+    let res;
+    try {
+      res = await call(settings.geminiKey, path, body(true));
+    } catch (e) {
+      if (e instanceof GeminiHttpError && e.status === 400 && !/API key|location/i.test(e.message)) res = await call(settings.geminiKey, path, body(false));
+      else throw e;
+    }
+    let raw: unknown;
+    try { raw = JSON.parse(answerText(res).replace(/^```(?:json)?\s*|\s*```$/g, '')); }
+    catch (e) { if (e instanceof AiError) throw e; throw new AiError('Gemini ответил не в том формате. Попробуй ещё раз.'); }
+    const parsed = schema.safeParse(raw);
+    if (!parsed.success) throw new AiError('Gemini ответил с ошибкой в данных. Попробуй ещё раз.');
+    return parsed.data;
+  } catch (e) {
+    explain(e);
+  }
+}
