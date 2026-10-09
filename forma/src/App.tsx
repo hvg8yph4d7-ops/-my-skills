@@ -12,6 +12,7 @@ import { Settings } from './components/Settings';
 import { EntryBar } from './components/EntryBar';
 import { Advisor } from './components/Advisor';
 import { Onboarding } from './components/Onboarding';
+import { ProfileSettings } from './components/ProfileSettings';
 import { logError } from './lib/bugs';
 import { CloudError, cloudEnabled, getSession, onAuth, pullClient, pullOwn, pushDiary } from './lib/cloud';
 
@@ -254,7 +255,16 @@ export function App() {
           {tab === 'cal' && <Calendar key={client ? 'c' + client.userId : viewing ? 'v' : 'own'} data={shown} today={today} update={edit} ai={{ settings, notify }} />}
           {tab === 'train' && <Train data={shown} today={today} update={edit} />}
           {tab === 'diary' && <Diary data={shown} />}
-          {tab === 'settings' && <Settings data={data} settings={settings} saveSettings={changeSettings} persisted={persisted} replace={replace} update={update} notify={notify}
+          {tab === 'settings' && client && (
+            <>
+              <div className="card">
+                <div className="card-label">Настройки клиента</div>
+                <div className="blk-b">Профиль, нормы и план тренировок <b>{client.data.profile?.name || 'клиента'}</b>. Изменения сохранятся у него. Свои настройки (аккаунт, ключ ИИ) — после «Выйти» на жёлтой плашке.</div>
+              </div>
+              <ProfileSettings key={'c' + client.userId + (client.data.updatedAt || '')} data={client.data} update={updateClient} notify={notify} />
+            </>
+          )}
+          {tab === 'settings' && !client && <Settings data={data} settings={settings} saveSettings={changeSettings} persisted={persisted} replace={replace} update={update} notify={notify}
             view={d => { setClient(null); setViewing(d); pick('overview'); }} session={session} sync={sync} openClient={openClient} />}
           {!other && tab === 'advisor' && <Advisor data={data} settings={settings} today={today} notify={notify} openSettings={() => pick('settings')} />}
           {!viewing && tab !== 'advisor' && tab !== 'settings' && <EntryBar data={shown} settings={settings} today={today} update={edit} notify={notify} openSettings={() => pick('settings')} />}
