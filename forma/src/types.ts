@@ -65,8 +65,8 @@ export interface Profile {
 export interface FormaData {
   profile?: Profile;
   schemaVersion: number;
-  updatedAt?: string;
-  ownerId?: string; // id аккаунта, к которому привязан дневник на этом телефоне // когда дневник меняли последний раз — для синхронизации с сервером
+  updatedAt?: string; // когда дневник меняли последний раз — для синхронизации с сервером
+  ownerId?: string; // id аккаунта, к которому привязан дневник на этом телефоне
   seedRev?: string; // какая выгрузка из чата уже влита (exportedAt из forma-data.json)
   exportedAt?: string;
   targets: Macros & { fib: number };
