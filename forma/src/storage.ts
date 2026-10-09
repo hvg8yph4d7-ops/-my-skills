@@ -2,7 +2,8 @@
 // Все данные лежат одной записью; при первом запуске туда кладутся данные из seed.json.
 
 import seed from './data/seed.json';
-import type { FormaData } from './types';
+import type { Day, FormaData } from './types';
+import { addMacros } from './lib/entry';
 
 export const SCHEMA_VERSION = 2;
 const DB_NAME = 'forma';
@@ -53,13 +54,67 @@ export function migrate(raw: unknown): FormaData {
   return d as FormaData;
 }
 
+/** Версия встроенных данных. Новая выгрузка из чата → новый exportedAt → слияние при запуске. */
+export const SEED_REV = (seed as { exportedAt?: string }).exportedAt || 'initial';
+
 export function seedData(): FormaData {
-  return migrate(structuredClone(seed));
+  return { ...migrate(structuredClone(seed)), seedRev: SEED_REV };
+}
+
+/**
+ * Вливает новую выгрузку из чата в данные телефона, ничего не теряя:
+ * поля дня из чата обновляются, записи, сделанные в приложении (meals/exercises), остаются
+ * и прибавляются к итогу дня. Отметки, вес и жим объединяются.
+ */
+export function mergeSeed(cur: FormaData, fresh: FormaData): FormaData {
+  const days = new Map(cur.days.map(d => [d.date, d]));
+  for (const s of fresh.days) {
+    const old = days.get(s.date);
+    if (!old) { days.set(s.date, s); continue; }
+    const appMade = !!(old.meals?.length || old.exercises?.length);
+    const { meals: _m, exercises: _e, ...chat } = s;
+    const day: Day = { ...chat, meals: old.meals, exercises: old.exercises };
+    if (!day.meals) delete day.meals;
+    if (!day.exercises) delete day.exercises;
+    if (old.meals?.length) day.macros = addMacros(s.macros, old.meals);
+    const groups = new Set([...(s.groups || []), ...(old.groups || [])]);
+    if (groups.size) day.groups = [...groups];
+    // Если день уже закрыт в приложении с выводом — не открываем его заново.
+    if (appMade && old.partial === false) { day.partial = false; if (old.verdict) day.verdict = old.verdict; }
+    days.set(s.date, day);
+  }
+  const marks = { ...cur.marks };
+  for (const [k, m] of Object.entries(fresh.marks)) marks[k] = { p: !!(m.p || marks[k]?.p), g: !!(m.g || marks[k]?.g) };
+  const weight = [...cur.weight];
+  for (const w of fresh.weight) if (!weight.some(x => x.date === w.date)) weight.push(w);
+  const bench = [...cur.bench];
+  for (const b of fresh.bench) if (!bench.some(x => x.date === b.date && x.w === b.w && x.r === b.r)) bench.push(b);
+  const sore = { ...cur.sore };
+  for (const [g, d] of Object.entries(fresh.sore)) if (!sore[g] || sore[g] < d) sore[g] = d;
+  const products = fresh.products.map(p => {
+    const o = cur.products.find(x => x.name === p.name);
+    return o ? { ...p, times: Math.max(p.times, o.times) } : p;
+  });
+  for (const o of cur.products) if (!products.some(p => p.name === o.name)) products.push(o);
+  return {
+    ...cur,
+    days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    marks, weight, bench, sore, products,
+    supplements: fresh.supplements, split: fresh.split, benchMax: fresh.benchMax, oldBenchMax: fresh.oldBenchMax,
+    soberSince: fresh.soberSince,
+    seedRev: SEED_REV,
+  };
 }
 
 export async function load(): Promise<FormaData> {
   const stored = await tx<unknown>('readonly', s => s.get(KEY));
-  if (stored) return migrate(stored);
+  if (stored) {
+    const cur = migrate(stored);
+    if (cur.seedRev === SEED_REV) return cur;
+    const merged = mergeSeed(cur, seedData());
+    await save(merged);
+    return merged;
+  }
   const fresh = seedData();
   await save(fresh);
   return fresh;

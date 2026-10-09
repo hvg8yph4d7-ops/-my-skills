@@ -17,7 +17,7 @@ export function scaleFood(f: EntryFood, grams: number): EntryFood {
 const ZERO: Required<Macros> = { p: 0, f: 0, c: 0, kcal: 0, fib: 0 };
 
 /** Итог дня меняется на сумму позиций (sign = -1 при удалении). Старые строки уже учтены в macros. */
-function addMacros(m: Macros | undefined, items: FoodItem[], sign = 1): Macros {
+export function addMacros(m: Macros | undefined, items: FoodItem[], sign = 1): Macros {
   const base = { ...ZERO, ...m, fib: m?.fib ?? 0 };
   const out = items.reduce((a, x) => ({
     p: a.p + sign * x.p, f: a.f + sign * x.f, c: a.c + sign * x.c, kcal: a.kcal + sign * x.kcal, fib: a.fib + sign * x.fib,

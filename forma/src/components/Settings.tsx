@@ -44,7 +44,7 @@ export function Settings({ data, settings, saveSettings, persisted, replace, not
   };
 
   const reset = () => {
-    if (!confirm('Вернуть исходные данные за 14.09–08.10? Всё, что добавлено в приложении, пропадёт. Сначала лучше скачать копию.')) return;
+    if (!confirm('Вернуть исходные данные из чата (14.09–09.10)? Всё, что добавлено в приложении, пропадёт. Сначала лучше скачать копию.')) return;
     replace(seedData());
     notify('Исходные данные восстановлены');
   };

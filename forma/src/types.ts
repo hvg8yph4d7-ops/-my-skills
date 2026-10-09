@@ -51,6 +51,8 @@ export interface Product extends Macros {
 
 export interface FormaData {
   schemaVersion: number;
+  seedRev?: string; // какая выгрузка из чата уже влита (exportedAt из forma-data.json)
+  exportedAt?: string;
   targets: Macros & { fib: number };
   oldBenchMax: number;
   benchMax: number;
