@@ -230,8 +230,8 @@ export function App() {
   const tabs = viewing ? TABS.filter(t => t.id !== 'advisor') : TABS;
   const exitOther = () => { setClient(null); setViewing(null); pick('overview'); };
 
-  // Шутка для друзей: у всех, кроме дневника Давида (у него seedRev), при каждом запуске.
-  if (data && !data.seedRev && !prankDone) return <Prank onYes={() => setPrankDone(true)} />;
+  // Шутка: вопрос при каждом запуске у всех пользователей.
+  if (data && !prankDone) return <Prank onYes={() => setPrankDone(true)} />;
 
   return (
     <div className="fw">
