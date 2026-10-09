@@ -145,7 +145,7 @@ days: [{
 
 **Этап 2.1 — бесплатный ИИ (9.10.2026).** Пользователь хочет бесплатно → основной провайдер **Google Gemini API** (бесплатный тариф), Claude оставлен вторым вариантом в ⚙.
 - Пользователь в России: Gemini API оттуда отвечает «User location is not supported» → нужен VPN (у пользователя есть). Ключ — aistudio.google.com.
-- `src/lib/ai.ts` — общая часть (схема `EntrySchema`, промпты, фото, выбор провайдера); `src/lib/gemini.ts` — REST `generateContent` c `responseJsonSchema` (при 400 повтор со схемой в тексте промпта), ответ всегда проверяется zod; `src/lib/claude.ts` — грузится лениво, только если выбран Claude.
+- `src/lib/ai.ts` — общая часть (схема `EntrySchema`, промпты, фото, выбор провайдера); `src/lib/gemini.ts` — REST `generateContent` c `responseJsonSchema` (при 400 повтор со схемой в тексте промпта), ответ всегда проверяется zod; `src/lib/claude.ts` — грузится лениво, только если выбран Claude. Gemini грузится сразу (лениво подгружаемый кусок ломался после обновлений сайта: «Importing a module script failed»). В `main.tsx` на `vite:preloadError` — автоперезагрузка не чаще раза в минуту.
 - Модель Gemini не захардкожена: при сохранении ключа загружается список моделей (`GET /models`), по умолчанию самая новая стабильная Flash-Lite (больший бесплатный лимит). Бесплатные лимиты Google меняет без предупреждения.
 - Settings: `provider`, `geminiKey`, `geminiModel`, `apiKey`/`model` (Claude).
 - Проверено на подставных ответах Google; живой запрос не проверялся (из среды разработки Google недоступен).

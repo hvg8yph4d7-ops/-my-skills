@@ -7,6 +7,7 @@ import { GROUPS, averages, recovery, sortedBench, sortedWeight, e1rm } from './c
 import { WDF, daysBetween, longD, wdName } from './format';
 import { aboutUser, goalText, userName } from './profile';
 import { AdviceSchema, type Advice } from './advice';
+import { geminiEntry, geminiStructured, geminiText } from './gemini';
 
 const GROUP_KEYS = GROUPS.map(g => g.k) as [string, ...string[]];
 
@@ -116,7 +117,6 @@ export async function parseEntry(opts: { settings: Settings; data: FormaData; to
     const { claudeEntry } = await import('./claude');
     return claudeEntry(opts.settings, sys, user, opts.image);
   }
-  const { geminiEntry } = await import('./gemini');
   return geminiEntry(opts.settings, sys, user, opts.today, opts.image);
 }
 
@@ -126,7 +126,6 @@ export async function dayVerdict(opts: { settings: Settings; data: FormaData; da
     const { claudeText } = await import('./claude');
     return claudeText(opts.settings, verdictSystem(opts.data), user);
   }
-  const { geminiText } = await import('./gemini');
   return geminiText(opts.settings, verdictSystem(opts.data), user);
 }
 
@@ -197,6 +196,5 @@ export async function askAdvisor(opts: { settings: Settings; data: FormaData; to
     const { claudeStructured } = await import('./claude');
     return claudeStructured(opts.settings, system, turns, AdviceSchema);
   }
-  const { geminiStructured } = await import('./gemini');
   return geminiStructured(opts.settings, system, turns, AdviceSchema);
 }

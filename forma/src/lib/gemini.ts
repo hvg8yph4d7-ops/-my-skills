@@ -60,10 +60,15 @@ function answerText(json: unknown): string {
   return text;
 }
 
-const entryJsonSchema = (() => {
-  const { $schema: _s, ...rest } = z.toJSONSchema(EntrySchema) as Record<string, unknown>;
-  return rest;
-})();
+// Схема считается при первом вызове: модуль импортируется из ai.ts, и EntrySchema к этому моменту уже готова.
+let entrySchemaCache: Record<string, unknown> | null = null;
+const entryJsonSchema = () => {
+  if (!entrySchemaCache) {
+    const { $schema: _s, ...rest } = z.toJSONSchema(EntrySchema) as Record<string, unknown>;
+    entrySchemaCache = rest;
+  }
+  return entrySchemaCache;
+};
 
 /** Приводим ответ к схеме: без строгой схемы Gemini может пропустить пустые поля. */
 function toEntry(text: string, today: string): Entry {
@@ -92,10 +97,10 @@ export async function geminiEntry(settings: Settings, system: string, user: stri
   parts.push({ text: user });
   const body = (strict: boolean) => ({
     systemInstruction: {
-      parts: [{ text: strict ? system : system + '\n\nОтветь только JSON по этой схеме, без пояснений:\n' + JSON.stringify(entryJsonSchema) }],
+      parts: [{ text: strict ? system : system + '\n\nОтветь только JSON по этой схеме, без пояснений:\n' + JSON.stringify(entryJsonSchema()) }],
     },
     contents: [{ role: 'user', parts }],
-    generationConfig: { responseMimeType: 'application/json', ...(strict ? { responseJsonSchema: entryJsonSchema } : {}) },
+    generationConfig: { responseMimeType: 'application/json', ...(strict ? { responseJsonSchema: entryJsonSchema() } : {}) },
   });
   const path = `/models/${settings.geminiModel}:generateContent`;
   try {

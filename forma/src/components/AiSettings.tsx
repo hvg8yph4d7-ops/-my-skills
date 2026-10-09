@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ModelId, Settings as AppSettings } from '../storage';
+import { geminiModels, pickDefaultModel } from '../lib/gemini';
 
 type Props = {
   settings: AppSettings;
@@ -26,7 +27,6 @@ export function AiSettings({ settings, saveSettings, notify }: Props) {
     if (!k) { saveSettings({ ...settings, geminiKey: '' }); notify('Ключ удалён'); return; }
     setLoading(true);
     try {
-      const { geminiModels, pickDefaultModel } = await import('../lib/gemini');
       const list = await geminiModels(k);
       if (!list.length) throw new Error('Ключ работает, но подходящих моделей нет.');
       setModels(list);
