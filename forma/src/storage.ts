@@ -83,11 +83,14 @@ export async function requestPersist(): Promise<boolean> {
 
 export type ModelId = 'claude-opus-5-5' | 'claude-haiku-5-5';
 export interface Settings {
-  apiKey: string;
-  model: ModelId;
+  provider: 'gemini' | 'claude';
+  geminiKey: string;
+  geminiModel: string; // выбирается из списка моделей, доступных ключу
+  apiKey: string; // ключ Claude
+  model: ModelId; // модель Claude
 }
 const SETTINGS_KEY = 'settings';
-export const DEFAULT_SETTINGS: Settings = { apiKey: '', model: 'claude-opus-5-5' };
+export const DEFAULT_SETTINGS: Settings = { provider: 'gemini', geminiKey: '', geminiModel: '', apiKey: '', model: 'claude-opus-5-5' };
 
 export async function loadSettings(): Promise<Settings> {
   const s = await tx<Partial<Settings> | undefined>('readonly', st => st.get(SETTINGS_KEY));

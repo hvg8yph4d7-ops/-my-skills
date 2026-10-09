@@ -188,3 +188,5 @@ button { font-family: inherit; }
 .sheet-actions { display: flex; gap: 8px; margin-top: 16px; }
 .sheet-actions .btn { flex: 1; padding: 13px; font-size: 15px; }
 .del-btn { margin-left: 6px; background: none; border: none; color: var(--red); font-size: 15px; line-height: 1; padding: 0 4px; cursor: pointer; }
+.mark-sub { font-size: 10px; font-weight: 400; margin-top: 2px; }
+select.inp { -webkit-appearance: none; appearance: none; }

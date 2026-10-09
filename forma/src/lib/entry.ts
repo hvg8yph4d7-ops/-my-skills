@@ -1,7 +1,7 @@
 // Как подтверждённая запись от Claude попадает в данные.
 
 import type { Day, Exercise, FoodItem, FormaData, Macros } from '../types';
-import type { Entry } from './claude';
+import type { Entry } from './ai';
 
 export type EntryFood = Entry['food'][number];
 export type EntryExercise = Entry['exercises'][number];

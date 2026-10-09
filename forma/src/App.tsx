@@ -77,7 +77,7 @@ export function App() {
             onClick={() => pick(tab === 'settings' ? 'overview' : 'settings')}>⚙</button>
         </div>
       </div>
-      <div className="hint">Пиши внизу, что ел и что делал, — Claude разберёт и запишет. Данные хранятся на телефоне, копия — в ⚙.</div>
+      <div className="hint">Пиши внизу, что ел и что делал, — ИИ разберёт и запишет. Данные хранятся на телефоне, копия — в ⚙.</div>
 
       <div className="tabs">
         {TABS.map(t => (

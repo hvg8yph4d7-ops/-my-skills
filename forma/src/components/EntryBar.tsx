@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { FormaData } from '../types';
 import type { Settings } from '../storage';
-import { ClaudeError, parseEntry, prepareImage, type Entry, type ImageInput } from '../lib/claude';
+import { AiError, hasKey, parseEntry, prepareImage, type Entry, type ImageInput } from '../lib/ai';
 import { applyEntry, entryHasData, scaleFood, type EntryExercise, type EntryFood } from '../lib/entry';
 import { groupOf } from '../lib/calc';
 import { longD, num } from '../lib/format';
@@ -26,14 +26,14 @@ export function EntryBar({ data, settings, today, update, notify, openSettings }
   const fileRef = useRef<HTMLInputElement>(null);
 
   const run = async (msg: string, img: ImageInput | null) => {
-    if (!settings.apiKey) { notify('Сначала вставь ключ Claude API в ⚙', true); openSettings(); return; }
+    if (!hasKey(settings)) { notify('Сначала вставь ключ ИИ в ⚙', true); openSettings(); return; }
     setBusy(true);
     try {
       const entry = await parseEntry({ settings, data, today, text: msg, image: img ?? undefined });
       setDraft({ entry, text: msg, image: img });
       setText(''); setImage(null);
     } catch (e) {
-      notify(e instanceof ClaudeError ? e.message : 'Что-то пошло не так: ' + (e as Error).message, true);
+      notify(e instanceof AiError ? e.message : 'Что-то пошло не так: ' + (e as Error).message, true);
     } finally {
       setBusy(false);
     }
@@ -63,7 +63,7 @@ export function EntryBar({ data, settings, today, update, notify, openSettings }
           <button type="button" className="icon-btn" aria-label="Фото" onClick={() => fileRef.current?.click()} disabled={busy}>📷</button>
           <input ref={fileRef} type="file" accept="image/*" hidden
             onChange={e => { const f = e.target.files?.[0]; if (f) pickPhoto(f); e.target.value = ''; }} />
-          <textarea className="inp entry-inp" rows={1} placeholder={busy ? 'Claude разбирает…' : 'Что ел / что делал…'}
+          <textarea className="inp entry-inp" rows={1} placeholder={busy ? 'Разбираю…' : 'Что ел / что делал…'}
             value={text} disabled={busy} onChange={e => setText(e.target.value)} />
           <button className="btn" type="submit" disabled={!canSend}>{busy ? '…' : '➤'}</button>
         </form>
@@ -174,7 +174,7 @@ function EntrySheet({ draft, busy, onCancel, onClarify, onSave }: SheetProps) {
 
         {e.questions.length > 0 && (
           <div className="blk">
-            <div className="blk-l">Claude уточняет</div>
+            <div className="blk-l">Уточнение</div>
             <ul className="questions">{e.questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
             <form className="weight-row" onSubmit={ev => { ev.preventDefault(); if (answer.trim()) onClarify(answer.trim()); }}>
               <input className="inp" placeholder="Ответ, например «сухие»" value={answer} onChange={ev => setAnswer(ev.target.value)} disabled={busy} />
@@ -184,7 +184,7 @@ function EntrySheet({ draft, busy, onCancel, onClarify, onSave }: SheetProps) {
           </div>
         )}
 
-        {nothing && <div className="empty">Claude не нашёл, что записать. Попробуй написать подробнее.</div>}
+        {nothing && <div className="empty">Не нашёл, что записать. Попробуй написать подробнее.</div>}
 
         <div className="sheet-actions">
           <button className="btn ghost" onClick={onCancel}>Отмена</button>

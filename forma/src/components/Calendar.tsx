@@ -4,7 +4,7 @@ import { GROUPS, dayFor, groupOf, marksFor, planDays } from '../lib/calc';
 import { MONTHS, WD, dk, longD, num, wdName } from '../lib/format';
 import { Blk, Chip, DayBody } from './common';
 import type { Settings } from '../storage';
-import { ClaudeError, dayVerdict } from '../lib/claude';
+import { AiError, dayVerdict, hasKey } from '../lib/ai';
 import { removeExercise, removeMeal } from '../lib/entry';
 
 type Update = (fn: (d: FormaData) => FormaData) => void;
@@ -92,17 +92,17 @@ function DayDetail({ data, k, update, ai }: { data: FormaData; k: string; update
   const setDay = (patch: Partial<NonNullable<typeof e>>) =>
     update(d => ({ ...d, days: d.days.map(x => (x.date === k ? { ...x, ...patch } : x)) }));
 
-  // Закрыть день: Claude пишет вывод, день начинает учитываться в средних.
+  // Закрыть день: ИИ пишет вывод, день начинает учитываться в средних.
   const closeDay = async () => {
     if (!e) return;
-    if (!ai.settings.apiKey) { setDay({ partial: false }); ai.notify('День закрыт. Для вывода от Claude добавь ключ в ⚙'); return; }
+    if (!hasKey(ai.settings)) { setDay({ partial: false }); ai.notify('День закрыт. Для вывода дня добавь ключ ИИ в ⚙'); return; }
     setClosing(true);
     try {
       const verdict = await dayVerdict({ settings: ai.settings, data, day: e });
       setDay({ partial: false, verdict });
       ai.notify('День закрыт');
     } catch (err) {
-      ai.notify(err instanceof ClaudeError ? err.message : 'Не получилось: ' + (err as Error).message, true);
+      ai.notify(err instanceof AiError ? err.message : 'Не получилось: ' + (err as Error).message, true);
     } finally {
       setClosing(false);
     }
@@ -137,7 +137,7 @@ function DayDetail({ data, k, update, ai }: { data: FormaData; k: string; update
       {e && (
         <div className="btn-col" style={{ marginTop: 12 }}>
           {e.partial
-            ? <button className="btn" onClick={closeDay} disabled={closing}>{closing ? 'Claude пишет вывод…' : 'Закрыть день и получить вывод'}</button>
+            ? <button className="btn" onClick={closeDay} disabled={closing}>{closing ? 'Пишу вывод…' : 'Закрыть день и получить вывод'}</button>
             : <button className="btn ghost" onClick={() => setDay({ partial: true })}>Открыть день снова</button>}
         </div>
       )}
