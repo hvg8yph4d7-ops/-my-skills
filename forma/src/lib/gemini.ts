@@ -6,6 +6,14 @@ import type { Settings } from '../storage';
 import { logError } from './bugs';
 import { AiError, EntrySchema, type ChatTurn, type Entry, type ImageInput } from './ai';
 
+/** Сообщение → части Gemini: вложения (фото, PDF как inline_data, текст файла) и сам текст. */
+const turnParts = (t: ChatTurn): Part[] => [
+  ...(t.files || []).map((f): Part => (f.kind === 'image' ? { inline_data: { mime_type: f.mediaType, data: f.data } }
+    : f.kind === 'pdf' ? { inline_data: { mime_type: 'application/pdf', data: f.data } }
+      : { text: `Файл «${f.name}»:\n${f.text}` })),
+  { text: t.text },
+];
+
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 type Part = { text?: string; thought?: boolean; inline_data?: { mime_type: string; data: string } };
@@ -167,7 +175,7 @@ export function pickDefaultModel(models: { id: string }[]) {
 /** Ответ строго по zod-схеме (для советника). При 400 — повтор со схемой в тексте промпта. */
 export async function geminiStructured<T>(settings: Settings, system: string, turns: ChatTurn[], schema: z.ZodType<T>): Promise<T> {
   const { $schema: _s, ...json } = z.toJSONSchema(schema) as Record<string, unknown>;
-  const contents = turns.map(t => ({ role: t.role === 'user' ? 'user' : 'model', parts: [{ text: t.text }] }));
+  const contents = turns.map(t => ({ role: t.role === 'user' ? 'user' : 'model', parts: turnParts(t) }));
   const body = (strict: boolean) => ({
     systemInstruction: { parts: [{ text: strict ? system : system + '\n\nОтветь только JSON по этой схеме, без пояснений:\n' + JSON.stringify(json) }] },
     contents,

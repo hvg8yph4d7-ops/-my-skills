@@ -167,6 +167,7 @@ export type StoredTurn = {
   actions?: import('./lib/advice').Action[]; // что советник предложил изменить
   status?: ('applied' | 'skipped' | 'stale' | 'undone' | null)[]; // что с этим сделали (stale — устарело: пришли новые предложения)
   diffs?: import('./lib/advice').DiffRow[][]; // «было → станет» на момент ответа
+  files?: { name: string; kind: 'image' | 'pdf' | 'text'; thumb?: string }[]; // что было прикреплено (сами файлы не храним)
 };
 
 export async function loadChat(key = 'chat'): Promise<StoredTurn[]> {

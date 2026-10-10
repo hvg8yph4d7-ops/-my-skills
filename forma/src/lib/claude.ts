@@ -6,6 +6,19 @@ import type * as z from 'zod/v4';
 import type { Settings } from '../storage';
 import { AiError, EntrySchema, type ChatTurn, type Entry, type ImageInput } from './ai';
 
+/** Сообщение → блоки Claude: фото, PDF-документ, текст файла и сам текст. */
+function turnContent(t: ChatTurn): string | Anthropic.Beta.BetaContentBlockParam[] {
+  if (!t.files?.length) return t.text;
+  return [
+    ...t.files.map((f): Anthropic.Beta.BetaContentBlockParam => (f.kind === 'image'
+      ? { type: 'image', source: { type: 'base64', media_type: f.mediaType, data: f.data } }
+      : f.kind === 'pdf'
+        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.data }, title: f.name }
+        : { type: 'text', text: `Файл «${f.name}»:\n${f.text}` })),
+    { type: 'text', text: t.text },
+  ];
+}
+
 function client(s: Settings) {
   return new Anthropic({ apiKey: s.apiKey, dangerouslyAllowBrowser: true });
 }
@@ -80,7 +93,7 @@ export async function claudeStructured<T>(settings: Settings, system: string, tu
       max_tokens: 16000,
       output_config: { effort: 'medium', format: betaZodOutputFormat(schema) },
       system,
-      messages: turns.map(t => ({ role: t.role, content: t.text })),
+      messages: turns.map(t => ({ role: t.role, content: turnContent(t) })),
       ...fallbackParams(settings),
     });
     if (res.stop_reason === 'refusal') throw new AiError('Claude не смог ответить. Попробуй сформулировать иначе.');

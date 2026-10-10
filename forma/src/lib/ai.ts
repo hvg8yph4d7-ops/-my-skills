@@ -93,7 +93,13 @@ export function dayContext(day: Day | undefined) {
 
 export class AiError extends Error {}
 
-export interface ChatTurn { role: 'user' | 'assistant'; text: string }
+/** Вложение к сообщению советнику: фото (сжатое), PDF или текстовый файл. Уходит только с текущим сообщением. */
+export type Attachment =
+  | { kind: 'image'; name: string; mediaType: 'image/jpeg'; data: string }
+  | { kind: 'pdf'; name: string; data: string }
+  | { kind: 'text'; name: string; text: string };
+
+export interface ChatTurn { role: 'user' | 'assistant'; text: string; files?: Attachment[] }
 
 export interface ImageInput { mediaType: 'image/jpeg'; data: string }
 
@@ -138,6 +144,47 @@ export async function dayVerdict(opts: { settings: Settings; data: FormaData; da
     return claudeText(opts.settings, verdictSystem(opts.data), user);
   }
   return geminiText(opts.settings, verdictSystem(opts.data), user);
+}
+
+const TEXT_EXT = /\.(txt|csv|tsv|json|md|xml|html?|log)$/i;
+const MAX_PDF = 15 * 1024 * 1024;
+const MAX_TEXT = 40_000;
+
+const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+  const r = new FileReader();
+  r.onload = () => { const u = String(r.result); resolve(u.slice(u.indexOf(',') + 1)); };
+  r.onerror = () => reject(r.error);
+  r.readAsDataURL(file);
+});
+
+/** Файл с телефона → вложение для ИИ. Понятная ошибка, если формат не подходит. */
+export async function prepareAttachment(file: File): Promise<Attachment> {
+  const name = file.name || 'файл';
+  if (file.type.startsWith('image/') || /\.(jpe?g|png|heic|heif|webp|gif)$/i.test(name)) {
+    try { return { kind: 'image', name, ...(await prepareImage(file)) }; }
+    catch { throw new AiError(`Не получилось открыть фото «${name}». Попробуй сделать скриншот и отправить его.`); }
+  }
+  if (file.type === 'application/pdf' || /\.pdf$/i.test(name)) {
+    if (file.size > MAX_PDF) throw new AiError(`PDF «${name}» больше 15 МБ — слишком большой.`);
+    return { kind: 'pdf', name, data: await toBase64(file) };
+  }
+  if (file.type.startsWith('text/') || file.type === 'application/json' || TEXT_EXT.test(name)) {
+    const t = await file.text();
+    return { kind: 'text', name, text: t.length > MAX_TEXT ? t.slice(0, MAX_TEXT) + '\n…(дальше обрезано)' : t };
+  }
+  throw new AiError(`Файл «${name}» не подходит. Можно: фото, PDF или текст (txt, csv, json). Word и Excel — сохрани как PDF или сделай скриншот.`);
+}
+
+/** Маленькая картинка для показа в переписке (не уходит в ИИ). */
+export async function thumbnail(file: File): Promise<string | undefined> {
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 200 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+    c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.7);
+  } catch { return undefined; }
 }
 
 /** Сжимает фото до 1568 px по длинной стороне — так дешевле и быстрее. */
@@ -243,6 +290,8 @@ ${talkStyle(data)}
 - ⚙: анкета (profile), нормы (targets), план тренировок по дням недели (split), «о себе» (note), добавки.
 Когда что-то меняешь, говори, где это будет видно (например: «отметка в Тренировки → Восстановление мышц, на 2 дня»). Если тебя спрашивают, что где записано, — смотри данные ниже и отвечай конкретно с датой и вкладкой, ничего не придумывай.
 Старые строки из чата (food[i], training[i], work, supps, trainNote, verdict) меняй через set_day_text — присылай ВЕСЬ новый список строк; если меняешь строки еды, следом пришли set_day_macros с новым итогом дня. Позиции «записано в приложении #N» и «Упражнение #N» меняй через update_food / update_exercise или удаляй через remove_*.
+
+Вложения: к сообщению могут быть прикреплены фото (еда, этикетка, чек, скриншот, фото тела или техники) и файлы (PDF анализов, программа тренировок, таблица). Сначала коротко скажи, что видишь, потом ответь на вопрос. Этикетка с КБЖУ — бери цифры с неё; если пользователь хочет записать — предложи add_food с пересчётом на съеденный вес. Если на фото не разобрать — так и скажи. В истории старые вложения видны только по названию — их содержимого у тебя уже нет.
 
 Правила правок (строго):
 1. Если сообщение короткое, обрывочное или его можно понять двумя способами (например «10 повт. убери» — убрать приписку или удалить упражнение?) — НЕ угадывай: задай один короткий уточняющий вопрос с вариантами и оставь actions пустым.

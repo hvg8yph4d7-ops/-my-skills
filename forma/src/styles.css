@@ -240,3 +240,10 @@ select.inp { -webkit-appearance: none; appearance: none; }
 .diff-now.gone { color: var(--red); }
 .undo-btn { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; width: 100%; max-width: 456px; margin: 0 auto 8px; background: var(--navy-2); border: 1px solid var(--line); color: var(--yellow); border-radius: 9px; padding: 7px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer; text-align: left; overflow: hidden; }
 .undo-btn span { flex: 1; color: var(--dim); font-weight: 400; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.att-row { display: flex; gap: 8px; max-width: 480px; margin: 0 auto 8px; flex-wrap: wrap; }
+.att-row.in-bubble { margin: 0 0 6px; }
+.att { position: relative; width: 64px; height: 64px; }
+.att img { width: 64px; height: 64px; object-fit: cover; border-radius: 9px; border: 1px solid var(--line); display: block; }
+.att-doc { width: 64px; height: 64px; border-radius: 9px; border: 1px solid var(--line); background: var(--navy); display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Oswald', sans-serif; font-size: 13px; color: var(--yellow); padding: 4px; overflow: hidden; }
+.att-doc span { font-family: 'Inter', sans-serif; font-size: 8.5px; color: var(--dim); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+.att > button { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%; border: none; background: var(--red); color: #fff; font-size: 14px; line-height: 22px; padding: 0; cursor: pointer; }

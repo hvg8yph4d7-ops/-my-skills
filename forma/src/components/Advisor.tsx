@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormaData } from '../types';
 import { loadChat, loadUndo, saveChat, saveUndo, type Settings, type StoredTurn, type UndoSnap } from '../storage';
-import { AiError, askAdvisor, hasKey } from '../lib/ai';
+import { AiError, askAdvisor, hasKey, prepareAttachment, thumbnail, type Attachment } from '../lib/ai';
 import { actionDetails, actionDiff, actionsNote, alreadyDone, applyAction, asksToDelete, isRemoval, type Action, type DiffRow } from '../lib/advice';
 
 type Props = {
@@ -85,6 +85,19 @@ function Details({ a, diff }: { a: Action; diff?: DiffRow[] }) {
   return <div className="action-details">{lines.map((l, i) => <div key={i} className={l.startsWith('Итого') ? 'total' : ''}>{l}</div>)}</div>;
 }
 
+/** Вложения в пузыре: превью фото или значок документа. */
+function Files({ files }: { files: NonNullable<StoredTurn['files']> }) {
+  return (
+    <div className="att-row in-bubble">
+      {files.map((f, i) => (
+        <div key={i} className="att">
+          {f.thumb ? <img src={f.thumb} alt={f.name} /> : <div className="att-doc">{f.kind === 'pdf' ? 'PDF' : f.kind === 'image' ? 'ФОТО' : 'TXT'}<span>{f.name}</span></div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Отпечаток дневника без служебных полей — чтобы понять, менялся ли он после правки. */
 const fingerprint = (d: FormaData) => JSON.stringify({ ...d, updatedAt: undefined, ownerId: undefined });
 
@@ -120,6 +133,20 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
   }, [chatKey]);
   const atEnd = useChatScroll(endRef, turns.length, true, busy);
   const [undo, setUndo] = useState<UndoSnap | null>(null);
+  // Вложения к следующему сообщению: файл для ИИ + картинка-превью.
+  const [files, setFiles] = useState<{ att: Attachment; thumb?: string }[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const addFiles = async (list: FileList) => {
+    for (const f of [...list].slice(0, 4 - files.length)) {
+      try {
+        const att = await prepareAttachment(f);
+        const thumb = att.kind === 'image' ? await thumbnail(f) : undefined;
+        setFiles(x => [...x, { att, thumb }].slice(0, 4));
+      } catch (e) {
+        notify((e as Error).message, true);
+      }
+    }
+  };
   useEffect(() => { loadUndo(chatKey).then(setUndo).catch(() => {}); }, [chatKey]);
   const remember = (snap: UndoSnap | null) => { setUndo(snap); saveUndo(chatKey, snap).catch(() => {}); };
 
@@ -129,13 +156,22 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
     sync?.push(next.slice(-60));
   };
 
-  const send = async (q: string) => {
-    if (!q || busy) return;
+  const send = async (typed: string) => {
+    const atts = files;
+    if ((!typed && !atts.length) || busy) return;
     if (!hasKey(settings)) { notify('Сначала вставь ключ ИИ в ⚙', true); openSettings(); return; }
-    const withQ: StoredTurn[] = [...turns, { role: 'user', text: q, at: new Date().toISOString() }];
-    setTurns(withQ); setText(''); setBusy(true);
+    const q = typed || (atts.length > 1 ? 'Посмотри файлы' : 'Посмотри файл');
+    const meta = atts.map(f => ({ name: f.att.name, kind: f.att.kind, thumb: f.thumb }));
+    const withQ: StoredTurn[] = [...turns, { role: 'user', text: q, at: new Date().toISOString(), ...(meta.length ? { files: meta } : {}) }];
+    setTurns(withQ); setText(''); setFiles([]); setBusy(true);
     try {
-      const history = withQ.map(t => ({ role: t.role, text: t.text + (t.actions?.length ? actionsNote(t.actions, t.status) : '') }));
+      const last = withQ.length - 1;
+      // Файлы уходят в ИИ только с этим сообщением; у старых — только названия.
+      const history = withQ.map((t, i) => ({
+        role: t.role,
+        text: t.text + (i !== last && t.files?.length ? `\n[было прикреплено: ${t.files.map(f => f.name).join(', ')}]` : '') + (t.actions?.length ? actionsNote(t.actions, t.status) : ''),
+        ...(i === last && atts.length ? { files: atts.map(f => f.att) } : {}),
+      }));
       const a = await askAdvisor({ settings, data, today, history });
       a.actions = a.actions.filter(x => !alreadyDone(data, x));
       // Удалять целиком — только если пользователь прямо написал «удали». Иначе такие предложения не показываем.
@@ -156,7 +192,7 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
       persist([...prev, { role: 'assistant', text: a.reply, at: new Date().toISOString(), actions: a.actions, status: a.actions.map(() => null), diffs: a.actions.map(x => actionDiff(data, x)) }]);
     } catch (e) {
       // Вопрос без ответа убираем, текст возвращаем в поле — можно отправить ещё раз.
-      setTurns(turns); setText(q);
+      setTurns(turns); setText(typed); setFiles(atts);
       notify(e instanceof AiError ? e.message : 'Что-то пошло не так: ' + (e as Error).message, true);
     } finally {
       setBusy(false);
@@ -219,6 +255,7 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
       <div className="chat">
         {turns.map((t, i) => (
           <div key={i} className={'bubble ' + t.role}>
+            {!!t.files?.length && <Files files={t.files} />}
             {t.role === 'assistant' ? <Rich text={t.text} /> : t.text}
             {!!t.actions?.length && (
               <div className="actions">
@@ -252,10 +289,23 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
       {!atEnd && <ToEnd />}
       <div className="entry-bar">
         {undo && !busy && <button className="undo-btn" onClick={undoLast}>↶ Отменить правку <span>{undo.label}</span></button>}
+        {files.length > 0 && (
+          <div className="att-row">
+            {files.map((f, i) => (
+              <div key={i} className="att">
+                {f.thumb ? <img src={f.thumb} alt="" /> : <div className="att-doc">{f.att.kind === 'pdf' ? 'PDF' : 'TXT'}<span>{f.att.name}</span></div>}
+                <button onClick={() => setFiles(x => x.filter((_, j) => j !== i))} aria-label="Убрать файл">×</button>
+              </div>
+            ))}
+          </div>
+        )}
         <form className="entry-row" onSubmit={ev => { ev.preventDefault(); send(text.trim()); }}>
-          <textarea className="inp entry-inp" rows={1} placeholder={busy ? 'Советник думает…' : 'Спроси или попроси поправить…'}
+          <button type="button" className="icon-btn" aria-label="Прикрепить фото или файл" onClick={() => fileRef.current?.click()} disabled={busy || files.length >= 4}>📎</button>
+          <input ref={fileRef} type="file" multiple hidden accept="image/*,application/pdf,.pdf,.txt,.csv,.tsv,.json,.md,text/*"
+            onChange={e => { if (e.target.files?.length) addFiles(e.target.files); e.target.value = ''; }} />
+          <textarea className="inp entry-inp" rows={1} placeholder={busy ? 'Советник думает…' : 'Спроси или поправь…'}
             value={text} disabled={busy} onChange={e => setText(e.target.value)} />
-          <button className="btn" type="submit" disabled={busy || !text.trim()}>{busy ? '…' : '➤'}</button>
+          <button className="btn" type="submit" disabled={busy || (!text.trim() && !files.length)}>{busy ? '…' : '➤'}</button>
         </form>
       </div>
     </>
@@ -292,6 +342,7 @@ export function ClientChat({ name, pull }: { name: string; pull: () => Promise<S
         {turns?.map((t, i) => (
           <div key={i} className={'bubble ' + t.role}>
             <div className="chat-time">{new Date(t.at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+            {!!t.files?.length && <Files files={t.files} />}
             {t.role === 'assistant' ? <Rich text={t.text} /> : t.text}
             {!!t.actions?.length && (
               <div className="actions">
