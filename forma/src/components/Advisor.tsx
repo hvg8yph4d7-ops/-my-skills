@@ -285,10 +285,10 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
         <div ref={endRef} />
       </div>
 
-      {undo && <div style={{ height: 44 }} />}
+      {undo && <div style={{ height: 34 }} />}
       {!atEnd && <ToEnd />}
       <div className="entry-bar">
-        {undo && !busy && <button className="undo-btn" onClick={undoLast}>↶ Отменить правку <span>{undo.label}</span></button>}
+        {undo && !busy && <div className="undo-wrap"><button className="undo-btn" onClick={undoLast} aria-label="Отменить последнюю правку">↶ Отменить</button></div>}
         {files.length > 0 && (
           <div className="att-row">
             {files.map((f, i) => (
