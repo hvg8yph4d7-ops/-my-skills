@@ -165,7 +165,8 @@ export type StoredTurn = {
   text: string;
   at: string;
   actions?: import('./lib/advice').Action[]; // что советник предложил изменить
-  status?: ('applied' | 'skipped' | 'stale' | null)[]; // что с этим сделали (stale — устарело: пришли новые предложения)
+  status?: ('applied' | 'skipped' | 'stale' | 'undone' | null)[]; // что с этим сделали (stale — устарело: пришли новые предложения)
+  diffs?: import('./lib/advice').DiffRow[][]; // «было → станет» на момент ответа
 };
 
 export async function loadChat(key = 'chat'): Promise<StoredTurn[]> {
@@ -174,4 +175,16 @@ export async function loadChat(key = 'chat'): Promise<StoredTurn[]> {
 
 export async function saveChat(turns: StoredTurn[], key = 'chat'): Promise<void> {
   await tx('readwrite', st => st.put(turns.slice(-60), key));
+}
+
+// ---- Отмена последней правки советника: снимок дневника до правки (только на телефоне) ----
+export type UndoSnap = { label: string; before: import('./types').FormaData; after: string; turn: number; actions: number[] };
+
+export async function loadUndo(key: string): Promise<UndoSnap | null> {
+  return (await tx<UndoSnap | undefined>('readonly', st => st.get('undo:' + key))) || null;
+}
+
+export async function saveUndo(key: string, snap: UndoSnap | null): Promise<void> {
+  if (snap) await tx('readwrite', st => st.put(snap, 'undo:' + key));
+  else await tx('readwrite', st => st.delete('undo:' + key));
 }

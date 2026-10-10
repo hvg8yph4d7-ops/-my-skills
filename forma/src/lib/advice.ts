@@ -3,7 +3,7 @@
 import * as z from 'zod/v4';
 import type { Day, FormaData } from '../types';
 import { GROUPS } from './calc';
-import { addMacros, applyEntry, removeExercise, removeMeal } from './entry';
+import { addMacros, applyEntry, exerciseLine, foodLine, removeExercise, removeMeal } from './entry';
 import type { Entry } from './ai';
 
 const GROUP_KEYS = GROUPS.map(g => g.k) as [string, ...string[]];
@@ -250,7 +250,7 @@ export function actionDetails(a: Action): string[] {
   return [];
 }
 
-const STATUS_TEXT = { applied: 'применено', skipped: 'пропущено', stale: 'устарело' } as const;
+const STATUS_TEXT = { applied: 'применено', skipped: 'пропущено', stale: 'устарело', undone: 'отменено пользователем' } as const;
 /** Как предложения прошлого ответа выглядят для модели в истории — чтобы не предлагала то же самое снова. */
 export function actionsNote(actions: Action[], status: (keyof typeof STATUS_TEXT | null)[] | undefined) {
   return '\n[Мои предложения: ' + actions.map((a, j) => `«${a.summary}» — ${STATUS_TEXT[status?.[j] as keyof typeof STATUS_TEXT] || 'ещё не решено'}`).join('; ') + ']';
@@ -272,3 +272,93 @@ export function alreadyDone(d: FormaData, a: Action): boolean {
   if (a.type === 'set_weight') return d.weight.some(w => w.date === a.date && w.value === a.number);
   return false;
 }
+
+/** Строка «было → станет» для карточки. Пустое was — добавится, пустое now — исчезнет. */
+export type DiffRow = { was?: string; now?: string };
+
+const mac = (m?: { p: number; f: number; c: number; kcal: number } | null) => (m ? `Б ${m.p} · Ж ${m.f} · У ${m.c} · ${m.kcal} ккал` : '—');
+const setsLine = (x: { name: string; sets: { weight: number | null; reps: number }[] }) =>
+  exerciseLine({ name: x.name, group: null, sets: x.sets });
+
+/** Сравнение списков строк: по номерам, если длина та же; иначе — что ушло и что пришло. */
+function listDiff(was: string[], now: string[]): DiffRow[] {
+  if (was.length === now.length) return was.flatMap((w, i) => (w === now[i] ? [] : [{ was: w, now: now[i] }]));
+  return [...was.filter(w => !now.includes(w)).map(w => ({ was: w })), ...now.filter(n => !was.includes(n)).map(n => ({ now: n }))];
+}
+
+/**
+ * «Было → станет» по текущим данным — считается кодом, а не ИИ, чтобы было видно ровно то, что изменится.
+ * Сохраняется в переписке в момент ответа.
+ */
+export function actionDiff(d: FormaData, a: Action): DiffRow[] {
+  const day = a.date ? d.days.find(x => x.date === a.date) : undefined;
+  const yes = (b?: boolean) => (b ? 'да' : 'нет');
+  switch (a.type) {
+    case 'add_food': return (a.food || []).map(f => ({ now: foodLine({ ...f, source: 'estimate' }) }));
+    case 'add_exercise': return a.exercise ? [{ now: setsLine(a.exercise) }] : [];
+    case 'update_food': {
+      const old = a.index != null ? day?.meals?.[a.index] : undefined, f = a.food?.[0];
+      return [{ was: old ? foodLine(old) : '(нет такой позиции)', now: f ? foodLine({ ...f, source: 'estimate' }) : '—' }];
+    }
+    case 'update_exercise': {
+      const old = a.index != null ? day?.exercises?.[a.index] : undefined;
+      return [{ was: old ? exerciseLine(old) : '(нет такого упражнения)', now: a.exercise ? setsLine(a.exercise) : '—' }];
+    }
+    case 'remove_food': { const m = a.index != null ? day?.meals?.[a.index] : undefined; return [{ was: m ? foodLine(m) : '(нет такой позиции)' }]; }
+    case 'remove_exercise': { const x = a.index != null ? day?.exercises?.[a.index] : undefined; return [{ was: x ? exerciseLine(x) : '(нет такого упражнения)' }]; }
+    case 'set_day_text': {
+      if (!a.field) return [];
+      if (a.field === 'food' || a.field === 'training') return listDiff(day?.[a.field] || [], (a.lines || []).map(l => l.trim()).filter(Boolean));
+      const was = (day?.[a.field] as string | undefined) || '', now = (a.text || '').trim();
+      return was === now ? [] : [{ was: was || undefined, now: now || undefined }];
+    }
+    case 'set_day_macros': return [{ was: mac(day?.macros), now: mac(a.macros) }];
+    case 'set_groups': return [{ was: day?.groups?.join(', ') || '(без групп)', now: a.groups?.length ? a.groups.join(', ') : '(без групп)' }];
+    case 'set_weight': { const w = d.weight.find(x => x.date === a.date); return [{ was: w ? `${w.value} кг` : '—', now: `${a.number} кг` }]; }
+    case 'remove_weight': { const w = d.weight.find(x => x.date === a.date); return [{ was: w ? `вес ${w.value} кг` : '(веса нет)' }]; }
+    case 'remove_bench': {
+      const b = d.bench.filter(x => x.date === a.date)[a.index ?? -1];
+      return [{ was: b ? `жим ${b.w}×${b.r}` : '(нет такого подхода)' }];
+    }
+    case 'set_marks': {
+      const m = d.marks[a.date || ''] || { p: false, g: false };
+      return [{ was: `добавки ${yes(m.p)}, зал ${yes(m.g)}`, now: `добавки ${yes(a.supps ?? m.p)}, зал ${yes(a.gym ?? m.g)}` }];
+    }
+    case 'close_day': return [{ was: day?.partial === false ? 'закрыт' : 'не закрыт', now: 'закрыт' }, ...(a.text ? [{ was: day?.verdict, now: a.text }] : [])];
+    case 'reopen_day': return [{ was: 'закрыт', now: 'не закрыт' }];
+    case 'set_targets': return [{ was: `${mac(d.targets)}, клетч. ${d.targets.fib}`, now: a.targets ? `${mac(a.targets)}, клетч. ${a.targets.fib}` : '—' }];
+    case 'set_split': {
+      const W = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+      return listDiff(W.map((w, i) => `${w}: ${d.split[i] || 'отдых'}`), W.map((w, i) => `${w}: ${a.split?.[i]?.trim() || 'отдых'}`));
+    }
+    case 'set_sore': return [{ was: d.sore[a.group || ''] ? `${a.group} болит с ${d.sore[a.group || '']}` : `${a.group} не болит`, now: `${a.group} ещё болит` }];
+    case 'clear_sore': return [{ was: `${a.group} ещё болит`, now: `${a.group} — отметка снята` }];
+    case 'set_note': return [{ was: d.profile?.note || '—', now: a.text || '—' }];
+    case 'set_bench_max': return [{ was: `${d.benchMax} кг`, now: `${a.number} кг` }];
+    case 'set_supplements': return listDiff(d.supplements.map(x => `${x.time}: ${x.items}`), (a.supplements || []).map(x => `${x.time}: ${x.items}`));
+    case 'set_sober_since': return [{ was: d.soberSince || '—', now: a.date || '—' }];
+    case 'set_profile': {
+      const p = d.profile, n = a.profile;
+      const line = (x?: { name: string; age: number | null; height: number | null; weight: number | null; goal: string } | null) =>
+        x ? `${x.name}, ${x.age ?? '?'} лет, ${x.height ?? '?'} см, ${x.weight ?? '?'} кг, цель ${x.goal}` : '—';
+      return [{ was: line(p), now: line(n) }];
+    }
+  }
+}
+
+/** Действие что-то удаляет целиком: позицию, упражнение, строку, вес, подход. */
+export function isRemoval(d: FormaData, a: Action): boolean {
+  if (a.type === 'remove_food' || a.type === 'remove_exercise' || a.type === 'remove_weight' || a.type === 'remove_bench') return true;
+  if (a.type === 'set_day_text' && a.field) {
+    const day = a.date ? d.days.find(x => x.date === a.date) : undefined;
+    if (a.field === 'food' || a.field === 'training') {
+      const was = day?.[a.field] || [], now = (a.lines || []).map(l => l.trim()).filter(Boolean);
+      return now.length < was.length;
+    }
+    return !!day?.[a.field] && !(a.text || '').trim();
+  }
+  return false;
+}
+
+/** Пользователь прямо попросил удалить («удали», «удалить», «удаляй»). «Убери» — не считается: это может быть правка текста. */
+export const asksToDelete = (text: string) => /удал/i.test(text);

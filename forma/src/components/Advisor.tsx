@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormaData } from '../types';
-import { loadChat, saveChat, type Settings, type StoredTurn } from '../storage';
+import { loadChat, loadUndo, saveChat, saveUndo, type Settings, type StoredTurn, type UndoSnap } from '../storage';
 import { AiError, askAdvisor, hasKey } from '../lib/ai';
-import { actionDetails, actionsNote, alreadyDone, applyAction, type Action } from '../lib/advice';
+import { actionDetails, actionDiff, actionsNote, alreadyDone, applyAction, asksToDelete, isRemoval, type Action, type DiffRow } from '../lib/advice';
 
 type Props = {
   data: FormaData;
@@ -63,14 +63,30 @@ function ToEnd() {
 }
 
 const mark = (st?: string | null) =>
-  st === 'applied' ? '✓ ' : st === 'skipped' ? '✗ ' : st === 'stale' ? '⌛ ' : '✎ ';
+  st === 'applied' ? '✓ ' : st === 'skipped' ? '✗ ' : st === 'stale' ? '⌛ ' : st === 'undone' ? '↶ ' : '✎ ';
 
-/** Что именно добавится — продукты с КБЖУ, подходы. */
-function Details({ a }: { a: Action }) {
+/** «Было → станет» построчно (для старых сообщений без сохранённого сравнения — что добавится). */
+function Details({ a, diff }: { a: Action; diff?: DiffRow[] }) {
+  if (diff) {
+    if (!diff.length) return <div className="action-details">Ничего не изменится</div>;
+    return (
+      <div className="action-details">
+        {diff.map((r, i) => (
+          <div key={i} className="diff-row">
+            {r.was != null && <div className="diff-was">было: {r.was}</div>}
+            {r.now != null ? <div className="diff-now">станет: {r.now}</div> : <div className="diff-now gone">станет: (удалено)</div>}
+          </div>
+        ))}
+      </div>
+    );
+  }
   const lines = actionDetails(a);
   if (!lines.length) return null;
   return <div className="action-details">{lines.map((l, i) => <div key={i} className={l.startsWith('Итого') ? 'total' : ''}>{l}</div>)}</div>;
 }
+
+/** Отпечаток дневника без служебных полей — чтобы понять, менялся ли он после правки. */
+const fingerprint = (d: FormaData) => JSON.stringify({ ...d, updatedAt: undefined, ownerId: undefined });
 
 /** Простое оформление ответа: **жирный** и списки «- …». */
 export function Rich({ text }: { text: string }) {
@@ -103,6 +119,9 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatKey]);
   const atEnd = useChatScroll(endRef, turns.length, true, busy);
+  const [undo, setUndo] = useState<UndoSnap | null>(null);
+  useEffect(() => { loadUndo(chatKey).then(setUndo).catch(() => {}); }, [chatKey]);
+  const remember = (snap: UndoSnap | null) => { setUndo(snap); saveUndo(chatKey, snap).catch(() => {}); };
 
   const persist = (next: StoredTurn[]) => {
     setTurns(next);
@@ -119,11 +138,22 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
       const history = withQ.map(t => ({ role: t.role, text: t.text + (t.actions?.length ? actionsNote(t.actions, t.status) : '') }));
       const a = await askAdvisor({ settings, data, today, history });
       a.actions = a.actions.filter(x => !alreadyDone(data, x));
+      // Удалять целиком — только если пользователь прямо написал «удали». Иначе такие предложения не показываем.
+      const blocked = asksToDelete(q) ? [] : a.actions.filter(x => isRemoval(data, x));
+      if (blocked.length) {
+        const rest = a.actions.filter(x => !blocked.includes(x));
+        const what = blocked.map(x => x.summary).join('; ');
+        // Всё предложенное — удаление: ответ ИИ («удаляю…») больше не верен, вместо него переспрашиваем.
+        a.reply = rest.length
+          ? a.reply + `\n\nУдалять не предлагаю (${what}). Если нужно именно удалить — напиши прямо: «удали …».`
+          : `Не до конца понял, что сделать. Советник хотел удалить: ${what}.\n- Если нужно только поправить текст (например, убрать приписку) — напиши, что именно убрать, упражнения и записи останутся.\n- Если нужно удалить целиком — напиши прямо: «удали …».`;
+        a.actions = rest;
+      }
       // Пришли новые предложения — старые нерешённые больше не показываем с кнопками, чтобы не применить дважды.
       const prev = a.actions.length
         ? withQ.map(t => (t.actions?.some((_, j) => !t.status?.[j]) ? { ...t, status: t.actions.map((_, j) => t.status?.[j] ?? 'stale' as const) } : t))
         : withQ;
-      persist([...prev, { role: 'assistant', text: a.reply, at: new Date().toISOString(), actions: a.actions, status: a.actions.map(() => null) }]);
+      persist([...prev, { role: 'assistant', text: a.reply, at: new Date().toISOString(), actions: a.actions, status: a.actions.map(() => null), diffs: a.actions.map(x => actionDiff(data, x)) }]);
     } catch (e) {
       // Вопрос без ответа убираем, текст возвращаем в поле — можно отправить ещё раз.
       setTurns(turns); setText(q);
@@ -142,7 +172,9 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
         notify('Не получилось: ' + (e as Error).message, true);
         return;
       }
-      update(d => applyAction(d, action));
+      const after = applyAction(data, action);
+      update(() => after);
+      remember({ label: action.summary, before: data, after: fingerprint(after), turn: ti, actions: [ai] });
       notify('Готово: ' + action.summary);
     }
     persist(turns.map((x, i) => (i === ti ? { ...x, status: x.actions!.map((_, j) => (j === ai ? (apply ? 'applied' : 'skipped') : x.status?.[j] ?? null)) } : x)));
@@ -157,8 +189,20 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
     });
     const result = d;
     update(() => result);
+    if (ok) remember({ label: `${ok} изм.: ${t.actions!.filter((_, j) => status[j] === 'applied' && !t.status?.[j]).map(a => a.summary).join('; ')}`, before: data, after: fingerprint(result), turn: ti, actions: status.map((s, j) => (s === 'applied' && !t.status?.[j] ? j : -1)).filter(j => j >= 0) });
     persist(turns.map((x, i) => (i === ti ? { ...x, status } : x)));
     notify(`Применено изменений: ${ok}`);
+  };
+
+  // Отмена последней правки: возвращаем дневник к снимку до неё.
+  const undoLast = () => {
+    if (!undo) return;
+    if (fingerprint(data) !== undo.after && !confirm('После этой правки дневник ещё менялся — эти изменения тоже откатятся. Всё равно отменить?')) return;
+    const before = { ...undo.before, ownerId: data.ownerId };
+    update(() => before);
+    persist(turns.map((x, i) => (i === undo.turn && x.status ? { ...x, status: x.status.map((s, j) => (undo.actions.includes(j) ? 'undone' : s)) } : x)));
+    remember(null);
+    notify('Отменено: ' + undo.label);
   };
 
   return (
@@ -183,7 +227,7 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
                   return (
                     <div key={j} className={'action' + (st ? ' done' : '')}>
                       <div className="action-text">{mark(st)}{a.summary}</div>
-                      <Details a={a} />
+                      <Details a={a} diff={t.diffs?.[j]} />
                       {!st && (
                         <div className="action-btns">
                           <button className="btn" onClick={() => decide(i, j, true)}>Применить</button>
@@ -204,8 +248,10 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
         <div ref={endRef} />
       </div>
 
+      {undo && <div style={{ height: 44 }} />}
       {!atEnd && <ToEnd />}
       <div className="entry-bar">
+        {undo && !busy && <button className="undo-btn" onClick={undoLast}>↶ Отменить правку <span>{undo.label}</span></button>}
         <form className="entry-row" onSubmit={ev => { ev.preventDefault(); send(text.trim()); }}>
           <textarea className="inp entry-inp" rows={1} placeholder={busy ? 'Советник думает…' : 'Спроси или попроси поправить…'}
             value={text} disabled={busy} onChange={e => setText(e.target.value)} />
@@ -251,7 +297,7 @@ export function ClientChat({ name, pull }: { name: string; pull: () => Promise<S
               <div className="actions">
                 {t.actions.map((a, j) => {
                   const st = t.status?.[j];
-                  return <div key={j} className="action done"><div className="action-text">{st ? mark(st) : '… '}{a.summary}</div><Details a={a} /></div>;
+                  return <div key={j} className="action done"><div className="action-text">{st ? mark(st) : '… '}{a.summary}</div><Details a={a} diff={t.diffs?.[j]} /></div>;
                 })}
               </div>
             )}

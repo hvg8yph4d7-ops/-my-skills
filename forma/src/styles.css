@@ -160,7 +160,7 @@ button { font-family: inherit; }
 .btn.ghost { background: var(--navy); color: var(--text); border: 1px solid var(--line); }
 .btn.danger { background: none; color: var(--red); border: 1px solid var(--red); }
 .btn-col { display: flex; flex-direction: column; gap: 8px; }
-.toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--green-2); color: var(--text); border: 1px solid var(--green-br); padding: 10px 16px; border-radius: 10px; font-size: 13px; z-index: 10; max-width: 90vw; }
+.toast { position: fixed; left: 50%; bottom: calc(132px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--green-2); color: var(--text); border: 1px solid var(--green-br); padding: 10px 16px; border-radius: 10px; font-size: 13px; z-index: 10; max-width: 90vw; }
 .toast.err { background: #45261f; border-color: var(--red); }
 .sore-btn { margin-top: 7px; background: none; border: 1px dashed var(--line); color: var(--dim); font-size: 10px; border-radius: 6px; padding: 3px 6px; cursor: pointer; }
 .sore-btn.on { border-style: solid; border-color: var(--red); color: var(--red); }
@@ -234,3 +234,9 @@ select.inp { -webkit-appearance: none; appearance: none; }
 .to-end { position: fixed; right: max(16px, calc(50vw - 224px)); bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 6; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--navy-2); color: var(--yellow); font-size: 18px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); cursor: pointer; }
 .action-details { font-size: 12px; color: var(--dim); margin: 4px 0 2px; line-height: 1.45; }
 .action-details .total { color: var(--text); font-weight: 600; }
+.diff-row { margin-top: 4px; }
+.diff-was { color: var(--dim); text-decoration: line-through; text-decoration-color: rgba(201, 88, 74, 0.7); }
+.diff-now { color: var(--text); }
+.diff-now.gone { color: var(--red); }
+.undo-btn { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; width: 100%; max-width: 456px; margin: 0 auto 8px; background: var(--navy-2); border: 1px solid var(--line); color: var(--yellow); border-radius: 9px; padding: 7px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer; text-align: left; overflow: hidden; }
+.undo-btn span { flex: 1; color: var(--dim); font-weight: 400; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
