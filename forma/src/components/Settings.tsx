@@ -3,6 +3,7 @@ import { BUILD, bugReport, shareText } from '../lib/bugs';
 import type { FormaData } from '../types';
 import { migrate, seedData, type Settings as AppSettings } from '../storage';
 import { AiSettings } from './AiSettings';
+import { SupplementsSettings } from './SupplementsSettings';
 import { ProfileSettings } from './ProfileSettings';
 import { AccountSettings } from './AccountSettings';
 import type { Session } from '@supabase/supabase-js';
@@ -97,6 +98,8 @@ export function Settings({ data, settings, saveSettings, persisted, replace, upd
       <AiSettings settings={settings} saveSettings={saveSettings} notify={notify} />
 
       <ProfileSettings key={data.profile?.name ?? ''} data={data} update={update} notify={notify} />
+
+      <SupplementsSettings key={'s' + (data.suppRev || '') + data.supplements.length} data={data} update={update} notify={notify} />
 
       <div className="card">
         <div className="card-label">Резервная копия</div>

@@ -109,6 +109,9 @@ export function Overview({ data, today }: { data: FormaData; today: string }) {
         {data.supplements.map((s, i) => (
           <div className="blk" key={i}><div className="blk-l">{s.time}</div><div className="blk-b">{s.items}</div></div>
         ))}
+        {!!data.suppRules?.length && (
+          <div className="supp-rules">{data.suppRules.map((r, i) => <div key={i}>⚠ {r}</div>)}</div>
+        )}
       </div>}
 
       <div className="card">

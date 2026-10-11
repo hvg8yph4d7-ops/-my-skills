@@ -242,7 +242,7 @@ export function advisorContext(data: FormaData, today: string) {
     data.bench.length ? `Жим штанги лёжа: ${sortedBench(data).map(b => `${b.date} ${b.w}×${b.r} (расч. макс ${e1rm(b)})`).join(', ')}.` + (data.benchMax ? ` Текущий примерный максимум ${data.benchMax} кг.` : '') + (data.oldBenchMax ? ` До перерыва было ${data.oldBenchMax}.` : '') : '',
     Object.keys(data.split).length ? `План тренировок: ${Object.entries(data.split).map(([d, v]) => WDF[+d] + ' — ' + v).join('; ')}.` : 'Плана тренировок нет.',
     `Восстановление мышц сегодня (большим группам нужно 3 дня, рукам 2): ${muscles}.`,
-    data.supplements.length ? `Добавки: ${data.supplements.map(s => s.time + ': ' + s.items).join(' | ')}.` : '',
+    data.supplements.length ? `Добавки: ${data.supplements.map(s => s.time + ': ' + s.items).join(' | ')}.` + (data.suppRules?.length ? ` Правила приёма: ${data.suppRules.join(' ')} Отметка «добавки» в дневнике — одна на день, за все сразу.` : '') : '',
     sober != null ? `Без алкоголя ${sober} дн. (с ${data.soberSince}).` : '',
     data.products.length && `Частые продукты: ${data.products.map(p => `${p.name} (${p.portion}: Б ${p.p} Ж ${p.f} У ${p.c} ${p.kcal} ккал)`).join('; ')}.`,
     data.profile ? `Анкета: ${data.profile.name}, ${data.profile.sex === 'f' ? 'жен' : 'муж'}, возраст ${data.profile.age ?? '?'}, рост ${data.profile.height ?? '?'} см, вес в анкете ${data.profile.weight ?? '?'} кг, цель ${data.profile.goal}. О себе: ${data.profile.note || '—'}` : '',

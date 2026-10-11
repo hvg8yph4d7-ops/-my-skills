@@ -77,6 +77,8 @@ export interface FormaData {
   soberSince: string;
   sore: Record<string, string>; // группа → дата отметки «ещё болит»
   supplements: { time: string; items: string }[];
+  suppRules?: string[]; // правила приёма — подсказка под схемой добавок
+  suppRev?: string; // какое обновление схемы добавок уже применено
   marks: Record<string, { p: boolean; g: boolean }>; // p — добавки, g — зал
   weight: { date: string; value: number }[];
   bench: { date: string; w: number; r: number }[];

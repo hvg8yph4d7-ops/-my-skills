@@ -13,6 +13,8 @@ import { EntryBar } from './components/EntryBar';
 import { Advisor, ClientChat } from './components/Advisor';
 import { Onboarding } from './components/Onboarding';
 import { ProfileSettings } from './components/ProfileSettings';
+import { SupplementsSettings } from './components/SupplementsSettings';
+import { needsSuppUpgrade, upgradeSupps } from './lib/supplements';
 import { Splash } from './components/Splash';
 import { logError } from './lib/bugs';
 import { CloudError, cloudEnabled, getSession, onAuth, pullChat, pullClient, pullOwn, pushChat, pushDiary } from './lib/cloud';
@@ -188,6 +190,14 @@ export function App() {
     });
   }, [notify, pushOwn]);
 
+  // Разовое обновление схемы добавок в дневнике Давида (11.10.2026). Ждём, пока синхронизация с аккаунтом закончится,
+  // чтобы правка ушла поверх свежей версии с сервера, а не наоборот.
+  useEffect(() => {
+    if (!data || viewing || !needsSuppUpgrade(data) || sync === 'saving' || (session && sync !== 'ok')) return;
+    const t = setTimeout(() => update(d => (needsSuppUpgrade(d) ? upgradeSupps(d) : d)), 2500);
+    return () => clearTimeout(t);
+  }, [data, viewing, sync, session, update]);
+
   // Правка дневника клиента: сразу на сервер, у клиента подтянется при следующем открытии.
   const updateClient = useCallback((fn: (d: FormaData) => FormaData) => {
     setClient(prev => {
@@ -301,6 +311,7 @@ export function App() {
                 <div className="blk-b">Профиль, нормы и план тренировок <b>{client.data.profile?.name || 'клиента'}</b>. Изменения сохранятся у него. Свои настройки (аккаунт, ключ ИИ) — после «Выйти» на жёлтой плашке.</div>
               </div>
               <ProfileSettings key={'c' + client.userId + (client.data.updatedAt || '')} data={client.data} update={updateClient} notify={notify} />
+              <SupplementsSettings key={'cs' + client.userId + (client.data.updatedAt || '')} data={client.data} update={updateClient} notify={notify} />
             </>
           )}
           {tab === 'settings' && !client && <Settings data={data} settings={settings} saveSettings={changeSettings} persisted={persisted} replace={replace} update={update} notify={notify}
