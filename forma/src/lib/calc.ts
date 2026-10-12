@@ -8,7 +8,7 @@ export const e1rm = (e: { w: number; r: number }) => Math.round(e.w * (1 + e.r /
 
 export const byDate = <T extends { date: string }>(a: T, b: T) => a.date.localeCompare(b.date);
 export const sortedWeight = (d: FormaData) => d.weight.slice().sort(byDate);
-export const sortedBench = (d: FormaData) => d.bench.slice().sort(byDate);
+export { benchSets as sortedBench } from './exercises';
 export const dayFor = (d: FormaData, k: string) => d.days.find(x => x.date === k);
 export const marksFor = (d: FormaData, k: string) => d.marks[k] || { p: false, g: false };
 

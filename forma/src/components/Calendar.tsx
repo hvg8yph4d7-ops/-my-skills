@@ -85,7 +85,6 @@ export function Calendar({ data, today, update, ai }: { data: FormaData; today: 
 function DayDetail({ data, k, update, ai }: { data: FormaData; k: string; update: Update; ai: Ai }) {
   const m = marksFor(data, k), e = dayFor(data, k);
   const w = data.weight.find(x => x.date === k);
-  const b = data.bench.filter(x => x.date === k);
   const [weightInput, setWeightInput] = useState('');
   const [closing, setClosing] = useState(false);
 
@@ -131,9 +130,8 @@ function DayDetail({ data, k, update, ai }: { data: FormaData; k: string; update
         <input className="inp" inputMode="decimal" placeholder={w ? 'Исправить вес, кг' : 'Вес в зале, кг'} value={weightInput} onChange={ev => setWeightInput(ev.target.value)} />
         <button className="btn" type="submit">Записать</button>
       </form>
-      {b.length > 0 && <Blk l="Жим"><ul>{b.map((x, i) => <li key={i}>{num(x.w)} кг × {x.r}</li>)}</ul></Blk>}
       {e && <DayBody e={e} remove={{ meal: i => update(d => removeMeal(d, k, i)), exercise: i => update(d => removeExercise(d, k, i)) }} />}
-      {!e && !w && !b.length && <div className="empty">За этот день записей нет.</div>}
+      {!e && !w && <div className="empty">За этот день записей нет.</div>}
       {e && (
         <div className="btn-col" style={{ marginTop: 12 }}>
           {e.partial

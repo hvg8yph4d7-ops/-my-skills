@@ -250,3 +250,11 @@ select.inp { -webkit-appearance: none; appearance: none; }
 .supp-rules { margin-top: 10px; padding: 8px 10px; border-radius: 9px; background: var(--accent-soft); border: 1px solid var(--accent-line); font-size: 12px; line-height: 1.5; color: var(--text); }
 .supp-edit { margin-bottom: 10px; }
 .supp-edit .weight-row { margin-bottom: 6px; }
+.prog-row { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; border-top: 1px solid var(--line); padding: 10px 0; color: var(--text); text-align: left; cursor: pointer; font-family: inherit; }
+.card-label + .prog-row { border-top: none; padding-top: 2px; }
+.prog-main { flex: 1; min-width: 0; }
+.prog-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.prog-trend { font-family: 'Oswald', sans-serif; font-size: 20px; color: var(--dim); width: 22px; text-align: center; }
+.prog-trend.up { color: var(--green-br); }
+.prog-trend.down { color: var(--red); }
+.alias-edit { font-size: 12px; line-height: 1.5; font-family: ui-monospace, Menlo, monospace; margin-bottom: 10px; }

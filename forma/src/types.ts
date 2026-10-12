@@ -21,10 +21,20 @@ export interface FoodItem {
   note?: string | null;
 }
 
+/** Подход. Диапазон «10–12» хранится как reps 10 + repsMax 12; для расчётов берётся нижняя граница. */
+export interface ExSet {
+  weight: number | null; // null — свой вес или вес не записан
+  reps: number | null; // null — повторы не записаны (например, дроп-сет)
+  repsMax?: number | null;
+  note?: string; // «дроп-сет»
+}
+
 export interface Exercise {
   name: string;
   group: string | null;
-  sets: { weight: number | null; reps: number }[];
+  sets: ExSet[];
+  note?: string; // «суперсет»
+  src?: string; // исходная строка из чата, из которой сделано упражнение (схема v3)
 }
 
 export interface Day {
@@ -81,7 +91,10 @@ export interface FormaData {
   suppRev?: string; // какое обновление схемы добавок уже применено
   marks: Record<string, { p: boolean; g: boolean }>; // p — добавки, g — зал
   weight: { date: string; value: number }[];
-  bench: { date: string; w: number; r: number }[];
+  /** Устарело с v3: подходы жима живут в упражнении «Жим штанги лёжа». Остаётся только у старых копий до миграции. */
+  bench?: { date: string; w: number; r: number }[];
+  /** Свой список синонимов упражнений (вкладка «Прогресс»). Нет — встроенный. */
+  exerciseAliases?: import('./lib/exercises').Alias[];
   products: Product[];
   days: Day[];
 }

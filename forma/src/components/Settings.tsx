@@ -1,3 +1,4 @@
+import { benchSets } from '../lib/exercises';
 import { useRef, useState } from 'react';
 import { BUILD, bugReport, shareText } from '../lib/bugs';
 import type { FormaData } from '../types';
@@ -118,7 +119,7 @@ export function Settings({ data, settings, saveSettings, persisted, replace, upd
         <div className="card-label">Что сейчас в приложении</div>
         <div className="list-row"><div>Дней в дневнике</div><div className="val">{data.days.length}</div></div>
         <div className="list-row"><div>Взвешиваний</div><div className="val">{data.weight.length}</div></div>
-        <div className="list-row"><div>Подходов в жиме</div><div className="val">{data.bench.length}</div></div>
+        <div className="list-row"><div>Подходов в жиме</div><div className="val">{benchSets(data).length}</div></div>
         <div className="list-row"><div>Продуктов в справочнике</div><div className="val">{data.products.length}</div></div>
         <div className="sub-note">
           {persisted

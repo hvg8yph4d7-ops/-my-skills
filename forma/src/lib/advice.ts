@@ -3,6 +3,7 @@
 import * as z from 'zod/v4';
 import type { Day, FormaData } from '../types';
 import { GROUPS } from './calc';
+import { BENCH, aliasesOf, benchSets, canon } from './exercises';
 import { addMacros, applyEntry, exerciseLine, foodLine, removeExercise, removeMeal } from './entry';
 import type { Entry } from './ai';
 
@@ -44,7 +45,7 @@ export const ActionSchema = z.object({
   food: z.array(Food).nullable(),
   exercise: z.object({
     name: z.string(), group: z.enum(GROUP_KEYS).nullable(), isBench: z.boolean(),
-    sets: z.array(z.object({ weight: z.number().nullable(), reps: z.number() })),
+    sets: z.array(z.object({ weight: z.number().nullable(), reps: z.number(), repsMax: z.number().nullable().describe('верхняя граница, если повторы диапазоном «10–12» (тогда reps = 10), иначе null') })),
   }).nullable(),
   targets: z.object({ kcal: z.number(), p: z.number(), f: z.number(), c: z.number(), fib: z.number() }).nullable(),
   split: z.array(z.string()).nullable(),
@@ -210,10 +211,17 @@ export function applyAction(d: FormaData, a: Action): FormaData {
     }
     case 'remove_bench': {
       const date = needDate(a);
-      const idx = d.bench.map((b, i) => (b.date === date ? i : -1)).filter(i => i >= 0);
-      const kill = idx[a.index ?? -1];
-      if (kill == null) throw new Error('такого подхода жима нет');
-      return { ...d, bench: d.bench.filter((_, i) => i !== kill) };
+      // Подходы жима дня по порядку (только с весом и повторами) — как в контексте советника «Жим штанги подход #i».
+      const al = aliasesOf(d);
+      const day = d.days.find(x => x.date === date);
+      const refs: [number, number][] = [];
+      day?.exercises?.forEach((x, ei) => {
+        if (canon(al, x.name, x.group, day.groups).name !== BENCH) return;
+        x.sets.forEach((s, si) => { if (s.weight != null && s.reps != null) refs.push([ei, si]); });
+      });
+      const ref = refs[a.index ?? -1];
+      if (!ref) throw new Error('такого подхода жима нет');
+      return mapDay(d, date, x => ({ ...x, exercises: x.exercises!.map((e, ei) => (ei === ref[0] ? { ...e, sets: e.sets.filter((_, si) => si !== ref[1]) } : e)) }));
     }
     case 'set_sober_since':
       return { ...d, soberSince: needDate(a) };
@@ -262,8 +270,12 @@ const norm = (x: string) => x.toLowerCase().replace(/ё/g, 'е').replace(/[^a-z�
 export function alreadyDone(d: FormaData, a: Action): boolean {
   const day = a.date ? d.days.find(x => x.date === a.date) : undefined;
   if (a.type === 'add_exercise' && a.exercise) {
-    const name = norm(a.exercise.name);
-    return !!day && [...(day.exercises || []).map(e => e.name), ...(day.training || [])].some(n => norm(n).includes(name));
+    // Повтор = то же упражнение (по единому названию) с теми же подходами в тот же день.
+    if (!day) return false;
+    const al = aliasesOf(d), ex = a.exercise;
+    const name = canon(al, ex.name, ex.group, day.groups).name;
+    const sets = JSON.stringify(ex.sets.map(s => [s.weight, s.reps]));
+    return (day.exercises || []).some(e => canon(al, e.name, e.group, day.groups).name === name && JSON.stringify(e.sets.map(s => [s.weight, s.reps])) === sets);
   }
   if (a.type === 'add_food' && a.food?.length) {
     const have = (day?.meals || []).map(m => norm(m.name));
@@ -295,7 +307,11 @@ export function actionDiff(d: FormaData, a: Action): DiffRow[] {
   const yes = (b?: boolean) => (b ? 'да' : 'нет');
   switch (a.type) {
     case 'add_food': return (a.food || []).map(f => ({ now: foodLine({ ...f, source: 'estimate' }) }));
-    case 'add_exercise': return a.exercise ? [{ now: setsLine(a.exercise) }] : [];
+    case 'add_exercise': {
+      if (!a.exercise) return [];
+      const c = a.exercise.isBench ? { name: BENCH } : canon(aliasesOf(d), a.exercise.name, a.exercise.group, day?.groups);
+      return [{ now: setsLine({ ...a.exercise, name: c.name }) || c.name + ': вес не записан' }];
+    }
     case 'update_food': {
       const old = a.index != null ? day?.meals?.[a.index] : undefined, f = a.food?.[0];
       return [{ was: old ? foodLine(old) : '(нет такой позиции)', now: f ? foodLine({ ...f, source: 'estimate' }) : '—' }];
@@ -317,7 +333,7 @@ export function actionDiff(d: FormaData, a: Action): DiffRow[] {
     case 'set_weight': { const w = d.weight.find(x => x.date === a.date); return [{ was: w ? `${w.value} кг` : '—', now: `${a.number} кг` }]; }
     case 'remove_weight': { const w = d.weight.find(x => x.date === a.date); return [{ was: w ? `вес ${w.value} кг` : '(веса нет)' }]; }
     case 'remove_bench': {
-      const b = d.bench.filter(x => x.date === a.date)[a.index ?? -1];
+      const b = benchSets(d).filter(x => x.date === a.date)[a.index ?? -1];
       return [{ was: b ? `жим ${b.w}×${b.r}` : '(нет такого подхода)' }];
     }
     case 'set_marks': {

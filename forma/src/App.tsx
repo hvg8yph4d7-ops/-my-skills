@@ -4,7 +4,7 @@ import type { FormaData } from './types';
 import { DEFAULT_SETTINGS, load, loadSettings, requestPersist, save, saveChat, saveSettings, type Settings as AppSettings, type StoredTurn } from './storage';
 import { longD, todayKey } from './lib/format';
 import { Overview } from './components/Overview';
-import { Bench } from './components/Bench';
+import { Progress } from './components/Progress';
 import { Calendar } from './components/Calendar';
 import { Train } from './components/Train';
 import { Diary } from './components/Diary';
@@ -21,7 +21,7 @@ import { CloudError, cloudEnabled, getSession, onAuth, pullChat, pullClient, pul
 
 const TABS = [
   { id: 'overview', l: 'Обзор' },
-  { id: 'bench', l: 'Жим' },
+  { id: 'progress', l: 'Прогресс' },
   { id: 'cal', l: 'Календарь' },
   { id: 'train', l: 'Тренировки' },
   { id: 'diary', l: 'Дневник' },
@@ -300,7 +300,7 @@ export function App() {
       {data && shown && (
         <>
           {tab === 'overview' && <Overview data={shown} today={today} />}
-          {tab === 'bench' && <Bench data={shown} />}
+          {tab === 'progress' && <Progress key={client ? 'c' + client.userId : viewing ? 'v' : 'own'} data={shown} update={edit} notify={notify} />}
           {tab === 'cal' && <Calendar key={client ? 'c' + client.userId : viewing ? 'v' : 'own'} data={shown} today={today} update={edit} ai={{ settings, notify }} />}
           {tab === 'train' && <Train data={shown} today={today} update={edit} />}
           {tab === 'diary' && <Diary data={shown} />}

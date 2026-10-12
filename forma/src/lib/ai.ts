@@ -4,6 +4,7 @@ import * as z from 'zod/v4';
 import type { Day, FormaData } from '../types';
 import type { Settings } from '../storage';
 import { GROUPS, averages, recovery, sortedBench, sortedWeight, e1rm } from './calc';
+import { aliasesOf, benchSets, progressList, setsText } from './exercises';
 import { WDF, daysBetween, longD, wdName } from './format';
 import { aboutUser, goalText, userName } from './profile';
 import { AdviceSchema, type Advice } from './advice';
@@ -25,7 +26,7 @@ export const EntrySchema = z.object({
     name: z.string(),
     group: z.enum(GROUP_KEYS).nullable(),
     isBench: z.boolean().describe('true только для жима штанги лёжа'),
-    sets: z.array(z.object({ weight: z.number().nullable(), reps: z.number() })),
+    sets: z.array(z.object({ weight: z.number().nullable(), reps: z.number(), repsMax: z.number().nullable().describe('верхняя граница, если повторы диапазоном «10–12» (тогда reps = 10), иначе null') })),
   })),
   weight: z.number().nullable().describe('Вес тела в кг, если назван'),
   supps: z.boolean().nullable().describe('true, если сказал, что пил добавки'),
@@ -46,6 +47,19 @@ const FAST_FOOD = `- Фастфуд и кафе (KFC/Rostic's, «Вкусно �
   · соус сырный (25 г): Б 1, Ж 9, У 2, 90 ккал; кетчуп (25 г): У 6, 25 ккал
   · Биг Хит/Биг Мак: Б 26, Ж 28, У 43, 530 ккал; чизбургер: Б 15, Ж 13, У 31, 300 ккал; Воппер: Б 28, Ж 38, У 50, 660 ккал
   · шаурма с курицей (~350 г): Б 30, Ж 30, У 60, 650 ккал`;
+
+/** Список упражнений пользователя по группам — чтобы ИИ писал названия единообразно. */
+export const exerciseNames = (data: FormaData) =>
+  [...new Set([...aliasesOf(data).map(a => `${a.name} (${a.group})`), ...progressList(data).map(p => `${p.name} (${p.group ?? 'без группы'})`)])].join('; ');
+
+/** Прогресс по упражнениям для советника: последний раз, рекорд, сравнение. */
+function progressContext(data: FormaData) {
+  return progressList(data).map(p => {
+    const last = setsText(p.last.sets) || 'вес не записан';
+    const best = p.best && p.best !== p.last ? `; рекорд ${p.best.date}: ${setsText(p.best.sets)}` : p.best ? ' (это рекорд)' : '';
+    return `${p.name} [${p.group ?? '—'}]: ${p.sessions.length} раз, последний ${p.last.date}: ${last}${best}${p.trend ? ` ${p.trend}` : ''}`;
+  }).join('\n');
+}
 
 export function systemPrompt(data: FormaData) {
   const t = data.targets;
@@ -70,6 +84,8 @@ ${FAST_FOOD}
 Тренировки:
 - Каждое упражнение — отдельная запись, группа мышц из списка: ${GROUP_KEYS.join(', ')}. Если упражнение не про эти группы (пресс, кардио) — group = null.
 - «Жим 70 на 5» — это подходы: weight 70, reps 5. Жим штанги лёжа помечай isBench = true. Жим гантелей и тренажёры — isBench = false.
+- Раскладывай тренировку по упражнениям и подходам: «жим 70 на 5, потом 60 на 10, жим гантелей 22 на 8» = жим штанги лёжа [70×5, 60×10] + жим гантелей [22×8]. «3 подхода по 12 с 60» = три одинаковых подхода. Повторы диапазоном «10–12» → reps 10, repsMax 12. Свой вес (подтягивания, брусья) → weight null. Вес не назван → sets пустой.
+- Название бери из списка упражнений пользователя, если это то же упражнение (с учётом группы мышц): ${exerciseNames(data)}.
 - Если перечислены упражнения — значит был в зале: gym = true.
 - «Ещё болит грудь» → sore = ["грудь"].
 
@@ -209,7 +225,7 @@ export function advisorContext(data: FormaData, today: string) {
   const days = data.days.slice().sort((a, b) => a.date.localeCompare(b.date)).slice(-60).map(d => {
     const m = d.macros;
     const mk = data.marks[d.date];
-    const bench = data.bench.filter(b => b.date === d.date);
+    const bench = benchSets(data).filter(b => b.date === d.date);
     const w = data.weight.find(x => x.date === d.date);
     const parts = [
       `=== ${d.date} (${wdName(d.date)})${d.partial ? ' [не закрыт]' : ' [закрыт]'}`,
@@ -239,7 +255,7 @@ export function advisorContext(data: FormaData, today: string) {
     `Цели в день: ${t.kcal} ккал, белок ≥ ${t.p} г, жиры до ~${t.f} г, углеводы ~${t.c} г, клетчатка ${t.fib} г. Цель — ${goalText(data)}.`,
     av ? `Среднее по ${av.n} закрытым дням: ${Math.round(av.avg.kcal)} ккал, Б ${Math.round(av.avg.p)}, Ж ${Math.round(av.avg.f)}, У ${Math.round(av.avg.c)}, клетч. ${Math.round(av.avg.fib)}.` : '',
     data.weight.length ? `Вес: ${sortedWeight(data).map(w => `${w.date} ${w.value}`).join(', ')}.` : 'Взвешиваний пока нет.',
-    data.bench.length ? `Жим штанги лёжа: ${sortedBench(data).map(b => `${b.date} ${b.w}×${b.r} (расч. макс ${e1rm(b)})`).join(', ')}.` + (data.benchMax ? ` Текущий примерный максимум ${data.benchMax} кг.` : '') + (data.oldBenchMax ? ` До перерыва было ${data.oldBenchMax}.` : '') : '',
+    benchSets(data).length ? `Жим штанги лёжа: ${sortedBench(data).map(b => `${b.date} ${b.w}×${b.r} (расч. макс ${e1rm(b)})`).join(', ')}.` + (data.benchMax ? ` Текущий примерный максимум ${data.benchMax} кг.` : '') + (data.oldBenchMax ? ` До перерыва было ${data.oldBenchMax}.` : '') : '',
     Object.keys(data.split).length ? `План тренировок: ${Object.entries(data.split).map(([d, v]) => WDF[+d] + ' — ' + v).join('; ')}.` : 'Плана тренировок нет.',
     `Восстановление мышц сегодня (большим группам нужно 3 дня, рукам 2): ${muscles}.`,
     data.supplements.length ? `Добавки: ${data.supplements.map(s => s.time + ': ' + s.items).join(' | ')}.` + (data.suppRules?.length ? ` Правила приёма: ${data.suppRules.join(' ')} Отметка «добавки» в дневнике — одна на день, за все сразу.` : '') : '',
@@ -247,6 +263,7 @@ export function advisorContext(data: FormaData, today: string) {
     data.products.length && `Частые продукты: ${data.products.map(p => `${p.name} (${p.portion}: Б ${p.p} Ж ${p.f} У ${p.c} ${p.kcal} ккал)`).join('; ')}.`,
     data.profile ? `Анкета: ${data.profile.name}, ${data.profile.sex === 'f' ? 'жен' : 'муж'}, возраст ${data.profile.age ?? '?'}, рост ${data.profile.height ?? '?'} см, вес в анкете ${data.profile.weight ?? '?'} кг, цель ${data.profile.goal}. О себе: ${data.profile.note || '—'}` : '',
     Object.keys(data.sore).length ? `Отметки «ещё болит» (sore): ${Object.entries(data.sore).map(([g, d]) => `${g} с ${d}`).join(', ')}.` : 'Отметок «ещё болит» нет.',
+    `Прогресс по упражнениям (вкладка «Прогресс»):\n${progressContext(data)}`,
     `Дневник по дням (${Math.min(data.days.length, 60)} дн.):\n${days}`,
   ].filter(Boolean).join('\n');
 }
@@ -292,6 +309,8 @@ ${talkStyle(data)}
 Старые строки из чата (food[i], training[i], work, supps, trainNote, verdict) меняй через set_day_text — присылай ВЕСЬ новый список строк; если меняешь строки еды, следом пришли set_day_macros с новым итогом дня. Позиции «записано в приложении #N» и «Упражнение #N» меняй через update_food / update_exercise или удаляй через remove_*.
 
 Вложения: к сообщению могут быть прикреплены фото (еда, этикетка, чек, скриншот, фото тела или техники) и файлы (PDF анализов, программа тренировок, таблица). Сначала коротко скажи, что видишь, потом ответь на вопрос. Этикетка с КБЖУ — бери цифры с неё; если пользователь хочет записать — предложи add_food с пересчётом на съеденный вес. Если на фото не разобрать — так и скажи. В истории старые вложения видны только по названию — их содержимого у тебя уже нет.
+
+Тренировка текстом («жим 70 на 5, потом 60 на 10, жим гантелей 22 на 8»): разложи на отдельные add_exercise — одно упражнение = одно действие, все его подходы в sets, повторы диапазоном → reps нижняя граница + repsMax. Названия — из списка упражнений пользователя (тогда история в «Прогрессе» не разобьётся): ${exerciseNames(data)}. Дата — сегодня, если не сказано иное. Приложение покажет пользователю, что распознано, до сохранения.
 
 Правила правок (строго):
 1. Если сообщение короткое, обрывочное или его можно понять двумя способами (например «10 повт. убери» — убрать приписку или удалить упражнение?) — НЕ угадывай: задай один короткий уточняющий вопрос с вариантами и оставь actions пустым.

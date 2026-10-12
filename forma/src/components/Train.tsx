@@ -1,3 +1,4 @@
+import { benchSets } from '../lib/exercises';
 import type { FormaData } from '../types';
 import { GROUPS, e1rm, exerciseCount, gymDays, recovery } from '../lib/calc';
 import { daysBetween, longD, num, shortD, wdName } from '../lib/format';
@@ -51,7 +52,7 @@ export function Train({ data, today, update }: { data: FormaData; today: string;
       </div>
 
       {!gd.length ? <div className="card"><div className="empty">Тренировок пока нет</div></div> : gd.map(d => {
-        const b = data.bench.filter(x => x.date === d.date);
+        const b = benchSets(data).filter(x => x.date === d.date);
         return (
           <div className="entry" key={d.date}>
             <div className="entry-date">{longD(d.date)}</div>

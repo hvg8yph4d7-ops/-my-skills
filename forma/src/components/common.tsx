@@ -62,14 +62,14 @@ export function DayBody({ e, remove }: { e: Day; remove?: Remove }) {
 }
 
 /** Линейный график как в старом трекере. */
-export function Chart({ id, points, unit }: { id: string; points: { date: string; v: number }[]; unit: string }) {
-  if (points.length < 2) return <div className="empty">График появится, когда будет две записи.</div>;
+export function Chart({ id, points, unit, target }: { id: string; points: { date: string; v: number }[]; unit: string; target?: { v: number; label: string } }) {
+  if (points.length < 2 && !(target && points.length)) return <div className="empty">График появится, когда будет две записи.</div>;
   const W = 340, H = 150, P = 26;
-  const vals = points.map(e => e.v);
+  const vals = [...points.map(e => e.v), ...(target ? [target.v] : [])];
   const min = Math.min(...vals), max = Math.max(...vals);
   const span = (max - min) || 5;
   const lo = min - span * 0.3, hi = max + span * 0.3;
-  const x = (i: number) => P + (W - P * 2) * (i / (points.length - 1));
+  const x = (i: number) => (points.length < 2 ? W / 2 : P + (W - P * 2) * (i / (points.length - 1)));
   const y = (v: number) => H - P - (H - P * 2) * ((v - lo) / (hi - lo));
   const pts = points.map((e, i) => x(i) + ',' + y(e.v));
   return (
@@ -85,6 +85,10 @@ export function Chart({ id, points, unit }: { id: string; points: { date: string
           const yy = P + (H - P * 2) * f;
           return <line key={f} x1={P} y1={yy} x2={W - P} y2={yy} stroke="#3a3833" strokeWidth="1" />;
         })}
+        {target && <>
+          <line x1={P} y1={y(target.v)} x2={W - P} y2={y(target.v)} stroke="#8fae7e" strokeWidth="1.5" strokeDasharray="5 4" />
+          <text x={W - P} y={y(target.v) - 5} fill="#8fae7e" fontSize="10" textAnchor="end">{target.label}</text>
+        </>}
         <path d={`M${x(0)},${H - P} L${pts.join(' L')} L${x(points.length - 1)},${H - P} Z`} fill={`url(#g-${id})`} />
         <polyline points={pts.join(' ')} fill="none" stroke="#d97757" strokeWidth="2.5" strokeLinejoin="round" />
         {points.map((e, i) => <circle key={i} cx={x(i)} cy={y(e.v)} r="4" fill="#1f1e1c" stroke="#f0ece4" strokeWidth="2" />)}

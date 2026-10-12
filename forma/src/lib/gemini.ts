@@ -102,7 +102,7 @@ function toEntry(text: string, today: string): Entry {
     ...raw,
   } as Record<string, unknown>;
   filled.food = ((filled.food as Record<string, unknown>[]) || []).map(f => ({ fib: 0, product: null, note: null, grams: null, source: 'estimate', ...f }));
-  filled.exercises = ((filled.exercises as Record<string, unknown>[]) || []).map(x => ({ group: null, isBench: false, sets: [], ...x }));
+  filled.exercises = ((filled.exercises as Record<string, unknown>[]) || []).map(x => ({ group: null, isBench: false, ...x, sets: (((x.sets as Record<string, unknown>[]) || []).map(s => ({ repsMax: null, ...s }))) }));
   const parsed = EntrySchema.safeParse(filled);
   if (!parsed.success) throw new AiError('Gemini ответил с ошибкой в данных. Попробуй ещё раз.');
   // Числа КБЖУ — целые, как во всём дневнике.

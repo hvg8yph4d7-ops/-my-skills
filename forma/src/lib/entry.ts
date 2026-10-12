@@ -1,5 +1,6 @@
 // Как подтверждённая запись от Claude попадает в данные.
 
+import { BENCH, aliasesOf, canon, setsText } from './exercises';
 import type { Day, Exercise, FoodItem, FormaData, Macros } from '../types';
 import type { Entry } from './ai';
 
@@ -30,8 +31,8 @@ export const foodLine = (x: FoodItem) =>
   `${x.name}${x.grams ? `, ${x.grams} г` : ''} — Б ${x.p} · Ж ${x.f} · У ${x.c} · ${x.kcal} ккал`;
 
 export const exerciseLine = (x: Exercise) => {
-  const sets = x.sets.map(s => (s.weight != null ? `${String(s.weight).replace('.', ',')}×${s.reps}` : `${s.reps} повт.`));
-  return x.name + (sets.length ? ': ' + sets.join(', ') : '');
+  const sets = setsText(x.sets);
+  return x.name + (sets ? ': ' + sets : '') + (x.note ? ` (${x.note})` : '');
 };
 
 export function applyEntry(d: FormaData, e: Entry, food: EntryFood[], exercises: EntryExercise[]): FormaData {
@@ -44,7 +45,12 @@ export function applyEntry(d: FormaData, e: Entry, food: EntryFood[], exercises:
     day.meals = [...(day.meals || []), ...meals];
     day.macros = addMacros(day.macros, meals);
   }
-  const ex: Exercise[] = exercises.map(({ isBench: _b, ...x }) => x);
+  // Названия — к единому виду по синонимам, чтобы история в «Прогрессе» не разбивалась.
+  const al = aliasesOf(d);
+  const ex: Exercise[] = exercises.map(({ isBench, ...x }) => {
+    const c = isBench ? { name: BENCH, group: 'грудь' } : canon(al, x.name, x.group, old?.groups);
+    return { ...x, name: c.name, group: c.group ?? x.group, sets: x.sets.map(s => ({ weight: s.weight, reps: s.reps, ...(s.repsMax ? { repsMax: s.repsMax } : {}) })) };
+  });
   if (ex.length) {
     day.exercises = [...(day.exercises || []), ...ex];
     const groups = new Set(day.groups || []);
@@ -53,11 +59,6 @@ export function applyEntry(d: FormaData, e: Entry, food: EntryFood[], exercises:
   }
 
   const days = old ? d.days.map(x => (x.date === date ? day : x)) : [...d.days, day];
-
-  const bench = [...d.bench];
-  exercises.filter(x => x.isBench).forEach(x => x.sets.forEach(s => {
-    if (s.weight != null) bench.push({ date, w: s.weight, r: s.reps });
-  }));
 
   const mark = { ...(d.marks[date] || { p: false, g: false }) };
   if (e.supps) mark.p = true;
@@ -73,7 +74,7 @@ export function applyEntry(d: FormaData, e: Entry, food: EntryFood[], exercises:
   const used = new Set(food.map(f => f.product).filter(Boolean));
   const products = used.size ? d.products.map(p => (used.has(p.name) ? { ...p, times: p.times + 1 } : p)) : d.products;
 
-  return { ...d, days, bench, weight, sore, products, marks: { ...d.marks, [date]: mark } };
+  return { ...d, days, weight, sore, products, marks: { ...d.marks, [date]: mark } };
 }
 
 /** Удаляет позицию еды из дня и вычитает её из итога. */

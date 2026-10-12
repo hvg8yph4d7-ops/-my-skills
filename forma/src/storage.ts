@@ -2,10 +2,11 @@
 // Все данные лежат одной записью; при первом запуске туда кладутся данные из seed.json.
 
 import seed from './data/seed.json';
-import type { Day, FormaData } from './types';
+import type { Day, Exercise, FormaData } from './types';
 import { addMacros } from './lib/entry';
+import { BENCH, DEFAULT_ALIASES, canon, parseTrainingLine } from './lib/exercises';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 const DB_NAME = 'forma';
 const STORE = 'state';
 const KEY = 'main';
@@ -48,10 +49,49 @@ export function migrate(raw: unknown): FormaData {
   }
   // v1 → v2: у дня появились необязательные meals и exercises — преобразовывать нечего.
   if (d.schemaVersion === 1) d.schemaVersion = 2;
+  // v2 → v3: строки тренировок из чата → упражнения с подходами; отдельный список жима → упражнение «Жим штанги лёжа».
+  if (d.schemaVersion === 2) {
+    Object.assign(d, toV3(d as FormaData));
+    delete d.bench;
+    d.schemaVersion = 3;
+  }
   if (d.schemaVersion > SCHEMA_VERSION) {
     throw new Error('Файл сделан более новой версией приложения. Обнови приложение.');
   }
   return d as FormaData;
+}
+
+/**
+ * Миграция v3. Ничего не теряется: исходная строка остаётся в exercise.src, строки-заметки
+ * («после молотков заболели связки») остаются в training, подходы жима без пары в упражнениях добавляются в них.
+ */
+function toV3(d: FormaData): FormaData {
+  const days = d.days.map(day => {
+    if (!day.training?.length) return day;
+    const notes: string[] = [];
+    const parsed: Exercise[] = [];
+    for (const line of day.training) {
+      const ex = parseTrainingLine(line, day.groups || [], DEFAULT_ALIASES);
+      if (ex?.length) parsed.push(...ex); else notes.push(line);
+    }
+    const next: Day = { ...day, exercises: [...parsed, ...(day.exercises || [])] };
+    if (notes.length) next.training = notes; else delete next.training;
+    return next;
+  });
+  // Подходы жима из старого списка, которых нет в упражнениях дня, — дописываем.
+  for (const b of d.bench || []) {
+    let day = days.find(x => x.date === b.date);
+    if (!day) { day = { date: b.date }; days.push(day); }
+    const exs = day.exercises || (day.exercises = []);
+    let bench = exs.find(x => canon(DEFAULT_ALIASES, x.name, x.group, day!.groups).name === BENCH);
+    const has = bench?.sets.filter(s => s.weight === b.w && s.reps === b.r).length || 0;
+    const want = (d.bench || []).filter(x => x.date === b.date && x.w === b.w && x.r === b.r).length;
+    if (has >= want) continue;
+    if (!bench) { bench = { name: BENCH, group: 'грудь', sets: [] }; exs.push(bench); }
+    bench.sets.push({ weight: b.w, reps: b.r });
+  }
+  const { bench: _b, ...rest } = d;
+  return { ...rest, days: days.sort((a, b) => a.date.localeCompare(b.date)) };
 }
 
 /** Версия встроенных данных. Новая выгрузка из чата → новый exportedAt → слияние при запуске. */
@@ -87,8 +127,6 @@ export function mergeSeed(cur: FormaData, fresh: FormaData): FormaData {
   for (const [k, m] of Object.entries(fresh.marks)) marks[k] = { p: !!(m.p || marks[k]?.p), g: !!(m.g || marks[k]?.g) };
   const weight = [...cur.weight];
   for (const w of fresh.weight) if (!weight.some(x => x.date === w.date)) weight.push(w);
-  const bench = [...cur.bench];
-  for (const b of fresh.bench) if (!bench.some(x => x.date === b.date && x.w === b.w && x.r === b.r)) bench.push(b);
   const sore = { ...cur.sore };
   for (const [g, d] of Object.entries(fresh.sore)) if (!sore[g] || sore[g] < d) sore[g] = d;
   const products = fresh.products.map(p => {
@@ -100,7 +138,7 @@ export function mergeSeed(cur: FormaData, fresh: FormaData): FormaData {
     ...cur,
     profile: cur.profile ?? fresh.profile,
     days: [...days.values()].sort((a, b) => a.date.localeCompare(b.date)),
-    marks, weight, bench, sore, products,
+    marks, weight, sore, products,
     supplements: fresh.supplements, split: fresh.split, benchMax: fresh.benchMax, oldBenchMax: fresh.oldBenchMax,
     soberSince: fresh.soberSince,
     seedRev: SEED_REV,
