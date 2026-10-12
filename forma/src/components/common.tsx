@@ -31,13 +31,15 @@ export function Chip({ k }: { k: string }) {
   return g ? <span className="chip" style={{ background: g.c }}>{g.l}</span> : null;
 }
 
-type Remove = { meal: (i: number) => void; exercise: (i: number) => void };
+type Remove = { meal: (i: number) => void; exercise: (i: number) => void; line?: (i: number) => void };
 
 /** Строки старого формата + записи через Claude; во вкладке календаря новые можно удалить. */
-function Items({ lines, items, onRemove }: { lines?: string[]; items: string[]; onRemove?: (i: number) => void }) {
+function Items({ lines, items, onRemove, onRemoveLine }: { lines?: string[]; items: string[]; onRemove?: (i: number) => void; onRemoveLine?: (i: number) => void }) {
   return (
     <ul>
-      {(lines || []).map((x, i) => <li key={'l' + i}>{x}</li>)}
+      {(lines || []).map((x, i) => (
+        <li key={'l' + i}>{x}{onRemoveLine && <button className="del-btn" aria-label="Удалить строку" onClick={() => confirm('Удалить строку «' + x + '»?') && onRemoveLine(i)}>×</button>}</li>
+      ))}
       {items.map((x, i) => (
         <li key={'i' + i}>{x}{onRemove && <button className="del-btn" aria-label="Удалить" onClick={() => onRemove(i)}>×</button>}</li>
       ))}
@@ -53,7 +55,7 @@ export function DayBody({ e, remove }: { e: Day; remove?: Remove }) {
     <>
       {e.work && <Blk l="День">{e.work}</Blk>}
       {(!!e.food?.length || meals.length > 0) && <Blk l="Еда"><Items lines={e.food} items={meals} onRemove={remove?.meal} /></Blk>}
-      {(!!e.training?.length || exs.length > 0) && <Blk l="Тренировка"><Items lines={e.training} items={exs} onRemove={remove?.exercise} /></Blk>}
+      {(!!e.training?.length || exs.length > 0) && <Blk l="Тренировка"><Items lines={e.training} items={exs} onRemove={remove?.exercise} onRemoveLine={remove?.line} /></Blk>}
       {e.supps && <Blk l="Добавки">{e.supps}</Blk>}
       {e.macros && <div className="blk"><div className="blk-l">БЖУ и клетчатка</div><MacroStrip m={e.macros} /></div>}
       {e.verdict && <div className="blk"><div className="blk-l">Вывод дня</div><div className="verdict">{e.verdict}</div></div>}

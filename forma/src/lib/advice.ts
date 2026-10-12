@@ -171,6 +171,12 @@ export function applyAction(d: FormaData, a: Action): FormaData {
       const date = needDate(a);
       if (!a.field) throw new Error('не указано, что менять в дне');
       const field = a.field;
+      if (field === 'training') {
+        const old = d.days.find(x => x.date === date)?.training || [];
+        const added = (a.lines || []).filter(l => !old.includes(l.trim()));
+        if (added.some(l => /\[(грудь|спина|ноги|плечи|бицепс|трицепс|без группы)\]|\d+\s*[×x]\s*\d+/i.test(l)))
+          throw new Error('упражнения записываются как упражнения (add_exercise), а не строками текста');
+      }
       const value = field === 'food' || field === 'training'
         ? (a.lines || []).map(s => s.trim()).filter(Boolean)
         : (a.text || '').trim();

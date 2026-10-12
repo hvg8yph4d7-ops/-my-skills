@@ -52,7 +52,15 @@ export function applyEntry(d: FormaData, e: Entry, food: EntryFood[], exercises:
     return { ...x, name: c.name, group: c.group ?? x.group, sets: x.sets.map(s => ({ weight: s.weight, reps: s.reps, ...(s.repsMax ? { repsMax: s.repsMax } : {}) })) };
   });
   if (ex.length) {
-    day.exercises = [...(day.exercises || []), ...ex];
+    // Без дублей: то же упражнение уже есть в этот день без подходов — заполняем его; новое без подходов при уже записанном — пропускаем.
+    const list = [...(day.exercises || [])];
+    for (const x of ex) {
+      const same = list.findIndex(y => canon(al, y.name, y.group, day.groups).name === x.name);
+      if (same >= 0 && !list[same].sets.length) list[same] = { ...list[same], name: x.name, group: x.group, sets: x.sets };
+      else if (same >= 0 && !x.sets.length) continue;
+      else list.push(x);
+    }
+    day.exercises = list;
     const groups = new Set(day.groups || []);
     ex.forEach(x => x.group && groups.add(x.group));
     if (groups.size) day.groups = [...groups];

@@ -130,7 +130,8 @@ function DayDetail({ data, k, update, ai }: { data: FormaData; k: string; update
         <input className="inp" inputMode="decimal" placeholder={w ? 'Исправить вес, кг' : 'Вес в зале, кг'} value={weightInput} onChange={ev => setWeightInput(ev.target.value)} />
         <button className="btn" type="submit">Записать</button>
       </form>
-      {e && <DayBody e={e} remove={{ meal: i => update(d => removeMeal(d, k, i)), exercise: i => update(d => removeExercise(d, k, i)) }} />}
+      {e && <DayBody e={e} remove={{ meal: i => update(d => removeMeal(d, k, i)), exercise: i => update(d => removeExercise(d, k, i)),
+        line: i => update(d => ({ ...d, days: d.days.map(x => (x.date === k ? { ...x, training: (x.training || []).filter((_, j) => j !== i) } : x)) })) }} />}
       {!e && !w && <div className="empty">За этот день записей нет.</div>}
       {e && (
         <div className="btn-col" style={{ marginTop: 12 }}>
