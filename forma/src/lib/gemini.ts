@@ -23,7 +23,30 @@ class GeminiHttpError extends Error {
   constructor(public status: number, public apiStatus: string, message: string) { super(message); }
 }
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const busy = (status: number) => status === 500 || status === 502 || status === 503 || status === 504;
+
+/**
+ * Запрос с повторами: «модель перегружена» (5xx) у бесплатного Gemini бывает часто и проходит за секунды.
+ * Два повтора с паузой, потом — одна попытка на соседней модели (Flash ↔ Flash-Lite).
+ */
 async function call(key: string, path: string, body?: unknown) {
+  let lastErr: unknown;
+  for (const wait of [0, 1500, 3500]) {
+    if (wait) await sleep(wait);
+    try { return await callOnce(key, path, body); }
+    catch (e) { lastErr = e; if (!(e instanceof GeminiHttpError && busy(e.status))) throw e; }
+  }
+  const m = path.match(/^\/models\/([^:]+):(.+)$/);
+  if (m) {
+    const other = /lite/i.test(m[1]) ? 'gemini-flash-latest' : 'gemini-flash-lite-latest';
+    logError(`Gemini ${m[1]} перегружена, пробую ${other}`);
+    try { return await callOnce(key, `/models/${other}:${m[2]}`, body); } catch { /* покажем исходную ошибку */ }
+  }
+  throw lastErr;
+}
+
+async function callOnce(key: string, path: string, body?: unknown) {
   const send = () => fetch(BASE + path, {
     method: body ? 'POST' : 'GET',
     headers: { 'x-goog-api-key': key, ...(body ? { 'Content-Type': 'application/json' } : {}) },
@@ -60,7 +83,7 @@ function explain(e: unknown): never {
     if (e.status === 403) throw new AiError('У ключа Gemini нет доступа. Проверь его в ⚙ (и что VPN включён).');
     if (e.status === 429) throw new AiError('Бесплатный лимит Gemini на сейчас закончился. Подожди минуту или до завтра, либо выбери в ⚙ модель Flash-Lite.');
     if (e.status === 404) throw new AiError('Эта модель Gemini больше не доступна. Выбери другую в ⚙.');
-    if (e.status >= 500) throw new AiError('У Gemini временный сбой. Попробуй ещё раз.');
+    if (e.status >= 500) throw new AiError('Gemini сейчас перегружен (пробовал 4 раза, в том числе другой моделью). Подожди минуту и отправь ещё раз — текст и фото остались в поле.');
     throw new AiError(`Gemini не принял запрос (${e.status}): ${e.message}`);
   }
   throw e;

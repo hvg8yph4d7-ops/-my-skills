@@ -20,7 +20,7 @@ export const ActionSchema = z.object({
     'add_food', 'remove_food', 'add_exercise', 'remove_exercise', 'set_weight', 'set_marks',
     'close_day', 'reopen_day', 'set_targets', 'set_split', 'set_sore', 'set_note', 'set_bench_max', 'set_supplements',
     'update_food', 'update_exercise', 'set_day_text', 'set_day_macros', 'set_groups', 'clear_sore', 'remove_weight',
-    'remove_bench', 'set_sober_since', 'set_profile',
+    'remove_bench', 'set_sober_since', 'set_profile', 'move_exercise',
   ]).describe(
     'add_food: date + food; remove_food: date + index (номер позиции «Записано в приложении»); ' +
     'add_exercise: date + exercise; remove_exercise: date + index; set_weight: date + number (кг); ' +
@@ -32,7 +32,8 @@ export const ActionSchema = z.object({
     'set_day_text: date + field + для food/training — lines (ВЕСЬ новый список строк), для остальных полей — text (пусто = удалить); ' +
     'set_day_macros: date + macros (новый итог дня, когда правишь старые строки еды); set_groups: date + groups (группы мышц дня, пусто = не тренировался); ' +
     'clear_sore: group (снять «ещё болит»); remove_weight: date; remove_bench: date + index (номер подхода жима в этот день, с 0); ' +
-    'set_sober_since: date (с какого дня без алкоголя); set_profile: profile (анкета: имя, пол, возраст, рост, вес, цель)',
+    'set_sober_since: date (с какого дня без алкоголя); set_profile: profile (анкета: имя, пол, возраст, рост, вес, цель); ' +
+    'move_exercise: date + index (#N упражнения) + number (новая позиция #, с 0) — поменять порядок упражнений',
   ),
   summary: z.string().describe('Коротко по-русски, что изменится, например «Вес 68,6 кг на 10 октября»'),
   date: z.string().nullable().describe('YYYY-MM-DD'),
@@ -231,6 +232,19 @@ export function applyAction(d: FormaData, a: Action): FormaData {
     }
     case 'set_sober_since':
       return { ...d, soberSince: needDate(a) };
+    case 'move_exercise': {
+      const date = needDate(a);
+      const exs = d.days.find(x => x.date === date)?.exercises || [];
+      const to = a.number ?? -1;
+      if (a.index == null || !exs[a.index]) throw new Error('такого упражнения нет');
+      if (to < 0 || to >= exs.length) throw new Error('такой позиции нет');
+      return mapDay(d, date, x => {
+        const list = [...x.exercises!];
+        const [it] = list.splice(a.index!, 1);
+        list.splice(to, 0, it);
+        return { ...x, exercises: list };
+      });
+    }
     case 'set_profile': {
       const p = a.profile;
       if (!p || !p.name.trim()) throw new Error('нет анкеты');
@@ -359,6 +373,14 @@ export function actionDiff(d: FormaData, a: Action): DiffRow[] {
     case 'set_bench_max': return [{ was: `${d.benchMax} кг`, now: `${a.number} кг` }];
     case 'set_supplements': return listDiff(d.supplements.map(x => `${x.time}: ${x.items}`), (a.supplements || []).map(x => `${x.time}: ${x.items}`));
     case 'set_sober_since': return [{ was: d.soberSince || '—', now: a.date || '—' }];
+    case 'move_exercise': {
+      const exs = day?.exercises || [];
+      const list = [...exs];
+      if (a.index == null || !list[a.index] || a.number == null) return [];
+      const [it] = list.splice(a.index, 1);
+      list.splice(Math.max(0, Math.min(a.number, list.length)), 0, it);
+      return [{ was: exs.map(x => x.name).join(' → '), now: list.map(x => x.name).join(' → ') }];
+    }
     case 'set_profile': {
       const p = d.profile, n = a.profile;
       const line = (x?: { name: string; age: number | null; height: number | null; weight: number | null; goal: string } | null) =>

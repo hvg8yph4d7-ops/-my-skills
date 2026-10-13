@@ -174,6 +174,9 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
       }));
       const a = await askAdvisor({ settings, data, today, history });
       a.actions = a.actions.filter(x => !alreadyDone(data, x));
+      // ИИ пишет «поменял/удалил/записал», но ничего не предложил — честно предупреждаем, что дневник не менялся.
+      if (!a.actions.length && /(поменял|удалил|записал|исправил|обновил|добавил|переставил|зафиксировал|убрал)/i.test(a.reply))
+        a.reply += '\n\n⚠ Изменений не предложено — в дневнике ничего не поменялось. Попроси ещё раз конкретнее.';
       // Удалять целиком — только если пользователь прямо написал «удали». Иначе такие предложения не показываем.
       const blocked = asksToDelete(q) ? [] : a.actions.filter(x => isRemoval(data, x));
       if (blocked.length) {

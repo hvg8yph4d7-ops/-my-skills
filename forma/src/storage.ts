@@ -55,6 +55,7 @@ export function migrate(raw: unknown): FormaData {
     delete d.bench;
     d.schemaVersion = 3;
   }
+  if (d.schemaVersion === 3) Object.assign(d, dropTextDuplicates(d as FormaData));
   if (d.schemaVersion > SCHEMA_VERSION) {
     throw new Error('Файл сделан более новой версией приложения. Обнови приложение.');
   }
@@ -92,6 +93,32 @@ function toV3(d: FormaData): FormaData {
   }
   const { bench: _b, ...rest } = d;
   return { ...rest, days: days.sort((a, b) => a.date.localeCompare(b.date)) };
+}
+
+/**
+ * Починка (13.10.2026): советник записывал упражнения текстом в training («Жим штанги лёжа [грудь]»),
+ * а потом те же упражнения нормально. Такие строки убираем, если то же упражнение есть в дне как упражнение.
+ */
+function dropTextDuplicates(d: FormaData): Partial<FormaData> {
+  const TAG = /^(.+?)\s*\[(грудь|спина|ноги|плечи|бицепс|трицепс|без группы)\](?::.*)?$/i;
+  let changed = false;
+  const al = d.exerciseAliases ?? DEFAULT_ALIASES;
+  const days = d.days.map(day => {
+    if (!day.training?.length || !day.exercises?.length) return day;
+    const names = new Set(day.exercises.map(x => canon(al, x.name, x.group, day.groups).name));
+    const keep = day.training.filter(line => {
+      const m = line.match(TAG);
+      if (!m) return true;
+      const g = m[2].toLowerCase() === 'без группы' ? null : m[2].toLowerCase();
+      return !names.has(canon(al, m[1], g, day.groups).name);
+    });
+    if (keep.length === day.training.length) return day;
+    changed = true;
+    const next: Day = { ...day, training: keep };
+    if (!keep.length) delete next.training;
+    return next;
+  });
+  return changed ? { days } : {};
 }
 
 /** Версия встроенных данных. Новая выгрузка из чата → новый exportedAt → слияние при запуске. */
