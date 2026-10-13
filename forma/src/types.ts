@@ -89,6 +89,7 @@ export interface FormaData {
   supplements: { time: string; items: string }[];
   suppRules?: string[]; // правила приёма — подсказка под схемой добавок
   suppRev?: string; // какое обновление схемы добавок уже применено
+  patches?: string[]; // какие разовые записи (src/lib/patches.ts) уже внесены
   marks: Record<string, { p: boolean; g: boolean }>; // p — добавки, g — зал
   weight: { date: string; value: number }[];
   /** Устарело с v3: подходы жима живут в упражнении «Жим штанги лёжа». Остаётся только у старых копий до миграции. */

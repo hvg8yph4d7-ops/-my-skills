@@ -15,6 +15,7 @@ import { Onboarding } from './components/Onboarding';
 import { ProfileSettings } from './components/ProfileSettings';
 import { SupplementsSettings } from './components/SupplementsSettings';
 import { needsSuppUpgrade, upgradeSupps } from './lib/supplements';
+import { applyPatches, pendingPatches } from './lib/patches';
 import { Splash } from './components/Splash';
 import { logError } from './lib/bugs';
 import { CloudError, cloudEnabled, getSession, onAuth, pullChat, pullClient, pullOwn, pushChat, pushDiary } from './lib/cloud';
@@ -197,6 +198,17 @@ export function App() {
     const t = setTimeout(() => update(d => (needsSuppUpgrade(d) ? upgradeSupps(d) : d)), 2500);
     return () => clearTimeout(t);
   }, [data, viewing, sync, session, update]);
+
+  // Разовые записи, которые пользователь попросил внести за него (src/lib/patches.ts). Те же условия, что выше.
+  useEffect(() => {
+    if (!data || viewing || !pendingPatches(data).length || sync === 'saving' || (session && sync !== 'ok')) return;
+    const t = setTimeout(() => {
+      let added: string[] = [];
+      update(d => { const r = applyPatches(d); added = r.added; return r.data; });
+      setTimeout(() => { if (added.length) notify('Записано за тебя: ' + added.join('; ')); }, 0);
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [data, viewing, sync, session, update, notify]);
 
   // Правка дневника клиента: сразу на сервер, у клиента подтянется при следующем открытии.
   const updateClient = useCallback((fn: (d: FormaData) => FormaData) => {
