@@ -6,6 +6,8 @@
  *  2) держит лист «Итого» с формулами (заявки, гости, разбивка по источникам);
  *  3) отправляет уведомление в Telegram-чат организаторов.
  *
+ *  4) отдаёт список заявок в админку (admin.html) по паролю и отмечает пришедших.
+ *
  * Токен бота хранится только здесь, на стороне Google, — на сайте его не видно.
  * Пошаговая настройка — в файле ИНСТРУКЦИЯ.md.
  */
@@ -13,12 +15,13 @@
 // ===================== НАСТРОЙКИ =====================
 var TELEGRAM_BOT_TOKEN = '';   // токен от @BotFather, например '1234567890:AAH...'
 var TELEGRAM_CHAT_ID   = '';   // id чата организаторов, например '-1001234567890'
+var ADMIN_PASSWORD     = '';   // пароль для админки (admin.html). Пусто — админка выключена
 // =====================================================
 
 var TZ = 'Asia/Yekaterinburg';
 var SHEET_LEADS = 'Заявки';
 var SHEET_TOTAL = 'Итого';
-var HEADERS = ['Дата и время заявки', 'Имя', 'Телефон', 'Сколько человек', 'Источник', 'Повтор номера', 'ID заявки'];
+var HEADERS = ['Дата и время заявки', 'Имя', 'Телефон', 'Сколько человек', 'Источник', 'Повтор номера', 'ID заявки', 'Пришёл'];
 var SOURCES = ['Max', 'Telegram', 'WhatsApp', 'VK', 'Instagram', 'От знакомых', 'Другое', 'Не указано'];
 
 
@@ -27,6 +30,7 @@ function doPost(e) {
   var lock = LockService.getScriptLock();
   try {
     var data = parseBody_(e);
+    if (data.action === 'admin') return json_(admin_(data));
 
     // Ловушка для ботов: скрытое поле заполнено или форма заполнена быстрее 2 секунд
     if (data.company || (Number(data.elapsed) > 0 && Number(data.elapsed) < 2)) {
@@ -84,7 +88,7 @@ function setup() {
       ? ss.getSheets()[0].setName(SHEET_LEADS)
       : ss.insertSheet(SHEET_LEADS, 0);
   }
-  if (sheet.getRange(1, 1).getValue() !== HEADERS[0]) {
+  if (sheet.getRange(1, HEADERS.length).getValue() !== HEADERS[HEADERS.length - 1]) {
     sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS])
       .setFontWeight('bold').setBackground('#121418').setFontColor('#FFFFFF');
     sheet.setFrozenRows(1);
@@ -97,6 +101,7 @@ function setup() {
     sheet.setColumnWidths(4, 2, 130);
     sheet.setColumnWidths(6, 1, 110);
     sheet.setColumnWidths(7, 1, 170);
+    sheet.setColumnWidths(8, 1, 90);
   }
 
   if (!ss.getSheetByName(SHEET_TOTAL)) buildTotals_(ss);
@@ -116,6 +121,11 @@ function buildTotals_(ss) {
     ['Повторные заявки (не в итоге)', '=COUNTIF(' + L + 'F2:F,"да")'],
     ['Всего строк в «Заявках»', '=COUNTA(' + L + 'B2:B)']
   ]);
+  t.getRange('D3:E4').setValues([
+    ['Пришли (заявок)', '=COUNTIFS(' + L + 'H2:H,"да",' + notRepeat + ')'],
+    ['Пришли (гостей)', '=SUMIFS(' + L + 'D2:D,' + L + 'H2:H,"да",' + notRepeat + ')']
+  ]);
+  t.getRange('D3:D4').setFontWeight('bold');
   t.getRange('A3:A6').setFontWeight('bold');
   t.getRange('B3:B4').setFontWeight('bold').setFontSize(14);
 
@@ -133,6 +143,54 @@ function buildTotals_(ss) {
     .setFontWeight('bold');
   t.setColumnWidth(1, 260);
   t.setColumnWidths(2, 2, 110);
+  t.setColumnWidth(4, 160);
+}
+
+
+// ===================== Админка =====================
+
+/** Запросы из admin.html: список заявок и отметка «пришёл». Всё — только с паролем. */
+function admin_(d) {
+  var cache = CacheService.getScriptCache();
+  var fails = Number(cache.get('admin_fails') || 0);
+  if (fails >= 10) return { ok: false, error: 'locked' };   // 10 неверных паролей — пауза 10 минут
+  if (!ADMIN_PASSWORD || String(d.key || '') !== ADMIN_PASSWORD) {
+    cache.put('admin_fails', String(fails + 1), 600);
+    return { ok: false, error: ADMIN_PASSWORD ? 'password' : 'disabled' };
+  }
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sheet = setup();
+    if (d.op === 'checkin') {
+      var row = parseInt(d.row, 10);
+      if (!(row >= 2 && row <= sheet.getLastRow())) return { ok: false, error: 'row' };
+      if (String(sheet.getRange(row, 7).getValue()) !== String(d.id)) return { ok: false, error: 'moved' };
+      sheet.getRange(row, 8).setValue(d.came ? 'да' : '');
+    }
+    return { ok: true, leads: listLeads_(sheet), now: new Date().toISOString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function listLeads_(sheet) {
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  return sheet.getRange(2, 1, last - 1, HEADERS.length).getValues().map(function (r, i) {
+    return {
+      row: i + 2,
+      time: r[0] instanceof Date ? r[0].toISOString() : String(r[0]),
+      name: String(r[1]).replace(/^'/, ''),
+      phone: String(r[2]),
+      guests: Number(r[3]) || 0,
+      source: String(r[4]),
+      repeat: r[5] === 'да',
+      id: String(r[6]),
+      came: r[7] === 'да'
+    };
+  }).filter(function (x) { return x.name || x.phone; });
 }
 
 

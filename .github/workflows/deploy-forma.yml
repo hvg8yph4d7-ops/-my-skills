@@ -1,10 +1,10 @@
-# Публикует приложение «Форма» на GitHub Pages при каждом изменении в main.
+# Публикует приложение «Форма» и сайт WOODNEXT (/woodnext/) на GitHub Pages при каждом изменении в main.
 name: Deploy Forma
 
 on:
   push:
     branches: [main]
-    paths: ['forma/**', '.github/workflows/deploy-forma.yml']
+    paths: ['forma/**', 'woodnext/**', '.github/workflows/deploy-forma.yml']
   workflow_dispatch:
 
 permissions:
@@ -31,6 +31,10 @@ jobs:
           cache-dependency-path: forma/package-lock.json
       - run: npm ci
       - run: npm run build
+      - name: Добавить сайт WOODNEXT
+        run: |
+          cp -r ../woodnext dist/woodnext
+          rm -rf dist/woodnext/apps-script dist/woodnext/_source dist/woodnext/*.md
       - uses: actions/upload-pages-artifact@v3
         with:
           path: forma/dist
