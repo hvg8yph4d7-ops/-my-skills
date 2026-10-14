@@ -5,9 +5,10 @@
    сайт просто не покажет.
    ========================================================================== */
 window.WOODNEXT_CONFIG = {
-  // Ссылка на веб-приложение Google Apps Script (см. ИНСТРУКЦИЯ.md, шаг 1).
-  // Выглядит так: https://script.google.com/macros/s/AKfy..../exec
-  SCRIPT_URL: '',
+  // Куда сайт отправляет заявки и откуда админка берёт список — серверные функции Netlify
+  // (папка netlify/functions). Менять не нужно.
+  SCRIPT_URL: '/api/signup',
+  ADMIN_URL: '/api/admin',
 
   // Логотип уже стоит в разметке (images/logo.png). Чтобы сменить — замените сам файл.
   LOGO_IMAGE: '',

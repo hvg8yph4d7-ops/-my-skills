@@ -71,6 +71,7 @@
     .came { min-width: 92px; height: 44px; padding: 0 12px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); color: var(--muted); font: 700 13px var(--body); cursor: pointer; }
     .came.is-on { background: var(--green); border-color: var(--green); color: #fff; }
     .came[disabled] { opacity: .5; }
+    .del { padding: 0; border: 0; background: none; color: var(--muted); font: 600 12px var(--body); text-decoration: underline; cursor: pointer; }
     .empty { padding: 30px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 14px; }
     .err { margin-top: 12px; color: var(--danger); font-size: 14px; }
     .err:empty { display: none; }
@@ -101,7 +102,7 @@
   <section class="login" id="loginView">
     <span class="logo" aria-hidden="true"><img class="logo__img" src="images/logo.png" alt="WOODNEXT" width="900" height="187"></span>
     <h1>Заявки на день открытых дверей</h1>
-    <p>Только для организаторов. Введите пароль из настроек Apps Script (ADMIN_PASSWORD).</p>
+    <p>Только для организаторов. Введите пароль администратора.</p>
     <form id="loginForm">
       <div class="field">
         <input class="search" id="pwd" type="password" autocomplete="current-password" placeholder="Пароль" required style="height:56px">
@@ -113,7 +114,7 @@
       <p class="err" id="loginErr" role="alert"></p>
     </form>
     <div class="notice" id="notConnected" hidden>
-      <b>Админка ещё не подключена.</b> Впишите SCRIPT_URL в config.js и ADMIN_PASSWORD в Apps Script — см. ИНСТРУКЦИЯ.md, шаги 1 и 2.
+      <b>Админка работает только на сайте в Netlify.</b> Откройте её по адресу вашего сайта на netlify.app.
       <button class="btn btn--ghost btn--block" type="button" id="demoBtn" style="margin-top:12px">Посмотреть демо</button>
     </div>
   </section>
@@ -161,7 +162,7 @@
 (function () {
   'use strict';
   var C = window.WOODNEXT_CONFIG || {};
-  var URL_ = C.SCRIPT_URL || '';
+  var URL_ = C.ADMIN_URL || '';
   var KEY = 'woodnext_admin_key';
   var SOURCES = ['Max', 'Telegram', 'WhatsApp', 'VK', 'Instagram', 'От знакомых', 'Другое', 'Не указано'];
   var $ = function (id) { return document.getElementById(id); };
@@ -182,7 +183,7 @@
       .then(function (r) { return r.json(); })
       .then(function (res) {
         if (!res.ok) {
-          var msg = { password: 'Неверный пароль', disabled: 'В Apps Script не задан ADMIN_PASSWORD', locked: 'Слишком много неверных попыток. Подождите 10 минут.', moved: 'Строки в таблице сдвинулись — обновите список' }[res.error] || 'Ошибка сервера';
+          var msg = { password: 'Неверный пароль', moved: 'Заявка изменилась — обновите список' }[res.error] || 'Ошибка сервера';
           var err = new Error(msg); err.code = res.error; throw err;
         }
         return res;
@@ -190,12 +191,12 @@
   }
 
   /* ---------- Вход ---------- */
-  var configured = URL_ && URL_.charAt(0) !== '[';
+  var configured = URL_ && URL_.charAt(0) !== '[' && !/github\.io$/.test(location.hostname);
   if (!configured) $('notConnected').hidden = false;
 
   $('loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    if (!configured) { $('loginErr').textContent = 'Сначала подключите SCRIPT_URL в config.js'; return; }
+    if (!configured) { $('loginErr').textContent = 'Откройте админку на сайте в Netlify'; return; }
     state.key = $('pwd').value;
     var btn = $('loginBtn');
     btn.disabled = true; btn.classList.add('is-loading');
@@ -288,8 +289,9 @@
         '<span class="tag tag--g">' + l.guests + ' ' + plural(l.guests, ['человек', 'человека', 'человек']) + '</span>' +
         '<span class="tag">' + esc(l.source) + '</span>' +
         (l.repeat ? '<span class="tag tag--r">повтор номера</span>' : '') +
-        '<span>' + when(l.time) + '</span></p></div>' +
-        (l.repeat ? '<span></span>' : '<button class="came' + (l.came ? ' is-on' : '') + '" type="button" data-row="' + l.row + '">' + (l.came ? '✓ Пришёл' : 'Пришёл?') + '</button>') +
+        '<span>' + when(l.time) + '</span>' +
+        '<button class="del" type="button" data-row="' + esc(l.row) + '">Удалить</button></p></div>' +
+        (l.repeat ? '<span></span>' : '<button class="came' + (l.came ? ' is-on' : '') + '" type="button" data-row="' + esc(l.row) + '">' + (l.came ? '✓ Пришёл' : 'Пришёл?') + '</button>') +
         '</article>';
     }).join('') : '<p class="empty">' + (state.leads.length ? 'Никого не нашлось' : 'Заявок пока нет — они появятся здесь сразу после записи на сайте') + '</p>';
   }
@@ -304,9 +306,11 @@
 
   // Отметка «пришёл» — на входе в день мероприятия
   $('list').addEventListener('click', function (e) {
+    var d = e.target.closest('.del');
+    if (d) { removeLead(d.getAttribute('data-row')); return; }
     var b = e.target.closest('.came'); if (!b) return;
-    var row = Number(b.getAttribute('data-row'));
-    var lead = state.leads.filter(function (l) { return l.row === row; })[0];
+    var row = b.getAttribute('data-row');
+    var lead = state.leads.filter(function (l) { return String(l.row) === row; })[0];
     if (!lead) return;
     var came = !lead.came;
     if (state.demo) { lead.came = came; render(); return; }
@@ -317,6 +321,16 @@
       $('dashErr').textContent = err.message === 'Failed to fetch' ? 'Нет связи — отметка не сохранилась' : err.message;
     });
   });
+
+  // Удаление (например, тестовых заявок)
+  function removeLead(row) {
+    var lead = state.leads.filter(function (l) { return String(l.row) === row; })[0];
+    if (!lead || !confirm('Удалить заявку «' + lead.name + '», ' + lead.phone + '?')) return;
+    if (state.demo) { state.leads = state.leads.filter(function (l) { return l !== lead; }); render(); return; }
+    api({ op: 'delete', row: row, id: lead.id }).then(apply).catch(function (err) {
+      $('dashErr').textContent = err.message === 'Failed to fetch' ? 'Нет связи — заявка не удалена' : err.message;
+    });
+  }
 
   // Выгрузка в CSV (открывается в Excel и Google Таблицах)
   $('csvBtn').addEventListener('click', function () {

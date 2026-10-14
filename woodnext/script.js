@@ -233,7 +233,7 @@
     if (!data) return;
 
     if (!isSet(C.SCRIPT_URL)) {
-      formErr.textContent = 'Форма ещё не подключена: впишите SCRIPT_URL в config.js.';
+      formErr.textContent = 'Форма ещё не подключена.';
       return;
     }
 
