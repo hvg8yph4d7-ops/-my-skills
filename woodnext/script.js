@@ -54,7 +54,7 @@
     img.alt = fig.textContent.trim();
     img.decoding = 'async';
     img.loading = 'lazy';
-    img.onload = function () { fig.appendChild(img); };
+    img.onload = function () { fig.appendChild(img); fig.classList.add('has-photo'); };
     img.src = fig.getAttribute('data-photo');
   });
 

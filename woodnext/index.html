@@ -35,6 +35,10 @@
 
 <!-- ============ ПЕРВЫЙ ЭКРАН ============ -->
 <header class="hero" id="top">
+  <picture class="hero__photo" aria-hidden="true">
+    <source media="(min-width: 700px)" srcset="images/house-1.jpg">
+    <img src="images/house-3.jpg" alt="" fetchpriority="high" decoding="async">
+  </picture>
   <div class="hero__glow" aria-hidden="true"></div>
   <div class="wrap hero__inner">
 
@@ -59,7 +63,7 @@
       </li>
       <li class="fact fact--wide">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
-        <span><b>Производство WOODNEXT</b><small data-fill="ADDRESS">[адрес в Каменске-Уральском]</small></span>
+        <span><b>Производство WOODNEXT</b><small data-fill="ADDRESS">Каменск-Уральский, ул. Суворова, 47В, корпус 7</small></span>
       </li>
     </ul>
 
@@ -81,37 +85,6 @@
       </div>
     </div>
 
-    <!-- Иллюстрация: модульный дом вечером -->
-    <svg class="hero__art" viewBox="0 0 420 170" aria-hidden="true">
-      <defs>
-        <linearGradient id="win" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="#FFD9A0"/><stop offset="1" stop-color="#D9A066"/>
-        </linearGradient>
-        <pattern id="slats" width="7" height="10" patternUnits="userSpaceOnUse">
-          <rect width="7" height="10" fill="#8E5427"/><rect width="4.5" height="10" fill="#B8743A"/>
-        </pattern>
-        <radialGradient id="spill" cx=".5" cy="0" r="1">
-          <stop offset="0" stop-color="#D9A066" stop-opacity=".35"/><stop offset="1" stop-color="#D9A066" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-      <!-- свет на газоне -->
-      <ellipse cx="170" cy="150" rx="150" ry="18" fill="url(#spill)"/>
-      <!-- дом -->
-      <rect x="40" y="48" width="240" height="96" fill="#1D2027"/>
-      <rect x="40" y="48" width="92" height="96" fill="url(#slats)"/>
-      <rect x="146" y="64" width="118" height="80" fill="url(#win)"/>
-      <path d="M185 64v80M225 64v80" stroke="#1D2027" stroke-width="3"/>
-      <rect x="60" y="76" width="44" height="34" fill="url(#win)"/>
-      <rect x="28" y="38" width="266" height="10" fill="#2A2E36"/>
-      <!-- баня -->
-      <rect x="312" y="84" width="78" height="60" fill="url(#slats)"/>
-      <rect x="304" y="76" width="94" height="8" fill="#2A2E36"/>
-      <rect x="326" y="98" width="22" height="46" fill="#1D2027"/>
-      <rect x="356" y="98" width="22" height="18" fill="url(#win)"/>
-      <!-- газон -->
-      <rect x="0" y="144" width="420" height="6" fill="#5E8C3A"/>
-      <rect x="0" y="150" width="420" height="20" fill="#1A1D22"/>
-    </svg>
   </div>
 </header>
 
@@ -120,7 +93,6 @@
   <!-- ============ ПОЧЕМУ СТОИТ ПРИЙТИ ============ -->
   <section class="section" id="why">
     <div class="wrap">
-      <p class="eyebrow reveal">Зачем приезжать</p>
       <h2 class="h2 reveal">Почему стоит прийти</h2>
       <div class="cards">
         <article class="card reveal">
@@ -135,8 +107,8 @@
         </article>
         <article class="card reveal">
           <div class="card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9.5 16.5l5-5"/><circle cx="9.5" cy="12" r=".8"/><circle cx="14.5" cy="16" r=".8"/></svg></div>
-          <h3>Всё про ипотеку</h3>
-          <p>Консультация по ипотеке с партнёром ДомКлик и подбор планировки под вашу задумку.</p>
+          <h3>Рассрочка и расчёт</h3>
+          <p>Расскажем про рассрочку и сразу сделаем расчёт стоимости вашего дома.</p>
         </article>
         <article class="card reveal">
           <div class="card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 13h18M12 9v12M12 9S10.5 4 7.5 4 6 9 12 9zM12 9s1.5-5 4.5-5S18 9 12 9z"/></svg></div>
@@ -157,14 +129,14 @@
       <div class="prize-main reveal">
         <span class="prize-main__tag">Главный приз</span>
         <p class="prize-main__sum">50&nbsp;000&nbsp;₽</p>
-        <p class="prize-main__text">сертификат на дом WOODNEXT</p>
+        <p class="prize-main__text">сертификат</p>
         <svg class="prize-main__arrow" viewBox="0 0 24 10" aria-hidden="true"><path d="M1 5h20M16 1l5 4-5 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>
 
       <ul class="prizes">
-        <li class="prize reveal"><span class="prize__n">02</span>Банный абажур</li>
-        <li class="prize reveal"><span class="prize__n">03</span>Соляной абажур</li>
-        <li class="prize reveal"><span class="prize__n">04</span>Дачный туалет</li>
+        <li class="prize reveal"><span class="prize__n">02</span>Дачный туалет</li>
+        <li class="prize reveal"><span class="prize__n">03</span>Банный абажур</li>
+        <li class="prize reveal"><span class="prize__n">04</span>Соляной абажур</li>
       </ul>
     </div>
   </section>
@@ -209,7 +181,7 @@
             <ul>
               <li>Чаепитие</li>
               <li>Вопросы менеджерам и технологам</li>
-              <li>Консультации по ипотеке и проектам</li>
+              <li>Рассрочка и расчёт стоимости вашего проекта</li>
               <li>Розыгрыш призов</li>
             </ul>
           </div>
@@ -242,21 +214,15 @@
       <ul class="stats">
         <li class="stat reveal"><b>4000+</b><span>реализованных проектов</span></li>
         <li class="stat reveal"><b>Своё</b><span>производство в Каменске-Уральском</span></li>
-        <li class="stat reveal"><b>Ипотека</b><span>помогаем оформить с партнёром ДомКлик</span></li>
+        <li class="stat reveal"><b>Рассрочка</b><span>и расчёт стоимости прямо на встрече</span></li>
         <li class="stat reveal"><b>Под вас</b><span>планировки под задумки клиента</span></li>
       </ul>
 
-      <!-- ФОТО: положите файлы в папку images с такими именами — они появятся сами -->
+      <!-- Наши дома. Фото производства появится само, если положить images/production.jpg -->
       <div class="gallery">
-        <figure class="photo photo--wide reveal" data-photo="images/house.jpg">
-          <div class="photo__ph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>Фото дома</div>
-        </figure>
-        <figure class="photo reveal" data-photo="images/banya.jpg">
-          <div class="photo__ph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 20c0-3 2-3 2-6M12 20c0-3 2-3 2-6M16 20c0-3 2-3 2-6M4 10h16"/></svg>Фото бани</div>
-        </figure>
-        <figure class="photo reveal" data-photo="images/production.jpg">
-          <div class="photo__ph"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V10l6 4V10l6 4V5h6v16z"/></svg>Фото производства</div>
-        </figure>
+        <figure class="photo reveal"><img src="images/house-1.jpg" alt="Модульный дом WOODNEXT с террасой" loading="lazy" decoding="async"></figure>
+        <figure class="photo reveal"><img src="images/house-2.jpg" alt="Модульный дом WOODNEXT вечером" loading="lazy" decoding="async"></figure>
+        <figure class="photo photo--optional reveal" data-photo="images/production.jpg"><div class="photo__ph">Фото производства</div></figure>
       </div>
     </div>
   </section>
@@ -328,7 +294,7 @@
         <div class="thanks__check"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
         <h2 class="h2">Спасибо, вы записаны!</h2>
         <p class="thanks__text">Ждём вас 8 ноября в 12:00</p>
-        <p class="thanks__addr" data-fill="ADDRESS">[адрес в Каменске-Уральском]</p>
+        <p class="thanks__addr" data-fill="ADDRESS">Каменск-Уральский, ул. Суворова, 47В, корпус 7</p>
         <div class="thanks__actions">
           <button class="btn btn--primary btn--block" type="button" id="icsBtn">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M12 13v5M9.5 15.5h5"/></svg>
@@ -352,8 +318,8 @@
     <p class="footer__desc">Модульные дома и бани · Екатеринбург</p>
 
     <ul class="footer__contacts">
-      <li><a data-href="PHONE" href="#" class="footer__phone" data-fill="PHONE_TEXT">[телефон]</a></li>
-      <li data-fill="ADDRESS">[адрес в Каменске-Уральском]</li>
+      <li><a data-href="PHONE" href="tel:+73433009698" class="footer__phone" data-fill="PHONE_TEXT">+7 (343) 300-96-98</a></li>
+      <li data-fill="ADDRESS">Каменск-Уральский, ул. Суворова, 47В, корпус 7</li>
     </ul>
 
     <ul class="socials">
