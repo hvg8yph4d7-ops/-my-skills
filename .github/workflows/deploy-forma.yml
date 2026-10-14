@@ -34,7 +34,7 @@ jobs:
       - name: Добавить сайт WOODNEXT
         run: |
           cp -r ../woodnext dist/woodnext
-          rm -rf dist/woodnext/netlify dist/woodnext/_source dist/woodnext/*.md dist/woodnext/package.json
+          rm -rf dist/woodnext/netlify dist/woodnext/apps-script dist/woodnext/_source dist/woodnext/*.md dist/woodnext/package.json
       - uses: actions/upload-pages-artifact@v3
         with:
           path: forma/dist

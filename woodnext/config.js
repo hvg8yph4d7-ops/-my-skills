@@ -5,10 +5,9 @@
    сайт просто не покажет.
    ========================================================================== */
 window.WOODNEXT_CONFIG = {
-  // Куда сайт отправляет заявки и откуда админка берёт список — серверные функции Netlify
-  // (папка netlify/functions). Менять не нужно.
-  SCRIPT_URL: '/api/signup',
-  ADMIN_URL: '/api/admin',
+  // Ссылка на Google Apps Script (веб-приложение, заканчивается на /exec) — туда уходят заявки
+  // и оттуда админка берёт список. Работает в России без VPN.
+  GOOGLE_SCRIPT_URL: '',
 
   // Логотип уже стоит в разметке (images/logo.png). Чтобы сменить — замените сам файл.
   LOGO_IMAGE: '',
@@ -39,3 +38,10 @@ window.WOODNEXT_CONFIG = {
   EVENT_START_UTC: '2026-11-08T07:00:00Z',
   EVENT_END_UTC: '2026-11-08T10:00:00Z'
 };
+
+// Куда отправлять заявки: Google Apps Script, а если его ещё нет и сайт открыт на Netlify — сервер Netlify.
+(function (C) {
+  var g = C.GOOGLE_SCRIPT_URL, netlify = /netlify\.app$/.test(location.hostname);
+  C.SCRIPT_URL = g || (netlify ? '/api/signup' : '');
+  C.ADMIN_URL = g || (netlify ? '/api/admin' : '');
+})(window.WOODNEXT_CONFIG);
