@@ -53,8 +53,8 @@ ul, ol { padding: 0; list-style: none; }
   color: #fff;
 }
 .logo--sm .logo__text { font-size: 18px; }
-.logo img { height: 34px; width: auto; }
-.logo--sm img { height: 28px; }
+.logo img { display: block; height: 30px; width: auto; }
+.logo--sm img { height: 22px; }
 
 /* ---------- Кнопки ---------- */
 .btn {
@@ -324,6 +324,8 @@ ul, ol { padding: 0; list-style: none; }
 @media (min-width: 700px) {
   .wrap { padding: 0 32px; }
   .logo__text { font-size: 26px; }
+  .logo img { height: 36px; }
+  .logo--sm img { height: 26px; }
   .facts { grid-template-columns: repeat(3, 1fr); max-width: 760px; }
   .fact--wide { grid-column: auto; }
   .hero__actions { flex-direction: row; width: auto; align-items: center; }
