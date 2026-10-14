@@ -25,9 +25,9 @@ window.WOODNEXT_CONFIG = {
 
   // Соцсети.
   INSTAGRAM: 'https://www.instagram.com/woodnext_96/',
-  MAX: '[полная ссылка max.ru/join/...]',
-  TELEGRAM: '',
-  VK: '',
+  MAX: 'https://max.ru/join/mFmMlgwkAFoPRpCLstjsttuOVkNcu2NRC4KbWCs-dog',
+  TELEGRAM: 'https://t.me/woodnext_96',
+  VK: 'https://vk.ru/woodnext_96',
 
   // Оператор персональных данных (для страницы политики).
   COMPANY_NAME: '[юр. название компании]',
