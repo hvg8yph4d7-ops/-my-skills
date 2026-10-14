@@ -79,7 +79,7 @@ function doGet() {
  * Запустите один раз вручную (кнопка «Выполнить»), дальше вызывается сам.
  */
 function setup() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = getSpreadsheet_();
   if (ss.getSpreadsheetTimeZone() !== TZ) ss.setSpreadsheetTimeZone(TZ);
 
   var sheet = ss.getSheetByName(SHEET_LEADS);
@@ -106,6 +106,30 @@ function setup() {
 
   if (!ss.getSheetByName(SHEET_TOTAL)) buildTotals_(ss);
   return sheet;
+}
+
+/**
+ * Таблица для заявок. Если скрипт открыт из таблицы (Расширения → Apps Script) — берётся она.
+ * Если скрипт создан отдельно на script.google.com (например, с телефона) — скрипт сам создаёт
+ * таблицу «WOODNEXT — заявки» у вас в Google Диске и запоминает её. Ссылка — в журнале после setup.
+ */
+function getSpreadsheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss) return ss;
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('SHEET_ID');
+  if (id) {
+    try { return SpreadsheetApp.openById(id); } catch (e) { /* таблицу удалили — создадим новую */ }
+  }
+  ss = SpreadsheetApp.create('WOODNEXT — заявки на день открытых дверей');
+  props.setProperty('SHEET_ID', ss.getId());
+  console.log('Создана таблица: ' + ss.getUrl());
+  return ss;
+}
+
+/** Показывает ссылку на таблицу с заявками. Запустите из редактора, если потеряли её. */
+function showSheetUrl() {
+  console.log('Таблица с заявками: ' + setup().getParent().getUrl());
 }
 
 /** Лист «Итого». Повторные заявки с того же номера в итог не входят. */
