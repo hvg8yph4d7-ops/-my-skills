@@ -7,7 +7,7 @@
 window.WOODNEXT_CONFIG = {
   // Ссылка на Google Apps Script (веб-приложение, заканчивается на /exec) — туда уходят заявки
   // и оттуда админка берёт список. Работает в России без VPN.
-  GOOGLE_SCRIPT_URL: '',
+  GOOGLE_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwW_YtpWwbaTR07oQeoY18N--_ujKYImsVKujcb9xfxp9wTt3K8attZ2nnL2_uwjuCD6g/exec',
 
   // Логотип уже стоит в разметке (images/logo.png). Чтобы сменить — замените сам файл.
   LOGO_IMAGE: '',
