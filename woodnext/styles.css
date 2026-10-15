@@ -360,3 +360,4 @@ ul, ol { padding: 0; list-style: none; }
   .fact--wide { grid-column: 1 / -1; }
 }
 #signup { padding-top: 0; }
+.chips__note, .footer__note { margin-top: 8px; font-size: 11px; line-height: 1.4; color: var(--muted); }
