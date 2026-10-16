@@ -503,7 +503,7 @@ export const PromoStory: React.FC = () => {
             scene={D}
             zooms={[[8.4, 1], [10.44, 1.18], [12.96, 1.06], [13.72, 1.2]]}
             bw={[10.44, 12.9]}
-            behind={<Text3D from={D.from} lines={["ДЕНЬ", "ОТКРЫТЫХ", "ДВЕРЕЙ"]} at={9.3} breakAt={10.35} top={330} size={150} wall="#8E5427" />}
+            behind={<Text3D from={D.from} lines={["ДЕНЬ", "ОТКРЫТЫХ", "ДВЕРЕЙ"]} at={9.3} breakAt={10.35} top={270} size={150} wall="#8E5427" />}
           />
           <Flashback from={D.from} at={10.44} until={12.9} />
           <Sticker from={D.from} kind="gift" at={14.6} x={830} y={760} size={240} rot={10} />
