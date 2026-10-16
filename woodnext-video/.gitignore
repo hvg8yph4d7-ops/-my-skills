@@ -8,3 +8,4 @@ out
 
 # Исходные ролики — большие, в git не кладём
 public/*.mp4
+public/*.webm
