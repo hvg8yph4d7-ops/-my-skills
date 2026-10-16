@@ -1,6 +1,7 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Solid,
   Img,
   interpolate,
   OffthreadVideo,
@@ -15,6 +16,9 @@ import { TransitionSeries, linearTiming, TransitionPresentation } from "@remotio
 import { fade } from "@remotion/transitions/fade";
 import { slide } from "@remotion/transitions/slide";
 import { wipe } from "@remotion/transitions/wipe";
+import { flip } from "@remotion/transitions/flip";
+import { clockWipe } from "@remotion/transitions/clock-wipe";
+import { lightLeak } from "@remotion/effects/light-leak";
 import { loadFont } from "@remotion/fonts";
 
 // Шрифты лежат локально в public/fonts (Montserrat — заголовки, Manrope — текст)
@@ -42,6 +46,84 @@ const C = {
   green: "#5E8C3A",
   white: "#FFFFFF",
 };
+
+/* ---------------- Два стиля монтажа ---------------- */
+type Theme = {
+  name: "wood" | "fresh";
+  clipFilter: string;
+  shade: string; // затемнение сверху/снизу кадра
+  pillBg: string;
+  pillText: string;
+  pillBorder: string;
+  titleBoxed: boolean; // заголовок на плашках (светлый стиль)
+  title: string;
+  titleAccent: string;
+  cardBg: string;
+  cardText: string;
+  cardSub: string;
+  prize: string;
+  endBg: string;
+  endText: string;
+  endSub: string;
+  logoFilter: string;
+  btnBg: string;
+  btnText: string;
+};
+
+const CREAM = "#F4EDE3";
+const INK = "#1B1E23";
+
+export const THEMES: Record<"wood" | "fresh", Theme> = {
+  // Тёмный «дерево»: графит, тёплое дерево, вспышки
+  wood: {
+    name: "wood",
+    clipFilter: "saturate(1.08) contrast(1.05) sepia(0.06)",
+    shade:
+      "linear-gradient(180deg, rgba(18,20,24,.55) 0%, rgba(18,20,24,0) 28%, rgba(18,20,24,0) 62%, rgba(18,20,24,.55) 100%)",
+    pillBg: "rgba(18,20,24,.78)",
+    pillText: "#FFFFFF",
+    pillBorder: "2px solid rgba(217,160,102,.55)",
+    titleBoxed: false,
+    title: "#FFFFFF",
+    titleAccent: "#D9A066",
+    cardBg: "rgba(18,20,24,.8)",
+    cardText: "#FFFFFF",
+    cardSub: "rgba(255,255,255,.85)",
+    prize: "linear-gradient(135deg, #D9A066, #B8743A 55%, #8E5427)",
+    endBg:
+      "radial-gradient(70% 45% at 80% 10%, rgba(217,160,102,.35), transparent 70%), radial-gradient(70% 50% at 10% 100%, rgba(184,116,58,.3), transparent 70%), #121418",
+    endText: "#FFFFFF",
+    endSub: "rgba(255,255,255,.75)",
+    logoFilter: "drop-shadow(0 6px 20px rgba(0,0,0,.5))",
+    btnBg: "#FFFFFF",
+    btnText: "#121418",
+  },
+  // Светлый «свежий»: кремовые плашки, зелёные акценты, сочная картинка, блики
+  fresh: {
+    name: "fresh",
+    clipFilter: "saturate(1.22) contrast(1.08) brightness(1.04)",
+    shade: "linear-gradient(180deg, rgba(0,0,0,.18) 0%, rgba(0,0,0,0) 22%, rgba(0,0,0,0) 75%, rgba(0,0,0,.25) 100%)",
+    pillBg: CREAM,
+    pillText: INK,
+    pillBorder: "none",
+    titleBoxed: true,
+    title: INK,
+    titleAccent: "#FFFFFF",
+    cardBg: CREAM,
+    cardText: INK,
+    cardSub: "rgba(27,30,35,.7)",
+    prize: "linear-gradient(135deg, #7FB352, #5E8C3A 55%, #3F6526)",
+    endBg: `radial-gradient(80% 50% at 85% 0%, rgba(94,140,58,.28), transparent 70%), radial-gradient(70% 50% at 0% 100%, rgba(217,160,102,.35), transparent 70%), ${CREAM}`,
+    endText: INK,
+    endSub: "rgba(27,30,35,.7)",
+    logoFilter: "brightness(0) saturate(100%) drop-shadow(0 4px 10px rgba(0,0,0,.12))",
+    btnBg: "#5E8C3A",
+    btnText: "#FFFFFF",
+  },
+};
+
+const ThemeCtx = React.createContext<Theme>(THEMES.wood);
+const useTheme = () => React.useContext(ThemeCtx);
 
 type Word = [text: string, start: number, end: number];
 
@@ -133,6 +215,7 @@ const Clip: React.FC<{ src: string; from: number; dur: number; zoomIn?: boolean 
   zoomIn = true,
 }) => {
   const frame = useCurrentFrame();
+  const th = useTheme();
   const z = interpolate(frame, [0, dur], zoomIn ? [1, 1.07] : [1.07, 1], {
     extrapolateRight: "clamp",
   });
@@ -146,15 +229,12 @@ const Clip: React.FC<{ src: string; from: number; dur: number; zoomIn?: boolean 
           height: "100%",
           objectFit: "cover",
           transform: `scale(${z})`,
-          filter: "saturate(1.08) contrast(1.05) sepia(0.06)",
+          filter: th.clipFilter,
         }}
       />
       {/* затемнение сверху и снизу — чтобы надписи читались */}
       <AbsoluteFill
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(18,20,24,.55) 0%, rgba(18,20,24,0) 28%, rgba(18,20,24,0) 62%, rgba(18,20,24,.55) 100%)",
-        }}
+        style={{ background: th.shade }}
       />
     </AbsoluteFill>
   );
@@ -178,11 +258,14 @@ const useOut = (dur: number, outLen = 10) => {
 
 const Pill: React.FC<{ children: React.ReactNode; color?: string; delay?: number; size?: number }> = ({
   children,
-  color = "rgba(18,20,24,.78)",
+  color,
   delay = 0,
   size = 40,
 }) => {
   const p = usePop(delay);
+  const th = useTheme();
+  const bg = color ?? th.pillBg;
+  const fg = color ? C.white : th.pillText;
   return (
     <div
       style={{
@@ -191,9 +274,9 @@ const Pill: React.FC<{ children: React.ReactNode; color?: string; delay?: number
         gap: 16,
         padding: `${size * 0.45}px ${size * 0.8}px`,
         borderRadius: 999,
-        background: color,
-        border: "2px solid rgba(217,160,102,.55)",
-        color: C.white,
+        background: bg,
+        border: color ? "none" : th.pillBorder,
+        color: fg,
         fontFamily: head,
         fontWeight: 800,
         fontSize: size,
@@ -210,9 +293,10 @@ const Pill: React.FC<{ children: React.ReactNode; color?: string; delay?: number
 };
 
 /* ---------------- Логотип: белый WOODNEXT, въезжает со стрелкой ---------------- */
-const Logo: React.FC<{ width?: number; delay?: number }> = ({ width = 560, delay = 0 }) => {
+const Logo: React.FC<{ width?: number; delay?: number; onLight?: boolean }> = ({ width = 560, delay = 0, onLight }) => {
   const frame = useCurrentFrame();
   const p = usePop(delay, 18);
+  const th = useTheme();
   const reveal = interpolate(frame - delay, [0, 18], [0, 100], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -225,7 +309,7 @@ const Logo: React.FC<{ width?: number; delay?: number }> = ({ width = 560, delay
         width,
         clipPath: `inset(0 ${100 - reveal}% 0 0)`,
         transform: `translateX(${(1 - p) * -30}px)`,
-        filter: "drop-shadow(0 6px 20px rgba(0,0,0,.5))",
+        filter: onLight ? th.logoFilter : "drop-shadow(0 6px 20px rgba(0,0,0,.5))",
       }}
     />
   );
@@ -240,6 +324,7 @@ const BigTitle: React.FC<{ lines: string[]; accent?: number; delay?: number; siz
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const th = useTheme();
   return (
     <div style={{ fontFamily: head, fontWeight: 900, fontSize: size, lineHeight: 1.0, textTransform: "uppercase" }}>
       {lines.map((line, i) => {
@@ -248,13 +333,28 @@ const BigTitle: React.FC<{ lines: string[]; accent?: number; delay?: number; siz
           <div
             key={i}
             style={{
-              color: i === accent ? C.woodLight : C.white,
-              transform: `translateY(${(1 - p) * 60}px)`,
+              color: i === accent ? th.titleAccent : th.title,
+              transform: th.titleBoxed ? `translateX(${(1 - p) * -60}px)` : `translateY(${(1 - p) * 60}px)`,
               opacity: p,
-              textShadow: "0 6px 30px rgba(0,0,0,.55)",
+              textShadow: th.titleBoxed ? "none" : "0 6px 30px rgba(0,0,0,.55)",
             }}
           >
-            {line}
+            {th.titleBoxed ? (
+              <span
+                style={{
+                  display: "inline-block",
+                  background: i === accent ? C.green : CREAM,
+                  padding: "6px 22px",
+                  margin: "4px 0",
+                  borderRadius: 14,
+                  boxShadow: "0 10px 30px rgba(0,0,0,.18)",
+                }}
+              >
+                {line}
+              </span>
+            ) : (
+              line
+            )}
           </div>
         );
       })}
@@ -271,6 +371,7 @@ const Card: React.FC<{ icon: string; title: string; text?: string; delay?: numbe
   accent,
 }) => {
   const p = usePop(delay);
+  const th = useTheme();
   return (
     <div
       style={{
@@ -281,8 +382,8 @@ const Card: React.FC<{ icon: string; title: string; text?: string; delay?: numbe
         borderRadius: 28,
         background: accent
           ? `linear-gradient(135deg, ${C.woodLight}, ${C.wood} 60%, #8E5427)`
-          : "rgba(18,20,24,.8)",
-        border: accent ? "none" : "2px solid rgba(255,255,255,.12)",
+          : th.cardBg,
+        border: accent || th.name === "fresh" ? "none" : "2px solid rgba(255,255,255,.12)",
         boxShadow: "0 16px 50px rgba(0,0,0,.4)",
         transform: `translateX(${(1 - p) * -80}px)`,
         opacity: p,
@@ -290,11 +391,11 @@ const Card: React.FC<{ icon: string; title: string; text?: string; delay?: numbe
     >
       <div style={{ fontSize: 58 }}>{icon}</div>
       <div>
-        <div style={{ fontFamily: head, fontWeight: 800, fontSize: 44, color: C.white, textTransform: "uppercase" }}>
+        <div style={{ fontFamily: head, fontWeight: 800, fontSize: 44, color: th.cardText, textTransform: "uppercase" }}>
           {title}
         </div>
         {text ? (
-          <div style={{ fontFamily: body, fontWeight: 600, fontSize: 34, color: "rgba(255,255,255,.85)", marginTop: 4 }}>
+          <div style={{ fontFamily: body, fontWeight: 600, fontSize: 34, color: th.cardSub, marginTop: 4 }}>
             {text}
           </div>
         ) : null}
@@ -307,6 +408,7 @@ const Card: React.FC<{ icon: string; title: string; text?: string; delay?: numbe
 const Captions: React.FC<{ scene: (typeof SCENES)[number] }> = ({ scene }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const th = useTheme();
   const t = scene.from + frame / fps;
   const pages = scene.pages;
   let idx = -1;
@@ -327,6 +429,9 @@ const Captions: React.FC<{ scene: (typeof SCENES)[number] }> = ({ scene }) => {
           justifyContent: "center",
           gap: "6px 18px",
           maxWidth: 940,
+          ...(th.name === "fresh"
+            ? { background: "#FFFFFF", padding: "14px 22px", borderRadius: 26, boxShadow: "0 14px 40px rgba(0,0,0,.25)" }
+            : {}),
           transform: `scale(${0.85 + pop * 0.15}) translateY(${(1 - pop) * 20}px)`,
           opacity: Math.min(1, pop * 1.5),
         }}
@@ -337,7 +442,17 @@ const Captions: React.FC<{ scene: (typeof SCENES)[number] }> = ({ scene }) => {
           return (
             <span
               key={i}
-              style={{
+              style={th.name === "fresh" ? {
+                fontFamily: head,
+                fontWeight: 800,
+                fontSize: 68,
+                lineHeight: 1.15,
+                padding: "0 4px",
+                color: active ? C.green : INK,
+                opacity: said ? 1 : 0.45,
+                transform: active ? "scale(1.06)" : "none",
+                display: "inline-block",
+              } : {
                 fontFamily: head,
                 fontWeight: 900,
                 fontSize: 76,
@@ -446,6 +561,7 @@ const OverlayCTA: React.FC<{ dur: number }> = ({ dur }) => {
 
 const Prize: React.FC = () => {
   const p = usePop(0, 11);
+  const th = useTheme();
   const frame = useCurrentFrame();
   const shine = interpolate(frame, [10, 40], [-120, 220], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
@@ -456,7 +572,7 @@ const Prize: React.FC = () => {
         width: 760,
         padding: "30px 40px",
         borderRadius: 34,
-        background: `linear-gradient(135deg, ${C.woodLight}, ${C.wood} 55%, #8E5427)`,
+        background: th.prize,
         boxShadow: "0 24px 70px rgba(184,116,58,.55)",
         transform: `scale(${0.6 + p * 0.4}) rotate(${(1 - p) * -6}deg)`,
         transformOrigin: "left center",
@@ -490,20 +606,21 @@ const EndCard: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const btn = spring({ frame: frame - 34, fps, config: { damping: 10 } });
+  const th = useTheme();
   const pulse = 1 + Math.max(0, Math.sin((frame - 50) / 6)) * 0.04 * (frame > 50 ? 1 : 0);
   return (
     <AbsoluteFill
       style={{
-        background: `radial-gradient(70% 45% at 80% 10%, rgba(217,160,102,.35), transparent 70%), radial-gradient(70% 50% at 10% 100%, rgba(184,116,58,.3), transparent 70%), ${C.bg}`,
+        background: th.endBg,
         alignItems: "center",
         justifyContent: "center",
         textAlign: "center",
         padding: 80,
       }}
     >
-      <Logo width={620} />
+      <Logo width={620} onLight />
       <div style={{ marginTop: 70 }}>
-        <BigTitle lines={["День", "открытых", "дверей"]} delay={8} size={120} />
+        <BigTitle lines={["День", "открытых", "дверей"]} accent={th.name === "fresh" ? 1 : undefined} delay={8} size={120} />
       </div>
       <div style={{ marginTop: 50 }}>
         <Pill delay={22} color={C.green} size={50}>
@@ -515,8 +632,8 @@ const EndCard: React.FC = () => {
           marginTop: 60,
           padding: "34px 70px",
           borderRadius: 28,
-          background: C.white,
-          color: C.bg,
+          background: th.btnBg,
+          color: th.btnText,
           fontFamily: head,
           fontWeight: 900,
           fontSize: 50,
@@ -528,7 +645,7 @@ const EndCard: React.FC = () => {
         Напиши «ХОЧУ»
         <div style={{ fontSize: 34, fontWeight: 800, marginTop: 8 }}>в комментариях — пришлём форму записи</div>
       </div>
-      <div style={{ marginTop: 40, fontFamily: body, fontWeight: 600, fontSize: 34, color: "rgba(255,255,255,.75)", opacity: btn }}>
+      <div style={{ marginTop: 40, fontFamily: body, fontWeight: 600, fontSize: 34, color: th.endSub, opacity: btn }}>
         📍 Каменск-Уральский, ул. Суворова, 47В, корп. 7
       </div>
     </AbsoluteFill>
@@ -538,6 +655,14 @@ const EndCard: React.FC = () => {
 const OVERLAYS = [OverlayIntro, OverlayPrize, OverlayTour, OverlayCoffee, OverlayCTA];
 
 // Разные переходы между роликами
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const TRANSITIONS_FRESH: TransitionPresentation<any>[] = [
+  flip({ direction: "from-right" }),
+  clockWipe({ width: 1080, height: 1920 }),
+  slide({ direction: "from-left" }),
+  flip({ direction: "from-bottom" }),
+  fade(),
+];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const TRANSITIONS: TransitionPresentation<any>[] = [
   slide({ direction: "from-right" }),
@@ -557,9 +682,37 @@ const Flash: React.FC<{ at: number }> = ({ at }) => {
   return <AbsoluteFill style={{ background: C.woodLight, opacity: o, mixBlendMode: "screen" }} />;
 };
 
-export const Promo: React.FC = () => {
+/* ---------------- Световой блик на склейке (светлый стиль) ---------------- */
+const Leak: React.FC<{ seed: number }> = ({ seed }) => {
+  const frame = useCurrentFrame();
+  const { durationInFrames, width, height } = useVideoConfig();
   return (
-    <AbsoluteFill style={{ backgroundColor: C.bg }}>
+    <Solid
+      width={width}
+      height={height}
+      style={{ mixBlendMode: "screen" }}
+      effects={[
+        lightLeak({
+          seed,
+          hueShift: 20,
+          progress: interpolate(frame, [0, durationInFrames - 1], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }),
+        }),
+      ]}
+    />
+  );
+};
+
+export const PromoFresh: React.FC = () => <Promo variant="fresh" />;
+
+export const Promo: React.FC<{ variant?: "wood" | "fresh" }> = ({ variant = "wood" }) => {
+  const th = THEMES[variant];
+  const transitions = variant === "fresh" ? TRANSITIONS_FRESH : TRANSITIONS;
+  return (
+    <ThemeCtx.Provider value={th}>
+    <AbsoluteFill style={{ backgroundColor: variant === "fresh" ? CREAM : C.bg }}>
       <TransitionSeries>
         {SCENES.flatMap((s, i) => {
           const dur = len(s);
@@ -572,7 +725,7 @@ export const Promo: React.FC = () => {
           items.push(
             <TransitionSeries.Transition
               key={`t${i}`}
-              presentation={TRANSITIONS[i]}
+              presentation={transitions[i]}
               timing={linearTiming({ durationInFrames: T, easing: Easing.inOut(Easing.cubic) })}
             />,
           );
@@ -597,8 +750,15 @@ export const Promo: React.FC = () => {
 
       {/* Вспышки на склейках */}
       {STARTS.slice(1).map((st, i) => (
-        <Flash key={`f${i}`} at={st + T / 2} />
+        variant === "fresh" ? (
+          <Sequence key={`l${i}`} from={st - 10} durationInFrames={28}>
+            <Leak seed={i * 3 + 1} />
+          </Sequence>
+        ) : (
+          <Flash key={`f${i}`} at={st + T / 2} />
+        )
       ))}
     </AbsoluteFill>
+    </ThemeCtx.Provider>
   );
 };
