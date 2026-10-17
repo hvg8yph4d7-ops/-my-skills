@@ -5,6 +5,8 @@ import type { Day, FormaData } from '../types';
 import type { Settings } from '../storage';
 import { GROUPS, averages, recovery, sortedBench, sortedWeight, e1rm } from './calc';
 import { aliasesOf, benchSets, progressList, setsText } from './exercises';
+import { SLEEP_OK_MIN, sleepText } from './sleep';
+import type { SleepRec } from '../types';
 import { WDF, daysBetween, longD, wdName } from './format';
 import { aboutUser, goalText, userName } from './profile';
 import { AdviceSchema, type Advice } from './advice';
@@ -132,11 +134,24 @@ export function entryUserText(data: FormaData, today: string, text: string) {
 
 export const verdictSystem = (data: FormaData) => `Ты пишешь короткий «вывод дня» для дневника питания и тренировок. Пользователь: ${aboutUser(data)} 2–4 предложения по-русски, на «ты»: что хорошо, что подтянуть завтра. Цифры и конкретные продукты, сравнение с прошлыми днями, честно про проблемы, без занудства и без списков. Только сам вывод, без заголовков.\n\n${talkStyle(data)}`;
 
+const sleepNote = (s: SleepRec) =>
+  `${sleepText(s.min)}${s.bed && s.wake ? ` (отбой ${s.bed}, подъём ${s.wake})` : ''}${s.min < SLEEP_OK_MIN ? ' — МАЛО, меньше 7 ч' : ''}`;
+
+/** Сон за последние 7 ночей одной строкой + средний. */
+function sleepSummary(data: FormaData, today: string) {
+  const nights = Object.entries(data.sleep || {}).filter(([d]) => d <= today).sort(([a], [b]) => b.localeCompare(a)).slice(0, 7);
+  if (!nights.length) return 'Данных о сне нет.';
+  const avg = Math.round(nights.reduce((s, [, r]) => s + r.min, 0) / nights.length);
+  const last = nights[0][0] === today ? `Сегодня ночью: ${sleepNote(nights[0][1])}. ` : 'За прошлую ночь сна нет. ';
+  return `Сон: ${last}Последние ночи: ${nights.map(([d, r]) => `${d.slice(5)} ${sleepText(r.min)}`).join(', ')}. В среднем ${sleepText(avg)}.`;
+}
+
 export function verdictUserText(data: FormaData, day: Day) {
   const t = data.targets, m = day.macros;
   return [
     `День ${longD(day.date)}, ${wdName(day.date)}.`,
     dayContext(day),
+    data.sleep?.[day.date] ? `Сон в ночь перед этим днём: ${sleepNote(data.sleep[day.date])}. Упомяни сон, если он меньше 7 часов или явно повлиял на тренировку/аппетит.` : '',
     day.training?.length ? 'Тренировка: ' + day.training.join('; ') : '',
     m ? `Итог: Б ${m.p} г, Ж ${m.f} г, У ${m.c} г, ${m.kcal} ккал, клетчатка ${m.fib ?? 0} г.` : 'КБЖУ не посчитаны.',
     `Цели: ${t.kcal} ккал, белок ≥ ${t.p}, жиры до ~${t.f}, углеводы ~${t.c}, клетчатка ${t.fib}. Цель — ${goalText(data)}.`,
@@ -233,6 +248,7 @@ export function advisorContext(data: FormaData, today: string) {
       mk ? `Отметки: добавки ${mk.p ? '✓' : '—'}, зал ${mk.g ? '✓' : '—'}` : '',
       d.work ? `Описание дня (work): ${d.work}` : '',
       w ? `Вес: ${w.value} кг` : '',
+      data.sleep?.[d.date] ? `Сон в ночь перед этим днём: ${sleepNote(data.sleep[d.date])}` : '',
       m ? `Итог дня (macros): Б ${m.p} Ж ${m.f} У ${m.c} ${m.kcal} ккал клетч. ${m.fib ?? 0}` : '',
       ...(d.food || []).map((x, i) => `Строка еды food[${i}]: ${x}`),
       ...(d.meals || []).map((x, i) => `Еда записано в приложении #${i}: ${x.name}${x.grams ? ` ${x.grams} г` : ''} (Б ${x.p} Ж ${x.f} У ${x.c} ${x.kcal} ккал клетч. ${x.fib})`),
@@ -265,6 +281,7 @@ export function advisorContext(data: FormaData, today: string) {
     data.profile ? `Анкета: ${data.profile.name}, ${data.profile.sex === 'f' ? 'жен' : 'муж'}, возраст ${data.profile.age ?? '?'}, рост ${data.profile.height ?? '?'} см, вес в анкете ${data.profile.weight ?? '?'} кг, цель ${data.profile.goal}. О себе: ${data.profile.note || '—'}` : '',
     Object.keys(data.sore).length ? `Отметки «ещё болит» (sore): ${Object.entries(data.sore).map(([g, d]) => `${g} с ${d}`).join(', ')}.` : 'Отметок «ещё болит» нет.',
     `Прогресс по упражнениям (вкладка «Прогресс»):\n${progressContext(data)}`,
+    sleepSummary(data, today),
     `Дневник по дням (${Math.min(data.days.length, 60)} дн.):\n${days}`,
   ].filter(Boolean).join('\n');
 }
@@ -315,6 +332,8 @@ ${talkStyle(data)}
 
 Никогда не пиши «поменял», «удалил», «записал», «исправил», если не приложил соответствующее действие в actions: сам ты ничего не меняешь, меняет только кнопка «Применить». Если такого действия нет — честно скажи, что сделать это не можешь.
 Порядок упражнений в дне меняй через move_exercise (по одному действию на перенос). Если просят убрать «дубли без веса» — посмотри «Строка тренировки training[i]»: текстовые строки с названиями упражнений, которые уже есть как «Упражнение #N» с подходами, — это дубли; убирай их set_day_text (весь список training без них), подходы упражнений не трогай.
+
+Сон (из Apple Health, «Сон в ночь перед этим днём»): норма — 7 часов и больше. Если сегодня (или перед днём тренировки) сон меньше 7 часов — не советуй ставить рекорды, проверять максимум или прибавлять вес на снаряде: рабочие веса прошлого раза или чуть легче, меньше подходов до отказа, больше разминки; меньше 6 часов — можно предложить лёгкую тренировку или перенос. Если спросили «что сегодня в зале» — сначала посмотри сон за последнюю ночь. Связывай недосып с аппетитом и самочувствием, если это видно по дню.
 
 Правила правок (строго):
 1. Если сообщение короткое, обрывочное или его можно понять двумя способами (например «10 повт. убери» — убрать приписку или удалить упражнение?) — НЕ угадывай: задай один короткий уточняющий вопрос с вариантами и оставь actions пустым.

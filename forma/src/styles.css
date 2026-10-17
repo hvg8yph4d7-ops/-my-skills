@@ -257,3 +257,6 @@ select.inp { -webkit-appearance: none; appearance: none; }
 .prog-trend.up { color: var(--green-br); }
 .prog-trend.down { color: var(--red); }
 .alias-edit { font-size: 12px; line-height: 1.5; font-family: ui-monospace, Menlo, monospace; margin-bottom: 10px; }
+.sleep-low { color: var(--yellow); font-weight: 600; }
+.cell-sleep { font-size: 8.5px; color: var(--dim); line-height: 11px; margin-top: 1px; white-space: nowrap; }
+.cell-sleep.low { color: var(--yellow); }

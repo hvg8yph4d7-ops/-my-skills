@@ -5,6 +5,7 @@ import type { FormaData } from '../types';
 import { migrate, seedData, type Settings as AppSettings } from '../storage';
 import { AiSettings } from './AiSettings';
 import { SupplementsSettings } from './SupplementsSettings';
+import { SleepSettings } from './SleepSettings';
 import { ProfileSettings } from './ProfileSettings';
 import { AccountSettings } from './AccountSettings';
 import type { Session } from '@supabase/supabase-js';
@@ -95,6 +96,8 @@ export function Settings({ data, settings, saveSettings, persisted, replace, upd
   return (
     <>
       <AccountSettings session={session} sync={sync} notify={notify} openClient={openClient} />
+
+      {session && <SleepSettings notify={notify} />}
 
       <AiSettings settings={settings} saveSettings={saveSettings} notify={notify} />
 

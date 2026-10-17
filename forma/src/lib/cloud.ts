@@ -112,6 +112,31 @@ export async function pullClient(userId: string): Promise<FormaData> {
 // ---- Переписка с советником ----
 
 
+// ---- Сон из Apple Health ----
+
+/** Задать секретный токен для «Команд» (в базе хранится только его хэш). */
+export async function setSleepToken(token: string) {
+  const { error } = await supa().rpc('set_sleep_token', { p_token: token });
+  if (error) {
+    if (/set_sleep_token|function .* does not exist|Could not find the function/i.test(error.message))
+      throw new CloudError('На сервере ещё нет функций для сна — выполни supabase/sleep.sql в Supabase → SQL Editor.');
+    explain(error, 'Не получилось сохранить токен');
+  }
+}
+
+export type SleepRow = { date: string; bed: string | null; wake: string | null; minutes: number };
+
+/** Сон за последние 60 дней (свой или клиента, если ты его тренер). Нет таблицы — пустой список. */
+export async function pullSleep(userId: string): Promise<SleepRow[]> {
+  const since = new Date(Date.now() - 60 * 86400_000).toISOString().slice(0, 10);
+  const { data, error } = await supa().from('sleep').select('date,bed,wake,minutes').eq('user_id', userId).gte('date', since);
+  if (error) {
+    if (/relation .*sleep.* does not exist|Could not find the table/i.test(error.message)) return [];
+    explain(error, 'Не получилось загрузить сон');
+  }
+  return (data || []) as SleepRow[];
+}
+
 /** Сохранить свою переписку с советником в аккаунт (строка дневника уже должна существовать). */
 export async function pushChat(userId: string, turns: StoredTurn[]) {
   const { error } = await supa().from('diaries').update({ chat: turns }).eq('user_id', userId);

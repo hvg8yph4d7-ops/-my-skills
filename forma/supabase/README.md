@@ -11,3 +11,10 @@
    - **Publishable key** (или **anon public**) — длинная строка.
    Секретный ключ (**secret** / **service_role**) никому не давать и в код не класть.
 7. Вписать оба значения в `src/config.ts` (или передать Claude) и опубликовать.
+
+## Сон из Apple Health (17.10.2026)
+
+Выполнить один раз `supabase/sleep.sql` в SQL Editor (после основной схемы). Создаёт таблицы `sleep` и `sleep_tokens` и функции:
+`set_sleep_token` (приложение, вошедший пользователь), `add_sleep_samples` и `add_sleep` (для «Команд» на iPhone, по секретному токену).
+Адрес для «Команд»: `https://<проект>.supabase.co/rest/v1/rpc/add_sleep_samples`, заголовок `apikey: <публичный ключ>`, тело — JSON
+`{ "p_token", "p_starts", "p_ends", "p_values" }` (списки через перенос строки, даты ISO 8601).

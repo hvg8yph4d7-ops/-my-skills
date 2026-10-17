@@ -16,9 +16,10 @@ import { ProfileSettings } from './components/ProfileSettings';
 import { SupplementsSettings } from './components/SupplementsSettings';
 import { needsSuppUpgrade, upgradeSupps } from './lib/supplements';
 import { applyPatches, pendingPatches } from './lib/patches';
+import { mergeSleep } from './lib/sleep';
 import { Splash } from './components/Splash';
 import { logError } from './lib/bugs';
-import { CloudError, cloudEnabled, getSession, onAuth, pullChat, pullClient, pullOwn, pushChat, pushDiary } from './lib/cloud';
+import { CloudError, cloudEnabled, getSession, onAuth, pullChat, pullClient, pullOwn, pullSleep, pushChat, pushDiary } from './lib/cloud';
 
 const TABS = [
   { id: 'overview', l: 'Обзор' },
@@ -199,6 +200,22 @@ export function App() {
     return () => clearTimeout(t);
   }, [data, viewing, sync, session, update]);
 
+  // Сон из Apple Health: после синхронизации забираем новые записи с сервера (не чаще раза в 5 минут).
+  const sleepPulled = useRef(0);
+  useEffect(() => {
+    if (!data || viewing || !session || sync !== 'ok' || Date.now() - sleepPulled.current < 5 * 60_000) return;
+    sleepPulled.current = Date.now();
+    const uid = session.user.id;
+    pullSleep(uid)
+      .then(rows => { if (rows.length && mergeSleep(data, rows)) update(d => mergeSleep(d, rows) ?? d); })
+      .catch(e => logError('сон: ' + String((e as Error)?.message || e)));
+  }, [data, viewing, session, sync, update]);
+  useEffect(() => {
+    const on = () => { if (document.visibilityState === 'visible') sleepPulled.current = 0; };
+    document.addEventListener('visibilitychange', on);
+    return () => document.removeEventListener('visibilitychange', on);
+  }, []);
+
   // Разовые записи, которые пользователь попросил внести за него (src/lib/patches.ts). Те же условия, что выше.
   useEffect(() => {
     if (!data || viewing || !pendingPatches(data).length || sync === 'saving' || (session && sync !== 'ok')) return;
@@ -230,8 +247,10 @@ export function App() {
   const openClient = useCallback(async (userId: string) => {
     try {
       const d = await pullClient(userId);
+      // Сон клиента — только для показа (в его дневник уйдёт вместе с первой правкой тренера).
+      const withSleep = mergeSleep(d, await pullSleep(userId).catch(() => [])) ?? d;
       setViewing(null);
-      setClient({ userId, data: d });
+      setClient({ userId, data: withSleep });
       setTab('overview'); window.scrollTo(0, 0);
     } catch (e) {
       notify(e instanceof CloudError ? e.message : String(e), true);

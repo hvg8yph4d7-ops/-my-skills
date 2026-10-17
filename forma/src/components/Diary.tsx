@@ -11,7 +11,7 @@ export function Diary({ data }: { data: FormaData }) {
         <div className="entry" key={e.date}>
           <div className="entry-date">{longD(e.date)}{e.partial && <span className="partial-tag">не закрыт</span>}</div>
           <div className="entry-wd">{wdName(e.date)}</div>
-          <DayBody e={e} />
+          <DayBody e={e} sleep={data.sleep?.[e.date]} />
         </div>
       ))}
     </>

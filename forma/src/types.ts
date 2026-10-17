@@ -73,6 +73,9 @@ export interface Profile {
   talk?: string; // как советнику со мной разговаривать (стиль)
 }
 
+/** Сон за ночь: длительность в минутах, отбой и подъём «ЧЧ:ММ». */
+export interface SleepRec { min: number; bed?: string; wake?: string }
+
 export interface FormaData {
   profile?: Profile;
   schemaVersion: number;
@@ -89,6 +92,7 @@ export interface FormaData {
   supplements: { time: string; items: string }[];
   suppRules?: string[]; // правила приёма — подсказка под схемой добавок
   suppRev?: string; // какое обновление схемы добавок уже применено
+  sleep?: Record<string, SleepRec>; // дата подъёма → сон из Apple Health
   patches?: string[]; // какие разовые записи (src/lib/patches.ts) уже внесены
   marks: Record<string, { p: boolean; g: boolean }>; // p — добавки, g — зал
   weight: { date: string; value: number }[];

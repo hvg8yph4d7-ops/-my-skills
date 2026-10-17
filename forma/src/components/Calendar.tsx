@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { FormaData } from '../types';
 import { GROUPS, dayFor, groupOf, marksFor, planDays } from '../lib/calc';
 import { MONTHS, WD, dk, longD, num, wdName } from '../lib/format';
-import { Blk, Chip, DayBody } from './common';
+import { Blk, Chip, DayBody, SleepBlk } from './common';
+import { sleepLow, sleepShort } from '../lib/sleep';
 import type { Settings } from '../storage';
 import { AiError, dayVerdict, hasKey } from '../lib/ai';
 import { removeExercise, removeMeal } from '../lib/entry';
@@ -46,6 +47,7 @@ export function Calendar({ data, today, update, ai }: { data: FormaData; today: 
         <div className="day-num">{d}</div>
         <div className="dot-row"><div className={'dot pill' + (m.p ? ' on' : '')} /><div className={'dot gym' + (m.g ? ' on' : '')} /></div>
         <GrpBadges data={data} k={k} />
+        {data.sleep?.[k] && <div className={'cell-sleep' + (sleepLow(data.sleep[k].min) ? ' low' : '')}>🌙{sleepShort(data.sleep[k].min)}</div>}
         {!dayFor(data, k)?.groups?.length && <div className="grp-row">{dayFor(data, k) && <div className="mini-tick" />}</div>}
       </button>,
     );
@@ -130,9 +132,10 @@ function DayDetail({ data, k, update, ai }: { data: FormaData; k: string; update
         <input className="inp" inputMode="decimal" placeholder={w ? 'Исправить вес, кг' : 'Вес в зале, кг'} value={weightInput} onChange={ev => setWeightInput(ev.target.value)} />
         <button className="btn" type="submit">Записать</button>
       </form>
-      {e && <DayBody e={e} remove={{ meal: i => update(d => removeMeal(d, k, i)), exercise: i => update(d => removeExercise(d, k, i)),
+      {!e && data.sleep?.[k] && <SleepBlk s={data.sleep[k]} />}
+      {e && <DayBody e={e} sleep={data.sleep?.[k]} remove={{ meal: i => update(d => removeMeal(d, k, i)), exercise: i => update(d => removeExercise(d, k, i)),
         line: i => update(d => ({ ...d, days: d.days.map(x => (x.date === k ? { ...x, training: (x.training || []).filter((_, j) => j !== i) } : x)) })) }} />}
-      {!e && !w && <div className="empty">За этот день записей нет.</div>}
+      {!e && !w && !data.sleep?.[k] && <div className="empty">За этот день записей нет.</div>}
       {e && (
         <div className="btn-col" style={{ marginTop: 12 }}>
           {e.partial
