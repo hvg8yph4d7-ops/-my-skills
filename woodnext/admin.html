@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Админка — День открытых дверей WOODNEXT</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#121418">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap">
+  <link rel="stylesheet" href="styles.css?v=5">
+  <style>
+    body { padding-bottom: env(safe-area-inset-bottom); }
+    .top { position: sticky; top: 0; z-index: 5; background: rgba(18,20,24,.92); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+    .top .wrap { display: flex; align-items: center; gap: 12px; min-height: 60px; padding-top: env(safe-area-inset-top); }
+    .top__title { margin-left: auto; font: 700 11px/1 var(--head); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    .icon-btn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); display: grid; place-items: center; cursor: pointer; }
+    .icon-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-btn.is-spin svg { animation: spin .8s linear infinite; }
+    .main { padding-top: 18px; padding-bottom: 40px; }
+
+    .login { max-width: 420px; margin: 12vh auto 0; padding: 28px 22px; border-radius: 22px; background: var(--surface); border: 1px solid var(--line); }
+    .login h1 { margin-top: 18px; font: 800 24px/1.15 var(--head); text-transform: uppercase; }
+    .login p { margin-top: 8px; color: var(--muted); font-size: 14px; }
+    .login form { margin-top: 20px; display: grid; gap: 12px; }
+    .login .remember { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--muted); }
+    .login .remember input { width: 18px; height: 18px; accent-color: var(--green); }
+    .notice { margin-top: 16px; padding: 14px 16px; border-radius: 12px; background: rgba(184,116,58,.12); border: 1px solid rgba(217,160,102,.35); font-size: 14px; color: #E7E2DB; }
+    .notice b { color: var(--wood-light); }
+
+    .demo-bar { margin-bottom: 14px; padding: 10px 14px; border-radius: 12px; background: rgba(184,116,58,.16); border: 1px solid rgba(217,160,102,.4); color: var(--wood-light); font: 700 12px/1.4 var(--head); letter-spacing: .06em; text-transform: uppercase; }
+
+    .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kpi { padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+    .kpi b { display: block; font: 900 34px/1 var(--head); font-variant-numeric: tabular-nums; }
+    .kpi span { display: block; margin-top: 6px; color: var(--muted); font-size: 13px; }
+    .kpi--accent { background: linear-gradient(135deg, #D9A066, #B8743A 60%, #8E5427); border-color: transparent; }
+    .kpi--accent span { color: rgba(255,255,255,.85); }
+    .kpi--green b { color: var(--green-light); }
+    .updated { margin-top: 10px; font-size: 12px; color: var(--muted); }
+
+    .block { margin-top: 22px; }
+    .block h2 { font: 800 14px/1 var(--head); letter-spacing: .1em; text-transform: uppercase; color: var(--wood-light); margin-bottom: 12px; }
+    .src { display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+    .src__row { display: grid; grid-template-columns: 104px 1fr auto; gap: 10px; align-items: center; font-size: 14px; }
+    .src__bar { height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+    .src__bar i { display: block; height: 100%; border-radius: 99px; background: var(--wood); }
+    .src__n { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+    .src__n b { color: var(--text); }
+
+    .tools { display: flex; gap: 8px; flex-wrap: wrap; }
+    .search { flex: 1 1 220px; height: 46px; padding: 0 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); color: var(--text); font: 600 16px var(--body); }
+    .search:focus { outline: none; border-color: var(--wood-light); }
+    .seg { display: flex; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .seg button { height: 43px; padding: 0 12px; border: 0; background: none; color: var(--muted); font: 700 13px var(--body); cursor: pointer; }
+    .seg button.is-on { background: var(--surface-2); color: var(--text); }
+
+    .list { margin-top: 12px; display: grid; gap: 8px; }
+    .lead { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+    .lead.is-came { border-color: rgba(116,169,74,.55); background: linear-gradient(90deg, rgba(94,140,58,.14), var(--surface) 70%); }
+    .lead.is-repeat { opacity: .6; }
+    .lead__name { font: 700 16px/1.3 var(--body); overflow-wrap: anywhere; }
+    .lead__meta { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; color: var(--muted); }
+    .lead__meta a { color: var(--wood-light); text-decoration: none; font-weight: 700; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; background: var(--surface-2); color: #D9DCE1; font-size: 12px; font-weight: 600; }
+    .tag--g { background: rgba(184,116,58,.22); color: var(--wood-light); }
+    .tag--r { background: rgba(229,117,95,.18); color: var(--danger); }
+    .came { min-width: 92px; height: 44px; padding: 0 12px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); color: var(--muted); font: 700 13px var(--body); cursor: pointer; }
+    .came.is-on { background: var(--green); border-color: var(--green); color: #fff; }
+    .came[disabled] { opacity: .5; }
+    .del { padding: 0; border: 0; background: none; color: var(--muted); font: 600 12px var(--body); text-decoration: underline; cursor: pointer; }
+    .empty { padding: 30px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 14px; }
+    .err { margin-top: 12px; color: var(--danger); font-size: 14px; }
+    .err:empty { display: none; }
+    .footer-actions { margin-top: 22px; display: grid; gap: 10px; }
+    @media (min-width: 700px) {
+      .kpis { grid-template-columns: repeat(4, 1fr); }
+      .footer-actions { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <span class="logo logo--sm" aria-label="WOODNEXT">
+      <img class="logo__img" src="images/logo.png" alt="WOODNEXT" width="900" height="187">
+    </span>
+    <span class="top__title">Админка</span>
+    <button class="icon-btn" id="refreshBtn" type="button" title="Обновить" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="wrap main">
+
+  <!-- Вход -->
+  <section class="login" id="loginView">
+    <span class="logo" aria-hidden="true"><img class="logo__img" src="images/logo.png" alt="WOODNEXT" width="900" height="187"></span>
+    <h1>Заявки на день открытых дверей</h1>
+    <p>Только для организаторов. Введите пароль администратора.</p>
+    <form id="loginForm">
+      <div class="field">
+        <input class="search" id="pwd" type="password" autocomplete="current-password" placeholder="Пароль" required style="height:56px">
+      </div>
+      <label class="remember"><input type="checkbox" id="remember"> Запомнить на этом устройстве</label>
+      <button class="btn btn--primary btn--block" type="submit" id="loginBtn">
+        <span class="btn__label">Войти</span><span class="btn__spinner" aria-hidden="true"></span>
+      </button>
+      <p class="err" id="loginErr" role="alert"></p>
+    </form>
+    <div class="notice" id="notConnected" hidden>
+      <b>Админка ещё не подключена.</b> Нужна ссылка на Google Apps Script — см. ИНСТРУКЦИЯ.md.
+      <button class="btn btn--ghost btn--block" type="button" id="demoBtn" style="margin-top:12px">Посмотреть демо</button>
+    </div>
+  </section>
+
+  <!-- Панель -->
+  <section id="dashView" hidden>
+    <p class="demo-bar" id="demoBar" hidden>Демо: вымышленные заявки, чтобы посмотреть, как работает админка</p>
+
+    <div class="kpis">
+      <div class="kpi kpi--accent"><b id="kGuests">0</b><span>гостей записано</span></div>
+      <div class="kpi"><b id="kLeads">0</b><span>заявок</span></div>
+      <div class="kpi kpi--green"><b id="kCame">0</b><span>гостей пришло</span></div>
+      <div class="kpi"><b id="kToday">0</b><span>заявок за сегодня</span></div>
+    </div>
+    <p class="updated" id="updated"></p>
+
+    <div class="block">
+      <h2>Откуда узнали</h2>
+      <div class="src" id="sources"></div>
+    </div>
+
+    <div class="block">
+      <h2>Список гостей</h2>
+      <div class="tools">
+        <input class="search" id="q" type="search" placeholder="Поиск: имя или телефон" autocomplete="off">
+        <div class="seg" id="filter">
+          <button type="button" data-f="all" class="is-on">Все</button>
+          <button type="button" data-f="wait">Ждём</button>
+          <button type="button" data-f="came">Пришли</button>
+        </div>
+      </div>
+      <p class="err" id="dashErr" role="alert"></p>
+      <div class="list" id="list"></div>
+    </div>
+
+    <div class="footer-actions">
+      <button class="btn btn--ghost btn--block" type="button" id="csvBtn">Скачать список (CSV для Excel)</button>
+      <button class="btn btn--ghost btn--block" type="button" id="logoutBtn">Выйти</button>
+    </div>
+  </section>
+</div>
+
+<script src="config.js?v=6"></script>
+<script>
+(function () {
+  'use strict';
+  var C = window.WOODNEXT_CONFIG || {};
+  var URL_ = C.ADMIN_URL || '';
+  var KEY = 'woodnext_admin_key';
+  var SOURCES = ['Max', 'Telegram', 'WhatsApp', 'VK', 'Instagram', 'От знакомых', 'Другое', 'Не указано'];
+  var $ = function (id) { return document.getElementById(id); };
+
+  var state = { key: '', leads: [], demo: false, filter: 'all', q: '', timer: null };
+
+  function getKey() { try { return sessionStorage.getItem(KEY) || localStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
+  function saveKey(k, remember) {
+    try { sessionStorage.setItem(KEY, k); if (remember) localStorage.setItem(KEY, k); } catch (e) {}
+  }
+  function dropKey() { try { sessionStorage.removeItem(KEY); localStorage.removeItem(KEY); } catch (e) {} }
+
+  function api(body) {
+    body.action = 'admin';
+    body.key = state.key;
+    return fetch(URL_, { method: 'POST', body: JSON.stringify(body), redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' } })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res.ok) {
+          var msg = { password: 'Неверный пароль', moved: 'Заявка изменилась — обновите список' }[res.error] || 'Ошибка сервера';
+          var err = new Error(msg); err.code = res.error; throw err;
+        }
+        return res;
+      });
+  }
+
+  /* ---------- Вход ---------- */
+  var configured = !!URL_;
+  if (!configured) $('notConnected').hidden = false;
+
+  $('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!configured) { $('loginErr').textContent = 'Админка ещё не подключена'; return; }
+    state.key = $('pwd').value;
+    var btn = $('loginBtn');
+    btn.disabled = true; btn.classList.add('is-loading');
+    $('loginErr').textContent = '';
+    api({ op: 'list' }).then(function (res) {
+      saveKey(state.key, $('remember').checked);
+      openDash(res);
+    }).catch(function (err) {
+      $('loginErr').textContent = err.message === 'Failed to fetch' ? 'Нет связи с сервером' : err.message;
+    }).then(function () { btn.disabled = false; btn.classList.remove('is-loading'); });
+  });
+
+  $('demoBtn').addEventListener('click', function () {
+    state.demo = true;
+    openDash({ leads: demoLeads(), now: new Date().toISOString() });
+  });
+
+  $('logoutBtn').addEventListener('click', function () {
+    dropKey(); location.reload();
+  });
+
+  function openDash(res) {
+    $('loginView').hidden = true;
+    $('dashView').hidden = false;
+    $('demoBar').hidden = !state.demo;
+    $('refreshBtn').hidden = false;
+    apply(res);
+    if (!state.demo) state.timer = setInterval(refresh, 30000);
+  }
+
+  function refresh() {
+    if (state.demo) { render(); return; }
+    var b = $('refreshBtn'); b.classList.add('is-spin');
+    return api({ op: 'list' }).then(apply).catch(function (err) {
+      $('dashErr').textContent = err.message === 'Failed to fetch' ? 'Нет связи — данные могли устареть' : err.message;
+      if (err.code === 'password') { dropKey(); location.reload(); }
+    }).then(function () { b.classList.remove('is-spin'); });
+  }
+  $('refreshBtn').addEventListener('click', refresh);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && !$('dashView').hidden) refresh(); });
+
+  function apply(res) {
+    $('dashErr').textContent = '';
+    state.leads = res.leads || [];
+    var t = new Date(res.now || Date.now());
+    $('updated').textContent = 'Обновлено в ' + t.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Yekaterinburg' }) + ' (Екб) · само обновляется раз в 30 секунд';
+    render();
+  }
+
+  /* ---------- Отрисовка ---------- */
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function ymd(d) { return new Date(d).toLocaleDateString('ru-RU', { timeZone: 'Asia/Yekaterinburg' }); }
+  function when(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return iso;
+    return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Yekaterinburg' });
+  }
+  function plural(n, f) { var a = n % 10, b = n % 100; return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 10 || b >= 20) ? f[1] : f[2]; }
+
+  function render() {
+    var valid = state.leads.filter(function (l) { return !l.repeat; });
+    var sum = function (arr) { return arr.reduce(function (s, l) { return s + l.guests; }, 0); };
+    var today = ymd(Date.now());
+    $('kGuests').textContent = sum(valid);
+    $('kLeads').textContent = valid.length;
+    $('kCame').textContent = sum(valid.filter(function (l) { return l.came; }));
+    $('kToday').textContent = valid.filter(function (l) { return ymd(l.time) === today; }).length;
+
+    var by = {};
+    valid.forEach(function (l) { var s = SOURCES.indexOf(l.source) >= 0 ? l.source : 'Другое'; by[s] = by[s] || { n: 0, g: 0 }; by[s].n++; by[s].g += l.guests; });
+    var max = Math.max.apply(null, SOURCES.map(function (s) { return by[s] ? by[s].n : 0; }).concat(1));
+    var rows = SOURCES.filter(function (s) { return by[s]; }).sort(function (a, b) { return by[b].n - by[a].n; });
+    $('sources').innerHTML = rows.length ? rows.map(function (s) {
+      return '<div class="src__row"><span>' + esc(s) + '</span><span class="src__bar"><i style="width:' + Math.round(by[s].n / max * 100) + '%"></i></span>' +
+        '<span class="src__n"><b>' + by[s].n + '</b> · ' + by[s].g + ' чел.</span></div>';
+    }).join('') : '<p style="color:var(--muted);font-size:14px">Пока нет заявок</p>';
+
+    var q = state.q.toLowerCase().replace(/[\s()+-]/g, '');
+    var list = state.leads.slice().reverse().filter(function (l) {
+      if (state.filter === 'came' && !l.came) return false;
+      if (state.filter === 'wait' && (l.came || l.repeat)) return false;
+      if (!q) return true;
+      return (l.name + l.phone).toLowerCase().replace(/[\s()+-]/g, '').indexOf(q) >= 0;
+    });
+    $('list').innerHTML = list.length ? list.map(function (l) {
+      var tel = '+' + l.phone.replace(/\D/g, '');
+      return '<article class="lead' + (l.came ? ' is-came' : '') + (l.repeat ? ' is-repeat' : '') + '">' +
+        '<div><p class="lead__name">' + esc(l.name) + '</p>' +
+        '<p class="lead__meta"><a href="tel:' + tel + '">' + esc(l.phone) + '</a>' +
+        '<span class="tag tag--g">' + l.guests + ' ' + plural(l.guests, ['человек', 'человека', 'человек']) + '</span>' +
+        '<span class="tag">' + esc(l.source) + '</span>' +
+        (l.repeat ? '<span class="tag tag--r">повтор номера</span>' : '') +
+        '<span>' + when(l.time) + '</span>' +
+        '<button class="del" type="button" data-row="' + esc(l.row) + '">Удалить</button></p></div>' +
+        (l.repeat ? '<span></span>' : '<button class="came' + (l.came ? ' is-on' : '') + '" type="button" data-row="' + esc(l.row) + '">' + (l.came ? '✓ Пришёл' : 'Пришёл?') + '</button>') +
+        '</article>';
+    }).join('') : '<p class="empty">' + (state.leads.length ? 'Никого не нашлось' : 'Заявок пока нет — они появятся здесь сразу после записи на сайте') + '</p>';
+  }
+
+  $('q').addEventListener('input', function () { state.q = this.value; render(); });
+  $('filter').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    state.filter = b.getAttribute('data-f');
+    this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('is-on', x === b); });
+    render();
+  });
+
+  // Отметка «пришёл» — на входе в день мероприятия
+  $('list').addEventListener('click', function (e) {
+    var d = e.target.closest('.del');
+    if (d) { removeLead(d.getAttribute('data-row')); return; }
+    var b = e.target.closest('.came'); if (!b) return;
+    var row = b.getAttribute('data-row');
+    var lead = state.leads.filter(function (l) { return String(l.row) === row; })[0];
+    if (!lead) return;
+    var came = !lead.came;
+    if (state.demo) { lead.came = came; render(); return; }
+    b.disabled = true;
+    lead.came = came; render();
+    api({ op: 'checkin', row: row, id: lead.id, came: came }).then(apply).catch(function (err) {
+      lead.came = !came; render();
+      $('dashErr').textContent = err.message === 'Failed to fetch' ? 'Нет связи — отметка не сохранилась' : err.message;
+    });
+  });
+
+  // Удаление (например, тестовых заявок)
+  function removeLead(row) {
+    var lead = state.leads.filter(function (l) { return String(l.row) === row; })[0];
+    if (!lead || !confirm('Удалить заявку «' + lead.name + '», ' + lead.phone + '?')) return;
+    if (state.demo) { state.leads = state.leads.filter(function (l) { return l !== lead; }); render(); return; }
+    api({ op: 'delete', row: row, id: lead.id }).then(apply).catch(function (err) {
+      $('dashErr').textContent = err.message === 'Failed to fetch' ? 'Нет связи — заявка не удалена' : err.message;
+    });
+  }
+
+  // Выгрузка в CSV (открывается в Excel и Google Таблицах)
+  $('csvBtn').addEventListener('click', function () {
+    var q = function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; };
+    var lines = [['Дата заявки', 'Имя', 'Телефон', 'Человек', 'Источник', 'Повтор', 'Пришёл'].map(q).join(';')];
+    state.leads.forEach(function (l) {
+      lines.push([when(l.time), l.name, l.phone, l.guests, l.source, l.repeat ? 'да' : '', l.came ? 'да' : ''].map(q).join(';'));
+    });
+    var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'woodnext-gosti.csv';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+
+  function demoLeads() {
+    var names = ['Алексей', 'Мария', 'Сергей и Ольга', 'Дмитрий', 'Елена', 'Игорь', 'Наталья', 'Андрей', 'Светлана', 'Павел'];
+    var src = ['Max', 'Telegram', 'WhatsApp', 'От знакомых', 'Max', 'Instagram', 'VK', 'Max', 'Telegram', 'Другое'];
+    var now = Date.now();
+    return names.map(function (n, i) {
+      return { row: i + 2, id: 'demo' + i, name: n, phone: '+7 (900) 000-00-' + (10 + i), guests: [2, 1, 4, 2, 3, 2, 1, 2, 5, 2][i],
+        source: src[i], repeat: i === 7, came: i < 3, time: new Date(now - (9 - i) * 5.3e6).toISOString() };
+    });
+  }
+
+  // Автовход, если пароль запомнен
+  var saved = getKey();
+  if (saved && configured) {
+    state.key = saved;
+    api({ op: 'list' }).then(openDash).catch(function () { dropKey(); });
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# Netlify публикует сайт WOODNEXT из папки woodnext/ вместе с серверными функциями (приём заявок и админка).
+[build]
+  base = "woodnext"
+  publish = "."
+  functions = "netlify/functions"
+  command = "echo 'Сборка не нужна'"
+
+[[headers]]
+  for = "/admin.html"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
