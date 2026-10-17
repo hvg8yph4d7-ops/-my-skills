@@ -16,10 +16,10 @@ import { ProfileSettings } from './components/ProfileSettings';
 import { SupplementsSettings } from './components/SupplementsSettings';
 import { needsSuppUpgrade, upgradeSupps } from './lib/supplements';
 import { applyPatches, pendingPatches } from './lib/patches';
-import { mergeSleep } from './lib/sleep';
+import { mergeSleep, mergeSteps } from './lib/sleep';
 import { Splash } from './components/Splash';
 import { logError } from './lib/bugs';
-import { CloudError, cloudEnabled, getSession, onAuth, pullChat, pullClient, pullOwn, pullSleep, pushChat, pushDiary } from './lib/cloud';
+import { CloudError, cloudEnabled, getSession, onAuth, pullChat, pullClient, pullOwn, pullSleep, pullSteps, pushChat, pushDiary } from './lib/cloud';
 
 const TABS = [
   { id: 'overview', l: 'Обзор' },
@@ -206,9 +206,11 @@ export function App() {
     if (!data || viewing || !session || sync !== 'ok' || Date.now() - sleepPulled.current < 5 * 60_000) return;
     sleepPulled.current = Date.now();
     const uid = session.user.id;
-    pullSleep(uid)
-      .then(rows => { if (rows.length && mergeSleep(data, rows)) update(d => mergeSleep(d, rows) ?? d); })
-      .catch(e => logError('сон: ' + String((e as Error)?.message || e)));
+    Promise.all([pullSleep(uid), pullSteps(uid)])
+      .then(([sl, st]) => {
+        if (mergeSleep(data, sl) || mergeSteps(data, st)) update(d => { const a = mergeSleep(d, sl) ?? d; return mergeSteps(a, st) ?? a; });
+      })
+      .catch(e => logError('сон/шаги: ' + String((e as Error)?.message || e)));
   }, [data, viewing, session, sync, update]);
   useEffect(() => {
     const on = () => { if (document.visibilityState === 'visible') sleepPulled.current = 0; };
@@ -248,7 +250,8 @@ export function App() {
     try {
       const d = await pullClient(userId);
       // Сон клиента — только для показа (в его дневник уйдёт вместе с первой правкой тренера).
-      const withSleep = mergeSleep(d, await pullSleep(userId).catch(() => [])) ?? d;
+      const sl = mergeSleep(d, await pullSleep(userId).catch(() => [])) ?? d;
+      const withSleep = mergeSteps(sl, await pullSteps(userId).catch(() => [])) ?? sl;
       setViewing(null);
       setClient({ userId, data: withSleep });
       setTab('overview'); window.scrollTo(0, 0);

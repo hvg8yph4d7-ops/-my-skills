@@ -1,5 +1,5 @@
 import type { SleepRec } from '../types';
-import { sleepLine, sleepLow } from '../lib/sleep';
+import { sleepLine, sleepLow, stepsLine } from '../lib/sleep';
 import type { ReactNode } from 'react';
 import type { Day, Macros } from '../types';
 import { groupOf } from '../lib/calc';
@@ -55,12 +55,13 @@ export function SleepBlk({ s }: { s: SleepRec }) {
 }
 
 /** Содержимое дня: день, еда, тренировка, добавки, БЖУ, вывод. Общее для дневника и календаря. */
-export function DayBody({ e, remove, sleep }: { e: Day; remove?: Remove; sleep?: SleepRec }) {
+export function DayBody({ e, remove, sleep, steps }: { e: Day; remove?: Remove; sleep?: SleepRec; steps?: number }) {
   const meals = (e.meals || []).map(foodLine);
   const exs = (e.exercises || []).map(exerciseLine);
   return (
     <>
       {sleep && <SleepBlk s={sleep} />}
+      {steps != null && <Blk l="Шаги">{stepsLine(steps)}</Blk>}
       {e.work && <Blk l="День">{e.work}</Blk>}
       {(!!e.food?.length || meals.length > 0) && <Blk l="Еда"><Items lines={e.food} items={meals} onRemove={remove?.meal} /></Blk>}
       {(!!e.training?.length || exs.length > 0) && <Blk l="Тренировка"><Items lines={e.training} items={exs} onRemove={remove?.exercise} onRemoveLine={remove?.line} /></Blk>}

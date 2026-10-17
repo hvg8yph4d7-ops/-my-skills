@@ -36,3 +36,18 @@ export function newSleepToken() {
   crypto.getRandomValues(b);
   return [...b].map(x => x.toString(16).padStart(2, '0')).join('');
 }
+
+/** Вливает шаги с сервера. null — ничего не изменилось. */
+export function mergeSteps(d: FormaData, rows: { date: string; steps: number }[]): FormaData | null {
+  const cur = d.steps || {};
+  const changed = rows.filter(r => cur[r.date] !== r.steps);
+  if (!changed.length) return null;
+  return { ...d, steps: { ...cur, ...Object.fromEntries(changed.map(r => [r.date, r.steps])) } };
+}
+
+const plural = (n: number, a: string, b: string, c: string) => {
+  const m10 = n % 10, m100 = n % 100;
+  return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? b : c;
+};
+/** «👣 8 432 шага». */
+export const stepsLine = (n: number) => `👣 ${n.toLocaleString('ru-RU')} ${plural(n, 'шаг', 'шага', 'шагов')}`;

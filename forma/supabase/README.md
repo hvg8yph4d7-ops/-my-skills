@@ -18,3 +18,8 @@
 `set_sleep_token` (приложение, вошедший пользователь), `add_sleep_samples` и `add_sleep` (для «Команд» на iPhone, по секретному токену).
 Адрес для «Команд»: `https://<проект>.supabase.co/rest/v1/rpc/add_sleep_samples`, заголовок `apikey: <публичный ключ>`, тело — JSON
 `{ "p_token", "p_starts", "p_ends", "p_values" }` (списки через перенос строки, даты ISO 8601).
+
+## Шаги из Apple Health (17.10.2026)
+
+Выполнить `supabase/steps.sql` (после `sleep.sql`, токен общий). Функция `add_steps_days(p_token, p_dates, p_values)`: шаги по дням
+(«Найти данные Здоровья» → Шаги → «Группировать по: День»), даты ISO 8601 через перенос строки; каждый день перезаписывается.

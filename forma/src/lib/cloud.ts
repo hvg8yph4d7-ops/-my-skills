@@ -137,6 +137,17 @@ export async function pullSleep(userId: string): Promise<SleepRow[]> {
   return (data || []) as SleepRow[];
 }
 
+/** Шаги за последние 60 дней. Нет таблицы — пустой список. */
+export async function pullSteps(userId: string): Promise<{ date: string; steps: number }[]> {
+  const since = new Date(Date.now() - 60 * 86400_000).toISOString().slice(0, 10);
+  const { data, error } = await supa().from('steps').select('date,steps').eq('user_id', userId).gte('date', since);
+  if (error) {
+    if (/relation .*steps.* does not exist|Could not find the table/i.test(error.message)) return [];
+    explain(error, 'Не получилось загрузить шаги');
+  }
+  return (data || []) as { date: string; steps: number }[];
+}
+
 /** Сохранить свою переписку с советником в аккаунт (строка дневника уже должна существовать). */
 export async function pushChat(userId: string, turns: StoredTurn[]) {
   const { error } = await supa().from('diaries').update({ chat: turns }).eq('user_id', userId);
