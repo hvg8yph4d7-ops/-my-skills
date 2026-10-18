@@ -6,14 +6,14 @@ import edge_tts
 
 
 async def say(text, voice, rate, pitch, path):
-    for _ in range(5):  # сервис иногда отдаёт пустой файл — повторяем
+    for attempt in range(7):  # сервис иногда отдаёт пустой ответ — повторяем с растущей паузой
         try:
             await edge_tts.Communicate(text, voice, rate=rate, pitch=pitch).save(path)
             if os.path.getsize(path) > 1000:
                 return
         except Exception as e:
             print("retry", path, e)
-        await asyncio.sleep(3)
+        await asyncio.sleep(5 * 2**attempt)
     sys.exit(f"не удалось озвучить {path}")
 
 
