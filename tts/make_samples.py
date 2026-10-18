@@ -16,11 +16,16 @@ def edge():
 
     async def run():
         for name, v, rate, pitch in voices:
-            try:
-                await edge_tts.Communicate(TEXT, v, rate=rate, pitch=pitch).save(f"{OUT}/{name}.mp3")
-                print("ok", name)
-            except Exception:
-                traceback.print_exc()
+            path = f"{OUT}/{name}.mp3"
+            for attempt in range(4):  # сервис иногда отдаёт пустой файл — повторяем
+                try:
+                    await edge_tts.Communicate(TEXT, v, rate=rate, pitch=pitch).save(path)
+                    if os.path.getsize(path) > 1000:
+                        print("ok", name)
+                        break
+                except Exception:
+                    traceback.print_exc()
+                await asyncio.sleep(3)
 
     asyncio.run(run())
 
