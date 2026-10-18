@@ -1,0 +1,35 @@
+name: TTS samples
+
+on:
+  push:
+    branches: [claude/woodnext-open-day]
+    paths: ["tts/text.txt", "tts/make_samples.py", ".github/workflows/tts-samples.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: sudo apt-get update -q && sudo apt-get install -yq ffmpeg
+      - run: pip install -q edge-tts soundfile
+      - run: python tts/make_samples.py edge
+      - run: pip install -q torch --index-url https://download.pytorch.org/whl/cpu && python tts/make_samples.py silero
+        continue-on-error: true
+      - run: pip install -q coqui-tts && python tts/make_samples.py xtts
+        continue-on-error: true
+      - name: Commit samples
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tts/out
+          git commit -m "Образцы голосов (GitHub Actions)" || exit 0
+          git pull --rebase origin ${{ github.ref_name }}
+          git push origin HEAD:${{ github.ref_name }}
