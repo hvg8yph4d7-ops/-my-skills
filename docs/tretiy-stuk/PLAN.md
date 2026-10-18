@@ -16,8 +16,12 @@
    Проверить кадры (`remotion still`), потом рендер и пережатие для iPhone:
    `npx remotion render <ID> out/<id>-raw.mp4 --browser-executable=/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell`
    `ffmpeg -i out/<id>-raw.mp4 -c:v libx264 -profile:v high -level 4.0 -pix_fmt yuv420p -crf 23 -maxrate 4M -bufsize 8M -af loudnorm=I=-14 -c:a aac -b:a 160k -movflags +faststart out/tretiy-stuk-<id>.mp4`
-6. Прислать владельцу ролик (SendUserFile) + готовую подпись для Instagram и VK + идею опроса для сторис.
-7. Закоммитить исходники, озвучку, обновить STATUS.md, запушить.
+6. Добавить серию на страницу роликов https://claude.ai/artifact/WiQPGAkjQenHnbjvx9wraS (владелец смотрит там,
+   без скачивания): новый блок <section> сверху в `docs/tretiy-stuk/page/index.html`, видео для страницы — 720p
+   (`-vf scale=720:-2 -crf 25 -maxrate 1.8M`, < 15 МБ) + постер jpg; публиковать Artifact с `url` этой страницы,
+   `file_path` = docs/tretiy-stuk/page/index.html и `files` только с новыми v/<id>.mp4 и v/<id>.jpg (старые сохраняются).
+7. Прислать владельцу ссылку на страницу и ролик (SendUserFile) + готовую подпись для Instagram и VK + идею опроса для сторис.
+8. Закоммитить исходники, озвучку, обновить STATUS.md, запушить.
 
 Правила: никаких реальных имён живых людей и реальных адресов; без крови и насилия в кадре; в «Загадках» — только
 проверенные факты (искать источники). Подпись всегда с «История вымышлена» для сериала и «Правил».
