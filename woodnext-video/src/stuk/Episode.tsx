@@ -19,9 +19,9 @@ export type EpisodeDef = {
 };
 
 const LEAD = 0.5; // тишина до первой фразы
-const GAP = 0.3; // пауза между фразами
-const SCENE_GAP = 0.6; // пауза на смене сцены
-const TAIL = 2.2; // хвост после последней фразы
+const GAP = 0.15; // пауза между фразами
+const SCENE_GAP = 0.35; // пауза на смене сцены
+const TAIL = 2.4; // хвост после последней фразы
 
 export const layout = (ep: EpisodeDef) => {
   const sceneOf = (i: number) => ep.scenes.findIndex((s) => i <= s.until);
@@ -41,10 +41,16 @@ export const layout = (ep: EpisodeDef) => {
 
 export const episodeFrames = (ep: EpisodeDef) => layout(ep).total;
 
+// Фон: низкий гул + нагнетание (сердцебиение, тиканье, тревожный аккорд)
 const Music: React.FC<{ total: number }> = ({ total }) => {
   const f = useCurrentFrame();
-  const v = interpolate(f, [0, 20, total - 40, total], [0, 0.55, 0.55, 0], clamp);
-  return <Audio src={staticFile("stuk/sfx/drone.mp3")} volume={v} />;
+  const v = (peak: number) => interpolate(f, [0, 10, total - 40, total], [0, peak, peak, 0], clamp);
+  return (
+    <>
+      <Audio src={staticFile("stuk/sfx/drone.mp3")} volume={v(0.35)} />
+      <Audio src={staticFile("stuk/sfx/tension.mp3")} volume={v(0.75)} />
+    </>
+  );
 };
 
 export const Episode: React.FC<{ ep: EpisodeDef }> = ({ ep }) => {
@@ -58,6 +64,7 @@ export const Episode: React.FC<{ ep: EpisodeDef }> = ({ ep }) => {
           <Sequence key={k} from={from} durationInFrames={to - from}>
             {s.render((i) => starts[i] - from, to - from)}
             {s.tape && <Tape num={s.tape[0]} text={s.tape[1]} />}
+            {k > 0 && <Audio src={staticFile("stuk/sfx/whoosh.mp3")} volume={0.7} />}
           </Sequence>
         );
       })}
