@@ -8,6 +8,7 @@ import { S1E01 } from "./stuk/s1e01";
 import { S1E02 } from "./stuk/s1e02";
 import { S1E03 } from "./stuk/s1e03";
 import { Avatar } from "./stuk/Avatar";
+import { Cover } from "./stuk/Cover";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -29,6 +30,10 @@ export const RemotionRoot: React.FC = () => {
       {/* Аватарка «Третьего стука» */}
       <Composition id="Avatar" component={() => <Avatar />} durationInFrames={1} fps={FPS} width={1080} height={1080} />
       <Composition id="AvatarOpen" component={() => <Avatar variant="open" />} durationInFrames={1} fps={FPS} width={1080} height={1080} />
+      {/* Обложки серий */}
+      <Composition id="Cover1" component={() => <Cover n={1} title={["СВЕТ", "У КОВАЛЁВЫХ"]} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
+      <Composition id="Cover2" component={() => <Cover n={2} title={["ЗОВУТ", "ГОЛОСОМ", "СЕСТРЫ"]} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
+      <Composition id="Cover3" component={() => <Cover n={3} title={["СЛЕДЫ", "ИЗНУТРИ"]} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
     </>
   );
 };
