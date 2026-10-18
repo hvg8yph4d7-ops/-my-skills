@@ -10,10 +10,8 @@ os.makedirs(OUT, exist_ok=True)
 def edge():
     import edge_tts
     voices = [
-        ("edge-dmitry", "ru-RU-DmitryNeural", "-12%", "-12Hz"),
-        ("edge-andrew", "en-US-AndrewMultilingualNeural", "-10%", "-8Hz"),
-        ("edge-brian", "en-US-BrianMultilingualNeural", "-10%", "-8Hz"),
-        ("edge-florian", "de-DE-FlorianMultilingualNeural", "-10%", "-8Hz"),
+        ("dmitry-a", "ru-RU-DmitryNeural", "-4%", "-12Hz"),
+        ("dmitry-b", "ru-RU-DmitryNeural", "+4%", "-12Hz"),
     ]
 
     async def run():

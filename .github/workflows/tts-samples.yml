@@ -21,10 +21,6 @@ jobs:
       - run: sudo apt-get update -q && sudo apt-get install -yq ffmpeg
       - run: pip install -q edge-tts soundfile
       - run: python tts/make_samples.py edge
-      - run: pip install -q torch --index-url https://download.pytorch.org/whl/cpu && python tts/make_samples.py silero
-        continue-on-error: true
-      - run: pip install -q coqui-tts && python tts/make_samples.py xtts
-        continue-on-error: true
       - name: Commit samples
         run: |
           git config user.name "github-actions[bot]"
