@@ -324,6 +324,30 @@ export const Dog: React.FC<{ x: number; y: number; s?: number; alert?: number }>
   );
 };
 
+// Свет в окне: мигает при включении, гаснет резко
+export const useLight = (on: number, off = Infinity) => {
+  const f = useCurrentFrame();
+  if (f < on || f >= off) return 0;
+  if (f < on + 8) return random(`lt${f}`) > 0.5 ? 1 : 0.2;
+  return 0.93 + random(`lf${Math.floor(f / 3)}`) * 0.07;
+};
+
+// Вид из окна на дом Ковалёвых (используется в комнате и в телефоне)
+export const Outside: React.FC<{ lit: number; eyes?: boolean }> = ({ lit, eyes }) => (
+  <>
+    <Sky />
+    <Forest y={1040} />
+    <Dacha x={540} y={1040} s={1.3} lit={lit} />
+    <Fence y={1110} />
+    {eyes && (
+      <>
+        <circle cx={480} cy={862} r={5} fill="#f4f0dc" />
+        <circle cx={506} cy={862} r={5} fill="#f4f0dc" />
+      </>
+    )}
+  </>
+);
+
 // Медленный «наезд камеры»
 export const Camera: React.FC<{
   dur: number;
@@ -493,4 +517,15 @@ export const Stamp: React.FC<{ text: string }> = ({ text }) => (
   >
     {text}
   </div>
+);
+
+// Плашки, которые копятся на экране (как у surv_protocol): [текст, кадр появления, цвет]
+export const Pills: React.FC<{ y: number; items: [string, number, string?][] }> = ({ y, items }) => (
+  <>
+    {items.map(([text, at, color], i) => (
+      <Sequence key={i} from={Math.max(0, at)}>
+        <Plate x={540} y={y + i * 76} text={text} color={color ?? C.green} />
+      </Sequence>
+    ))}
+  </>
 );

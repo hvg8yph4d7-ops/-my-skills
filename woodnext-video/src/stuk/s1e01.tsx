@@ -1,17 +1,9 @@
 // «Сезон закрыт», серия 1 — «Последний автобус».
 import React from "react";
-import { AbsoluteFill, interpolate, random, useCurrentFrame } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { EpisodeDef } from "./Episode";
-import { Bus, C, Camera, clamp, Dacha, Dog, EndCard, Fence, Forest, Man, Mood, Plate, Sfx, Sky, Svg } from "./kit";
+import { Bus, C, Camera, clamp, Dacha, Dog, EndCard, Fence, Forest, Man, Mood, Outside, Plate, Sfx, Sky, Svg, useLight } from "./kit";
 import timing from "./timing/s1e01.json";
-
-// Свет в окне: мигает при включении, гаснет резко
-const useLight = (on: number, off = Infinity) => {
-  const f = useCurrentFrame();
-  if (f < on || f >= off) return 0;
-  if (f < on + 8) return random(`lt${f}`) > 0.5 ? 1 : 0.2;
-  return 0.93 + random(`lf${Math.floor(f / 3)}`) * 0.07;
-};
 
 // 1. Улица дачного посёлка: у Ковалёвых загорается свет
 const Street: React.FC<{ at: (i: number) => number; dur: number }> = ({ at, dur }) => {
@@ -62,22 +54,6 @@ const BusStop: React.FC<{ at: (i: number) => number; dur: number }> = ({ at, dur
     </AbsoluteFill>
   );
 };
-
-// Вид из окна на дом Ковалёвых (используется в комнате и в телефоне)
-const Outside: React.FC<{ lit: number; eyes?: boolean }> = ({ lit, eyes }) => (
-  <>
-    <Sky />
-    <Forest y={1040} />
-    <Dacha x={540} y={1040} s={1.3} lit={lit} />
-    <Fence y={1110} />
-    {eyes && (
-      <>
-        <circle cx={480} cy={862} r={5} fill="#f4f0dc" />
-        <circle cx={506} cy={862} r={5} fill="#f4f0dc" />
-      </>
-    )}
-  </>
-);
 
 // 3. Комната: тишина, потом собака рычит на окно
 const Room: React.FC<{ at: (i: number) => number; dur: number }> = ({ at, dur }) => {
@@ -216,7 +192,7 @@ export const S1E01: EpisodeDef = {
     { until: 1, tape: ["!", "СЕЗОН ЗАКРЫТ"], stamp: "ДЕНЬ 4 · 23:52", render: (at, dur) => <Street at={at} dur={dur} /> },
     { until: 4, tape: ["1.", "ПОСЛЕДНИЙ АВТОБУС"], stamp: "15 ОКТЯБРЯ · 18:40", render: (at, dur) => <BusStop at={at} dur={dur} /> },
     { until: 7, tape: ["1.", "ПОСЛЕДНИЙ АВТОБУС"], render: (at, dur) => <Room at={at} dur={dur} /> },
-    { until: 12, tape: ["!", "СВЕТ У КОВАЛЁВЫХ"], stamp: "НОЧЬ 4 · 02:41", render: (at, dur) => <Window at={at} dur={dur} /> },
+    { until: 12, tape: ["!", "СВЕТ У КОВАЛЁВЫХ"], stamp: "НОЧЬ 4 · 23:58", render: (at, dur) => <Window at={at} dur={dur} /> },
     { until: 13, render: () => <EndCard /> },
   ],
 };

@@ -5,6 +5,7 @@ import { PromoStory, STORY_TOTAL } from "./PromoStory";
 import { Faceless, FACELESS_TOTAL } from "./Faceless";
 import { Episode, episodeFrames } from "./stuk/Episode";
 import { S1E01 } from "./stuk/s1e01";
+import { S1E02 } from "./stuk/s1e02";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -21,6 +22,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="Faceless" component={Faceless} durationInFrames={FACELESS_TOTAL} fps={FPS} width={1080} height={1920} />
       {/* «Третий стук» — страшный сериал «Сезон закрыт» */}
       <Composition id="S1E01" component={() => <Episode ep={S1E01} />} durationInFrames={episodeFrames(S1E01)} fps={FPS} width={1080} height={1920} />
+      <Composition id="S1E02" component={() => <Episode ep={S1E02} />} durationInFrames={episodeFrames(S1E02)} fps={FPS} width={1080} height={1920} />
     </>
   );
 };
