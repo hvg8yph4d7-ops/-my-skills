@@ -9,7 +9,7 @@ async def say(text, voice, rate, pitch, path):
     for attempt in range(7):  # сервис иногда отдаёт пустой ответ — повторяем с растущей паузой
         try:
             await edge_tts.Communicate(text, voice, rate=rate, pitch=pitch).save(path)
-            if os.path.getsize(path) > 1000:
+            if os.path.getsize(path) > 6000:
                 return
         except Exception as e:
             print("retry", path, e)
@@ -25,7 +25,7 @@ async def main():
         os.makedirs(out, exist_ok=True)
         for i, text in enumerate(cfg["phrases"], 1):
             path = f"{out}/{i:02d}.mp3"
-            if os.path.exists(path) and os.path.getsize(path) > 1000:
+            if os.path.exists(path) and os.path.getsize(path) > 6000:
                 continue
             await say(text, cfg["voice"], cfg.get("rate", "+0%"), cfg.get("pitch", "+0Hz"), path)
             print("ok", path)
