@@ -23,6 +23,7 @@ jobs:
       - run: pip install -q edge-tts
       - run: python tts/make_voice.py
       - name: Commit voice
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
