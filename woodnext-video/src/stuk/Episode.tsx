@@ -18,9 +18,9 @@ export type EpisodeDef = {
   scenes: Scene[];
 };
 
-const LEAD = 0.5; // тишина до первой фразы
-const GAP = 0.15; // пауза между фразами
-const SCENE_GAP = 0.35; // пауза на смене сцены
+const LEAD = 0.3; // тишина до первой фразы
+const GAP = 0.1; // пауза между фразами
+const SCENE_GAP = 0.25; // пауза на смене сцены
 const TAIL = 2.4; // хвост после последней фразы
 
 export const layout = (ep: EpisodeDef) => {
