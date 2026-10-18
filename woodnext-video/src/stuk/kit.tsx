@@ -480,7 +480,7 @@ export const KaraokeCaption: React.FC<{ words: KWord[]; dur: number }> = ({ word
               key={i}
               style={{
                 display: "inline-block",
-                margin: `0 ${size * 0.14}px`,
+                margin: `0 ${size * 0.2}px`,
                 color: said ? w.color : "#7d828c",
                 opacity: said ? 1 : 0.75,
                 transform: `scale(${said ? 1 + 0.06 * (1 - Math.min(pop, 1)) : 1})`,
