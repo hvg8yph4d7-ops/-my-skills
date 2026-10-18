@@ -213,10 +213,10 @@ export const S1E01: EpisodeDef = {
     "ЧАСТЬ 2 — / $ЗАВТРА $УТРОМ",
   ],
   scenes: [
-    { until: 1, tape: ["!", "СЕЗОН ЗАКРЫТ"], render: (at, dur) => <Street at={at} dur={dur} /> },
-    { until: 4, tape: ["1.", "ПОСЛЕДНИЙ АВТОБУС"], render: (at, dur) => <BusStop at={at} dur={dur} /> },
+    { until: 1, tape: ["!", "СЕЗОН ЗАКРЫТ"], stamp: "ДЕНЬ 4 · 23:52", render: (at, dur) => <Street at={at} dur={dur} /> },
+    { until: 4, tape: ["1.", "ПОСЛЕДНИЙ АВТОБУС"], stamp: "15 ОКТЯБРЯ · 18:40", render: (at, dur) => <BusStop at={at} dur={dur} /> },
     { until: 7, tape: ["1.", "ПОСЛЕДНИЙ АВТОБУС"], render: (at, dur) => <Room at={at} dur={dur} /> },
-    { until: 12, tape: ["!", "СВЕТ У КОВАЛЁВЫХ"], render: (at, dur) => <Window at={at} dur={dur} /> },
+    { until: 12, tape: ["!", "СВЕТ У КОВАЛЁВЫХ"], stamp: "НОЧЬ 4 · 02:41", render: (at, dur) => <Window at={at} dur={dur} /> },
     { until: 13, render: () => <EndCard /> },
   ],
 };

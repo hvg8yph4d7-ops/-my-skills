@@ -2,11 +2,12 @@
 // сменяются на заданных фразах, субтитры и полоска-«скотч» — поверх.
 import React from "react";
 import { AbsoluteFill, Audio, interpolate, Sequence, staticFile, useCurrentFrame } from "remotion";
-import { Caption, clamp, sec, Tape } from "./kit";
+import { clamp, KaraokeCaption, KWord, sec, splitWords, Stamp, Tape } from "./kit";
 
 export type Scene = {
   until: number; // индекс последней фразы сцены (включительно)
   tape?: [num: string, text: string];
+  stamp?: string; // отметка времени сверху, например «НОЧЬ 4 · 02:41»
   // at(i) — кадр начала фразы i относительно начала сцены; dur — длина сцены в кадрах
   render: (at: (i: number) => number, dur: number) => React.ReactNode;
 };
@@ -18,9 +19,9 @@ export type EpisodeDef = {
   scenes: Scene[];
 };
 
-const LEAD = 0.3; // тишина до первой фразы
-const GAP = 0.1; // пауза между фразами
-const SCENE_GAP = 0.25; // пауза на смене сцены
+const LEAD = 0.25; // тишина до первой фразы
+const GAP = 0.06; // пауза между фразами
+const SCENE_GAP = 0.18; // пауза на смене сцены
 const TAIL = 2.4; // хвост после последней фразы
 
 export const layout = (ep: EpisodeDef) => {
@@ -41,14 +42,47 @@ export const layout = (ep: EpisodeDef) => {
 
 export const episodeFrames = (ep: EpisodeDef) => layout(ep).total;
 
-// Фон: низкий гул + нагнетание (сердцебиение, тиканье, тревожный аккорд)
+// Фон: мрачный эмбиент с нотами + немного нагнетания (сердцебиение, тиканье)
 const Music: React.FC<{ total: number }> = ({ total }) => {
   const f = useCurrentFrame();
   const v = (peak: number) => interpolate(f, [0, 10, total - 40, total], [0, peak, peak, 0], clamp);
   return (
     <>
-      <Audio src={staticFile("stuk/sfx/drone.mp3")} volume={v(0.35)} />
-      <Audio src={staticFile("stuk/sfx/tension.mp3")} volume={v(0.75)} />
+      <Audio src={staticFile("stuk/sfx/ambient.mp3")} volume={v(0.8)} />
+      <Audio src={staticFile("stuk/sfx/tension.mp3")} volume={v(0.25)} />
+    </>
+  );
+};
+
+// Фраза режется на куски по 2–3 слова; время слова — пропорционально длине текста до него
+const PhraseCaptions: React.FC<{ caption: string; seconds: number; dur: number }> = ({ caption, seconds, dur }) => {
+  const words = splitWords(caption);
+  const total = words.reduce((a, w) => a + w.text.length + 1, 0);
+  let acc = 0;
+  const timed = words.map((w) => {
+    const at = sec((acc / total) * seconds);
+    acc += w.text.length + 1;
+    return { ...w, at };
+  });
+  const chunks: (typeof timed)[] = [];
+  for (const w of timed) {
+    const last = chunks[chunks.length - 1];
+    const prevEnds = last && /[.,!?…—:]$/.test(last[last.length - 1].text);
+    if (!last || last.length >= 3 || (prevEnds && last.length >= 2)) chunks.push([w]);
+    else last.push(w);
+  }
+  return (
+    <>
+      {chunks.map((ch, k) => {
+        const from = ch[0].at;
+        const to = k + 1 < chunks.length ? chunks[k + 1][0].at : dur;
+        const words: KWord[] = ch.map((w) => ({ text: w.text, color: w.color, at: w.at - from }));
+        return (
+          <Sequence key={k} from={from} durationInFrames={Math.max(1, to - from)}>
+            <KaraokeCaption words={words} dur={Math.max(1, to - from)} />
+          </Sequence>
+        );
+      })}
     </>
   );
 };
@@ -64,6 +98,7 @@ export const Episode: React.FC<{ ep: EpisodeDef }> = ({ ep }) => {
           <Sequence key={k} from={from} durationInFrames={to - from}>
             {s.render((i) => starts[i] - from, to - from)}
             {s.tape && <Tape num={s.tape[0]} text={s.tape[1]} />}
+            {s.stamp && <Stamp text={s.stamp} />}
             {k > 0 && <Audio src={staticFile("stuk/sfx/whoosh.mp3")} volume={0.7} />}
           </Sequence>
         );
@@ -72,7 +107,7 @@ export const Episode: React.FC<{ ep: EpisodeDef }> = ({ ep }) => {
         const dur = sec(ep.timing[i] + GAP);
         return (
           <Sequence key={i} from={starts[i]} durationInFrames={dur}>
-            <Caption text={c} dur={dur} />
+            <PhraseCaptions caption={c} seconds={ep.timing[i]} dur={dur} />
             <Audio src={staticFile(`stuk/${ep.id}/${String(i + 1).padStart(2, "0")}.mp3`)} volume={1.6} />
           </Sequence>
         );

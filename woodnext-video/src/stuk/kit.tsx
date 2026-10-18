@@ -416,3 +416,81 @@ export const EndCard: React.FC = () => {
     </AbsoluteFill>
   );
 };
+
+// ——— Субтитры «караоке» (как у surv_protocol): по 2–3 слова, ещё не сказанные — серые ———
+export type KWord = { text: string; color: string; at: number }; // at — кадр начала слова в куске
+
+export const splitWords = (caption: string): { text: string; color: string }[] =>
+  caption
+    .replace(/\//g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => {
+      const [text, color] = wordColor(w);
+      return { text, color };
+    });
+
+export const KaraokeCaption: React.FC<{ words: KWord[]; dur: number }> = ({ words, dur }) => {
+  const f = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const len = words.map((w) => w.text).join(" ").length;
+  const size = Math.min(108, 1500 / Math.max(len, 8));
+  const out = interpolate(f, [dur - 2, dur], [1, 0], clamp);
+  const appear = spring({ frame: f, fps, config: { damping: 14, stiffness: 260 } });
+  return (
+    <AbsoluteFill style={{ alignItems: "center", paddingTop: 1170 }}>
+      <div
+        style={{
+          width: 900,
+          textAlign: "center",
+          opacity: out,
+          transform: `scale(${0.85 + 0.15 * appear})`,
+          lineHeight: 1.05,
+        }}
+      >
+        {words.map((w, i) => {
+          const said = f >= w.at;
+          const pop = spring({ frame: f - w.at, fps, config: { damping: 12, stiffness: 300 } });
+          return (
+            <span
+              key={i}
+              style={{
+                display: "inline-block",
+                margin: `0 ${size * 0.14}px`,
+                color: said ? w.color : "#7d828c",
+                opacity: said ? 1 : 0.75,
+                transform: `scale(${said ? 1 + 0.06 * (1 - Math.min(pop, 1)) : 1})`,
+                fontFamily: head,
+                fontWeight: 900,
+                fontSize: size,
+                letterSpacing: -0.5,
+                textShadow: "0 5px 0 rgba(0,0,0,.6), 0 0 18px rgba(0,0,0,.85)",
+              }}
+            >
+              {w.text}
+            </span>
+          );
+        })}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
+// Маленькая отметка времени сверху: «НОЧЬ 4 · 02:41»
+export const Stamp: React.FC<{ text: string }> = ({ text }) => (
+  <div
+    style={{
+      position: "absolute",
+      top: 300,
+      width: "100%",
+      textAlign: "center",
+      fontFamily: body,
+      fontWeight: 700,
+      fontSize: 30,
+      letterSpacing: 6,
+      color: "rgba(235,232,220,.75)",
+    }}
+  >
+    {text}
+  </div>
+);
