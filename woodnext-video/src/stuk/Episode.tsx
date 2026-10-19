@@ -17,6 +17,7 @@ export type EpisodeDef = {
   captions: string[]; // по одной на фразу озвучки, разметка как в Caption
   timing: number[]; // длительности фраз, секунды (src/stuk/timing/<id>.json)
   scenes: Scene[];
+  music?: "horror" | "fin"; // фон: страшилки (по умолчанию) или финансовый ритм
 };
 
 const LEAD = 0.25; // тишина до первой фразы
@@ -42,10 +43,11 @@ export const layout = (ep: EpisodeDef) => {
 
 export const episodeFrames = (ep: EpisodeDef) => layout(ep).total;
 
-// Фон: мрачный эмбиент с нотами + немного нагнетания (сердцебиение, тиканье)
-const Music: React.FC<{ total: number }> = ({ total }) => {
+// Фон: мрачный эмбиент с нотами + нагнетание (страшилки) или спокойный ритм (финансы)
+const Music: React.FC<{ total: number; kind: "horror" | "fin" }> = ({ total, kind }) => {
   const f = useCurrentFrame();
   const v = (peak: number) => interpolate(f, [0, 10, total - 40, total], [0, peak, peak, 0], clamp);
+  if (kind === "fin") return <Audio src={staticFile("fin/beat.mp3")} volume={v(0.45)} />;
   return (
     <>
       <Audio src={staticFile("stuk/sfx/ambient.mp3")} volume={v(0.8)} />
@@ -99,7 +101,7 @@ export const Episode: React.FC<{ ep: EpisodeDef }> = ({ ep }) => {
             {s.render((i) => starts[i] - from, to - from)}
             {s.tape && <Tape num={s.tape[0]} text={s.tape[1]} />}
             {s.stamp && <Stamp text={s.stamp} />}
-            {k > 0 && <Audio src={staticFile("stuk/sfx/whoosh.mp3")} volume={0.7} />}
+            {k > 0 && <Audio src={staticFile("stuk/sfx/whoosh.mp3")} volume={ep.music === "fin" ? 0.35 : 0.7} />}
           </Sequence>
         );
       })}
@@ -112,7 +114,7 @@ export const Episode: React.FC<{ ep: EpisodeDef }> = ({ ep }) => {
           </Sequence>
         );
       })}
-      <Music total={total} />
+      <Music total={total} kind={ep.music ?? "horror"} />
     </AbsoluteFill>
   );
 };
