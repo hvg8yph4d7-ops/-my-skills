@@ -406,6 +406,7 @@ export const EndCard: React.FC = () => {
   const { fps } = useVideoConfig();
   const knock = [0, 18, 36]; // совпадает с knock3.mp3: удар 0,35 с + пауза 0,25 с
   const title = spring({ frame: f - 44, fps, config: { damping: 14 } });
+  const cta = spring({ frame: f - 54, fps, config: { damping: 12 } });
   return (
     <AbsoluteFill style={{ background: "#07080c", alignItems: "center", paddingTop: 420 }}>
       <svg width={420} height={520} viewBox="0 0 420 520">
@@ -436,6 +437,26 @@ export const EndCard: React.FC = () => {
       >
         ТРЕТИЙ СТУК
       </div>
+      {/* призыв подписаться — ниже субтитров, выше кнопок Instagram */}
+      <div
+        style={{
+          position: "absolute",
+          top: 1500,
+          left: 540,
+          transform: `translateX(-50%) scale(${cta * (1 + 0.04 * Math.sin(f / 5))})`,
+          background: C.red,
+          color: "#fff",
+          fontFamily: head,
+          fontWeight: 900,
+          fontSize: 50,
+          padding: "22px 46px",
+          borderRadius: 999,
+          whiteSpace: "nowrap",
+          boxShadow: "0 10px 30px rgba(255,59,48,.45)",
+        }}
+      >
+        ПОДПИШИСЬ — НЕ ПРОПУСТИ
+      </div>
       <Sfx src="knock3.mp3" at={0} volume={1} />
     </AbsoluteFill>
   );
@@ -458,7 +479,7 @@ export const KaraokeCaption: React.FC<{ words: KWord[]; dur: number }> = ({ word
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const len = words.map((w) => w.text).join(" ").length;
-  const size = Math.min(108, 1500 / Math.max(len, 8));
+  const size = Math.min(108, 1150 / Math.max(len, 8));
   const out = interpolate(f, [dur - 2, dur], [1, 0], clamp);
   const appear = spring({ frame: f, fps, config: { damping: 14, stiffness: 260 } });
   return (
