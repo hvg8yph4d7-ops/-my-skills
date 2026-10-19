@@ -8,6 +8,8 @@ import { S1E01 } from "./stuk/s1e01";
 import { S1E02 } from "./stuk/s1e02";
 import { S1E03 } from "./stuk/s1e03";
 import { Avatar } from "./stuk/Avatar";
+import { PR01, Store } from "./stuk/pr01";
+import { Slope, ZG01 } from "./stuk/zg01";
 import { Cover } from "./stuk/Cover";
 
 export const RemotionRoot: React.FC = () => {
@@ -27,12 +29,16 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="S1E01" component={() => <Episode ep={S1E01} />} durationInFrames={episodeFrames(S1E01)} fps={FPS} width={1080} height={1920} />
       <Composition id="S1E02" component={() => <Episode ep={S1E02} />} durationInFrames={episodeFrames(S1E02)} fps={FPS} width={1080} height={1920} />
       <Composition id="S1E03" component={() => <Episode ep={S1E03} />} durationInFrames={episodeFrames(S1E03)} fps={FPS} width={1080} height={1920} />
+      <Composition id="PR01" component={() => <Episode ep={PR01} />} durationInFrames={episodeFrames(PR01)} fps={FPS} width={1080} height={1920} />
+      <Composition id="ZG01" component={() => <Episode ep={ZG01} />} durationInFrames={episodeFrames(ZG01)} fps={FPS} width={1080} height={1920} />
       {/* Аватарка «Третьего стука» */}
       <Composition id="Avatar" component={() => <Avatar />} durationInFrames={1} fps={FPS} width={1080} height={1080} />
       <Composition id="AvatarOpen" component={() => <Avatar variant="open" />} durationInFrames={1} fps={FPS} width={1080} height={1080} />
       {/* Обложки серий */}
       <Composition id="Cover1" component={() => <Cover n={1} title={["СВЕТ", "У КОВАЛЁВЫХ"]} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
       <Composition id="Cover2" component={() => <Cover n={2} title={["ЗОВУТ", "ГОЛОСОМ", "СЕСТРЫ"]} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
+      <Composition id="CoverPR01" component={() => <Cover n={0} tape="ПРАВИЛА НОЧНОЙ СМЕНЫ" kicker="АПТЕКА 24" title={["НЕ ОТКРЫВАЙ", "ОКОШКО"]} scene={<Store />} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
+      <Composition id="CoverZG01" component={() => <Cover n={0} tape="ЗАГАДКА" kicker="1959 · 9 ЧЕЛОВЕК" title={["ПЕРЕВАЛ", "ДЯТЛОВА"]} scene={<Slope cut trail={1} fire />} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
       <Composition id="Cover3" component={() => <Cover n={3} title={["СЛЕДЫ", "ИЗНУТРИ"]} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
     </>
   );

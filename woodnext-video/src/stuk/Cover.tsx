@@ -43,11 +43,18 @@ const Scene3 = () => (
   </Svg>
 );
 
-export const Cover: React.FC<{ n: number; title: string[] }> = ({ n, title }) => (
+export const Cover: React.FC<{ n: number; title: string[]; tape?: string; kicker?: string; scene?: React.ReactNode }> = ({
+  n,
+  title,
+  tape = "СЕЗОН ЗАКРЫТ",
+  kicker,
+  scene,
+}) => (
   <AbsoluteFill style={{ background: "#000" }}>
-    {n === 1 && <Scene1 />}
-    {n === 2 && <Scene2 />}
-    {n === 3 && <Scene3 />}
+    {scene}
+    {!scene && n === 1 && <Scene1 />}
+    {!scene && n === 2 && <Scene2 />}
+    {!scene && n === 3 && <Scene3 />}
     <AbsoluteFill style={{ background: "linear-gradient(180deg, rgba(0,0,0,.15) 30%, rgba(0,0,0,.75) 62%, rgba(0,0,0,.35) 90%)" }} />
     <div
       style={{
@@ -68,11 +75,12 @@ export const Cover: React.FC<{ n: number; title: string[] }> = ({ n, title }) =>
         boxShadow: "0 10px 24px rgba(0,0,0,.6)",
       }}
     >
-      <span style={{ color: "#c62828", marginRight: 18 }}>!</span>СЕЗОН ЗАКРЫТ
+      <span style={{ color: "#c62828", marginRight: 18 }}>!</span>
+      {tape}
     </div>
     <div style={{ position: "absolute", top: 1010, width: "100%", textAlign: "center" }}>
       <div style={{ fontFamily: head, fontWeight: 900, fontSize: 92, color: C.yellow, letterSpacing: 2, textShadow: "0 6px 0 rgba(0,0,0,.6)" }}>
-        ЧАСТЬ {n}
+        {kicker ?? `ЧАСТЬ ${n}`}
       </div>
       {title.map((line, i) => (
         <div
