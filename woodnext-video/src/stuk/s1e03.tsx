@@ -1,9 +1,9 @@
-// «Сезон закрыт», серия 3 — «Сестра». Схема: удар → ставки → проверить / посмотреть / следы →
-// «была лишь одна проблема» → следы начинаются у порога, изнутри.
+// «Сезон закрыт», серия 3 — «Сестра» (версия 2, страшнее): зовут голосом сестры, три удара,
+// босые следы к крыльцу, которые не возвращаются, — и глаза за плечом в отражении стекла.
 import React from "react";
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { EpisodeDef } from "./Episode";
-import { body, C, Camera, clamp, EndCard, Fence, Forest, Mood, Pills, Sfx, Sky, Svg } from "./kit";
+import { C, Camera, clamp, EndCard, Fence, Forest, Mood, Pills, Sfx, Sky, Svg } from "./kit";
 import timing from "./timing/s1e03.json";
 
 type P = { at: (i: number) => number; dur: number };
@@ -43,95 +43,57 @@ const DoorInside: React.FC<{ rings?: number; chair?: boolean; bell?: boolean }> 
   );
 };
 
-// 1. Зовут голосом сестры
-const Voice: React.FC<P> = ({ at, dur }) => (
-  <AbsoluteFill>
-    <Camera dur={dur} from={1.08} to={1}>
-      <DoorInside rings={0} chair bell />
-    </Camera>
-    <Pills
-      y={400}
-      items={[
-        ["АНЯ — В МОСКВЕ", at(1) + 10, "#2b3a5a"],
-        ["ПРАВИЛО 1: НЕ ОТВЕЧАТЬ", at(2), "#7a2c26"],
-        ["ЗОВУТ ЕЩЁ 2 РАЗА", at(3), "#2b3a5a"],
-      ]}
-    />
-    <Mood />
-  </AbsoluteFill>
+// Босой след: подошва + пальцы
+const Foot: React.FC<{ x: number; y: number; rot: number; left: boolean; o: number }> = ({ x, y, rot, left, o }) => (
+  <g transform={`translate(${x},${y}) rotate(${rot}) scale(${left ? -1 : 1},1)`} opacity={o}>
+    <ellipse cx={0} cy={0} rx={15} ry={30} fill="#1c212c" />
+    <ellipse cx={-2} cy={-28} rx={13} ry={10} fill="#1c212c" />
+    {[-12, -4, 4, 11].map((dx, i) => (
+      <circle key={i} cx={dx} cy={-46 - (i === 0 ? 2 : 0)} r={i === 0 ? 6 : 4.5} fill="#1c212c" />
+    ))}
+  </g>
 );
 
-// 2. Проверить: переписка с Аней
-const Bubble: React.FC<{ at: number; me?: boolean; children: React.ReactNode }> = ({ at, me, children }) => {
+// 1. Голос сестры, потом три удара в дверь
+const Voice: React.FC<P> = ({ at, dur }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const s = spring({ frame: f - at, fps, config: { damping: 14 } });
-  if (f < at) return null;
+  const k0 = at(3) + 45;
+  const silent = f >= at(4);
   return (
-    <div
-      style={{
-        alignSelf: me ? "flex-end" : "flex-start",
-        maxWidth: 460,
-        background: me ? "#3d6bd6" : "#262a33",
-        color: "#fff",
-        fontFamily: body,
-        fontWeight: 700,
-        fontSize: 36,
-        padding: "16px 24px",
-        borderRadius: 22,
-        transform: `scale(${s})`,
-        transformOrigin: me ? "100% 100%" : "0% 100%",
-      }}
-    >
-      {children}
-    </div>
-  );
-};
-
-const Check: React.FC<P> = ({ at, dur }) => {
-  const f = useCurrentFrame();
-  const typing = f > at(6) + 25 && f < at(7);
-  return (
-    <AbsoluteFill style={{ background: "#0b0c11" }}>
-      <Camera dur={dur} from={1} to={1.05}>
-        <div
-          style={{
-            position: "absolute",
-            left: 230,
-            top: 380,
-            width: 620,
-            height: 660,
-            borderRadius: 56,
-            border: "14px solid #1c1d22",
-            background: "#0b0d12",
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <div style={{ padding: "26px 30px 18px", borderBottom: "2px solid #22252d", color: "#fff", fontFamily: body, fontWeight: 700, fontSize: 36 }}>
-            Аня
-            <div style={{ fontSize: 24, color: typing ? "#6fa8ff" : "#7d8390" }}>{typing ? "печатает…" : "в сети"}</div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: 26 }}>
-            <Bubble at={at(6)} me>
-              Ты где?
-            </Bubble>
-            <Bubble at={at(7)}>Дома. Сплю. Ты чего?</Bubble>
-          </div>
-        </div>
+    <AbsoluteFill>
+      <Camera dur={dur} from={1.08} to={1} shake={f > k0 && f < k0 + 45 ? 5 : 0}>
+        <DoorInside rings={silent ? -1 : 0} chair bell />
+        <Svg>
+          {[0, 1, 2].map((i) => {
+            const s = spring({ frame: f - (k0 + i * 18), fps, config: { damping: 9, stiffness: 260 } });
+            return (
+              <g key={i} transform={`translate(${470 + i * 50},${520 + i * 90}) scale(${s})`}>
+                <circle r={40} fill={C.red} opacity={0.25} />
+                <circle r={15} fill={C.red} />
+              </g>
+            );
+          })}
+        </Svg>
       </Camera>
-      <Pills y={1100} items={[["ПРОВЕРЯЙ ДРУГИМ КАНАЛОМ", at(8) + 10]]} />
+      <Pills
+        y={400}
+        items={[
+          ["АНЯ: «ДОМА, СПЛЮ»", at(1) + 20, "#2b3a5a"],
+          ["ПРАВИЛО 1: НЕ ОТВЕЧАТЬ", at(2), "#7a2c26"],
+        ]}
+      />
       <Mood />
+      <Sfx src="knock3.mp3" at={k0} volume={1} />
     </AbsoluteFill>
   );
 };
 
-// 3. Посмотреть: щель в одеяле, двор под луной
+// 2. Щель в одеяле: двор под луной
 const Peek: React.FC<P> = ({ at, dur }) => {
   const f = useCurrentFrame();
-  const lampOff = at(10) + 6;
-  const gap = interpolate(f, [at(10) + 20, at(10) + 45], [0, 1], clamp);
+  const lampOff = at(5) + 6;
+  const gap = interpolate(f, [at(5) + 20, at(5) + 45], [0, 1], clamp);
   return (
     <AbsoluteFill style={{ background: "#0a0b0f" }}>
       <Camera dur={dur} from={1} to={1.12} oy="40%">
@@ -161,158 +123,127 @@ const Peek: React.FC<P> = ({ at, dur }) => {
           <rect x={130} y={1030} width={820} height={30} fill="#3a2f27" />
         </Svg>
       </Camera>
-      <Pills
-        y={400}
-        items={[
-          ["ЛАМПА ВЫКЛЮЧЕНА", lampOff],
-          ["ЩЕЛЬ — НА ПАЛЕЦ", at(10) + 30],
-          ["ТЁМНАЯ КОМНАТА = НЕВИДИМКА", at(11) + 10, "#2b3a5a"],
-        ]}
-      />
       <Mood />
       <Sfx src="click.wav" at={lampOff} volume={0.7} />
     </AbsoluteFill>
   );
 };
 
-// Босой след: подошва + пальцы
-const Foot: React.FC<{ x: number; y: number; rot: number; left: boolean; o: number }> = ({ x, y, rot, left, o }) => (
-  <g transform={`translate(${x},${y}) rotate(${rot}) scale(${left ? -1 : 1},1)`} opacity={o}>
-    <ellipse cx={0} cy={0} rx={15} ry={30} fill="#1c212c" />
-    <ellipse cx={-2} cy={-28} rx={13} ry={10} fill="#1c212c" />
-    {[-12, -4, 4, 11].map((dx, i) => (
-      <circle key={i} cx={dx} cy={-46 - (i === 0 ? 2 : 0)} r={i === 0 ? 6 : 4.5} fill="#1c212c" />
-    ))}
-  </g>
-);
-
-// 4. Следы на инее у крыльца, на рассвете
-const Frost: React.FC<P> = ({ at, dur }) => {
+// 3. Двор ночью: босые следы от калитки к крыльцу, обратно — нет
+const Steps: React.FC<P> = ({ at, dur }) => {
   const f = useCurrentFrame();
-  const start = at(16);
+  const start = at(7) + 10;
+  const n = 9;
   return (
     <AbsoluteFill>
-      <Camera dur={dur} from={1} to={1.1} oy="60%">
+      <Camera dur={dur} from={1} to={1.14} oy="70%">
         <Svg>
-          <Sky dusk moon={false} />
-          <Forest y={820} />
-          <rect x={0} y={820} width={1080} height={1100} fill="#4e5a70" />
-          {new Array(140).fill(0).map((_, i) => (
-            <circle key={i} cx={(i * 131) % 1080} cy={830 + ((i * 71) % 1000)} r={2.5} fill="#fff" opacity={0.7} />
+          <Sky moon />
+          <Forest y={760} />
+          <rect x={0} y={760} width={1080} height={1160} fill="#3c4760" />
+          {new Array(150).fill(0).map((_, i) => (
+            <circle key={i} cx={(i * 131) % 1080} cy={770 + ((i * 71) % 1100)} r={2.5} fill="#e8eef9" opacity={0.55} />
           ))}
-          <rect x={240} y={1500} width={600} height={60} fill="#5a4636" />
-          <rect x={280} y={1560} width={520} height={60} fill="#4a3a2d" />
-          <rect x={200} y={1440} width={680} height={60} fill="#6b5442" />
-          {new Array(8).fill(0).map((_, i) => {
-            const o = interpolate(f, [start + i * 5, start + i * 5 + 6], [0, 1], clamp);
-            return <Foot key={i} x={500 + (i % 2) * 70 + i * 6} y={1380 - i * 85} rot={6} left={i % 2 === 0} o={o} />;
+          <rect x={430} y={700} width={20} height={130} fill="#2e251e" />
+          <rect x={630} y={700} width={20} height={130} fill="#2e251e" />
+          <rect x={450} y={720} width={180} height={90} fill="#3a2f27" />
+          <rect x={180} y={1460} width={720} height={60} fill="#6b5442" />
+          <rect x={220} y={1520} width={640} height={60} fill="#5a4636" />
+          {new Array(n).fill(0).map((_, i) => {
+            const o = interpolate(f, [start + i * 7, start + i * 7 + 6], [0, 1], clamp);
+            const t = i / (n - 1);
+            return <Foot key={i} x={540 + (i % 2 ? 34 : -34)} y={860 + t * 560} rot={180} left={i % 2 === 0} o={o} />;
           })}
         </Svg>
       </Camera>
       <Pills
         y={400}
         items={[
-          ["ИНЕЙ НЕ ВРЁТ", at(14) + 20, "#2b3a5a"],
-          ["БОСИКОМ · −6°", start + 30, "#7a2c26"],
+          ["БОСИКОМ · −6°", at(7) + 20, "#2b3a5a"],
+          ["ОТ КАЛИТКИ — К КРЫЛЬЦУ", at(8) + 10],
+          ["ОБРАТНО — НЕТ", at(9) + 10, "#7a2c26"],
+          ["ОН ВСЁ ЕЩЁ ЗДЕСЬ", at(10) + 5, C.red],
         ]}
       />
       <Mood />
+      <Sfx src="hit.mp3" at={at(10)} volume={0.6} />
     </AbsoluteFill>
   );
 };
 
-// 5. Вид сверху: следы начинаются у порога и уходят к Ковалёвым
-const Map: React.FC<P> = ({ at, dur }) => {
+// 4. Тёмное стекло: моё отражение, а за плечом — глаза
+const Glass: React.FC<P> = ({ at, dur }) => {
   const f = useCurrentFrame();
-  const draw = interpolate(f, [at(19), at(19) + 50], [0, 1], clamp);
-  const steps = 16;
+  const eyesAt = at(13) + 12;
+  const eyes = interpolate(f, [eyesAt, eyesAt + 6], [0, 1], clamp);
+  const closer = interpolate(f, [at(14), at(14) + 60], [1, 1.35], clamp);
+  const flash = interpolate(f, [eyesAt, eyesAt + 3, eyesAt + 10], [0, 0.6, 0], clamp);
+  const blink = Math.floor((f - eyesAt) / 4) === 9 ? 0.1 : 1;
   return (
-    <AbsoluteFill style={{ background: "#3f4a5e" }}>
-      <Camera dur={dur} from={1} to={1.06}>
+    <AbsoluteFill style={{ background: "#07080b" }}>
+      <Camera dur={dur} from={1} to={1.18} oy="40%" shake={f > eyesAt && f < eyesAt + 25 ? 9 : 0}>
         <Svg>
-          <rect width={1080} height={1920} fill="#3f4a5e" />
-          {new Array(120).fill(0).map((_, i) => (
-            <circle key={i} cx={(i * 151) % 1080} cy={(i * 89) % 1920} r={2.5} fill="#fff" opacity={0.7} />
-          ))}
-          <rect x={120} y={880} width={360} height={260} fill="#1d1d25" />
-          <polygon points="120,880 300,800 480,880" fill="#16161d" />
-          <text x={300} y={1030} textAnchor="middle" fontSize={34} fontWeight={800} fill="#e9e2cc" fontFamily="Montserrat">
-            МОЙ ДОМ
-          </text>
-          <rect x={430} y={950} width={70} height={90} fill="#6b5442" />
-          <rect x={650} y={470} width={320} height={200} fill="#1d1d25" />
-          <text x={810} y={582} textAnchor="middle" fontSize={30} fontWeight={800} fill="#e9e2cc" fontFamily="Montserrat">
-            КОВАЛЁВЫ
-          </text>
-          {new Array(steps).fill(0).map((_, i) => {
-            const t = i / (steps - 1);
-            const o = draw > t ? 1 : 0;
-            const x = 520 + t * 260 + (i % 2 ? 18 : -18);
-            const y = 1000 - t * 300;
-            return <Foot key={i} x={x} y={y} rot={22} left={i % 2 === 0} o={o} />;
-          })}
-          <circle cx={520} cy={1000} r={60} fill="none" stroke={C.red} strokeWidth={6} opacity={f > at(19) + 10 ? 1 : 0} />
+          <rect width={1080} height={1920} fill="#0b0d12" />
+          <rect x={120} y={300} width={840} height={880} fill="#05060a" stroke="#3a2f27" strokeWidth={26} />
+          <line x1={540} x2={540} y1={300} y2={1180} stroke="#3a2f27" strokeWidth={16} />
+          {/* моё отражение — тёмный силуэт с бледным контуром от луны */}
+          <g>
+            <circle cx={420} cy={760} r={112} fill="#8d98b2" opacity={0.18} />
+            <circle cx={420} cy={760} r={104} fill="#05060a" />
+            <path d="M250,1180 q170,-280 340,0 z" fill="#8d98b2" opacity={0.18} />
+            <path d="M262,1180 q158,-262 316,0 z" fill="#05060a" />
+          </g>
+          {/* за плечом */}
+          <g transform={`translate(720,660) scale(${closer})`} opacity={eyes}>
+            <defs>
+              <radialGradient id="eyeglow">
+                <stop offset="0" stopColor="#fff6d0" stopOpacity={0.9} />
+                <stop offset="1" stopColor="#fff6d0" stopOpacity={0} />
+              </radialGradient>
+            </defs>
+            <ellipse cx={0} cy={30} rx={100} ry={135} fill="#cfd6e6" opacity={0.05} />
+            <circle cx={-36} cy={0} r={34} fill="url(#eyeglow)" opacity={blink} />
+            <circle cx={36} cy={0} r={34} fill="url(#eyeglow)" opacity={blink} />
+            <ellipse cx={-36} cy={0} rx={13} ry={6} fill="#fffbe8" opacity={blink} />
+            <ellipse cx={36} cy={0} rx={13} ry={6} fill="#fffbe8" opacity={blink} />
+          </g>
+          <rect x={0} y={1180} width={1080} height={740} fill="#14110f" />
         </Svg>
+        <AbsoluteFill style={{ background: "#fff", opacity: flash }} />
       </Camera>
-      <Pills y={400} items={[["СЛЕДЫ НАЧИНАЮТСЯ У ПОРОГА", at(19) + 20, "#7a2c26"]]} />
+      <Pills y={400} items={[["ЗА ПЛЕЧОМ", eyesAt + 8, C.red]]} />
       <Mood />
-      <Sfx src="hit.mp3" at={at(19) + 20} volume={0.8} />
+      <Sfx src="hit.mp3" at={eyesAt} volume={1} />
     </AbsoluteFill>
   );
 };
-
-// 6. Стул на месте, колокольчик молчал
-const Untouched: React.FC<P> = ({ at, dur }) => (
-  <AbsoluteFill>
-    <Camera dur={dur} from={1} to={1.15} shake={4}>
-      <DoorInside chair bell />
-    </Camera>
-    <Pills
-      y={400}
-      items={[
-        ["СТУЛ — НА МЕСТЕ", at(21) + 5],
-        ["КОЛОКОЛЬЧИК МОЛЧАЛ", at(21) + 40, "#7a2c26"],
-      ]}
-    />
-    <Mood />
-  </AbsoluteFill>
-);
 
 export const S1E03: EpisodeDef = {
   id: "s1e03",
   timing,
   captions: [
     "В ДВА ЧАСА НОЧИ МЕНЯ ПОЗВАЛИ ^ПО ^ИМЕНИ. ^ГОЛОСОМ ^СЕСТРЫ",
-    "АНЯ ЖИВЁТ В $МОСКВЕ. ОНА НЕ МОГЛА БЫТЬ ЗДЕСЬ",
-    "ПРАВИЛО ПЕРВОЕ: ^НЕ ^ОТВЕЧАЙ. Я МОЛЧУ И СЧИТАЮ УДАРЫ СЕРДЦА",
-    "ГОЛОС ЗОВЁТ ЕЩЁ $ДВАЖДЫ. ПОТОМ — ~ТИШИНА",
-    "ОТКРЫТЬ ДВЕРЬ — ЗНАЧИТ ^ОТВЕТИТЬ. ПРОВЕРЯТЬ НУЖНО ПО-ДРУГОМУ",
-    "ПЕРВОЕ — $ПРОВЕРИТЬ",
-    "Я ПИШУ АНЕ: $ТЫ $ГДЕ?",
-    "ЧЕРЕЗ МИНУТУ ОТВЕТ: $ДОМА. $СПЛЮ. ТЫ ЧЕГО?",
-    "ЗНАЧИТ, У ДВЕРИ ^НЕ ^ОНА. ПРОВЕРЯЙ НЕ УШАМИ, А $ДРУГИМ $КАНАЛОМ",
-    "ВТОРОЕ — $ПОСМОТРЕТЬ",
-    "Я ВЫКЛЮЧАЮ ЛАМПУ И ОТОДВИГАЮ ОДЕЯЛО $НА $ПАЛЕЦ",
-    "В ТЁМНОЙ КОМНАТЕ МЕНЯ ~НЕ ~ВИДНО, А ДВОР — КАК НА ЛАДОНИ",
-    "ВО ДВОРЕ ~ПУСТО. ТОЛЬКО $ИНЕЙ НА ТРАВЕ",
-    "ТРЕТЬЕ — $СЛЕДЫ",
-    "НОЧЬЮ МОЖНО ОБМАНУТЬ ГЛАЗА. $ИНЕЙ НЕ ОБМАНЕШЬ",
-    "В ШЕСТЬ УТРА, КАК ТОЛЬКО СВЕТАЕТ, Я ВЫХОЖУ НА КРЫЛЬЦО",
-    "НА ИНЕЕ — ^СЛЕДЫ ^БОСЫХ ^НОГ. ПРИ МИНУС ШЕСТИ",
-    "НА БУМАГЕ ВСЁ СХОДИЛОСЬ: КТО-ТО СТОЯЛ У ДВЕРИ И УШЁЛ",
-    "БЫЛА ЛИШЬ ^ОДНА ^ПРОБЛЕМА",
-    "СЛЕДЫ НЕ ПОДХОДИЛИ К ДОМУ. ОНИ ^НАЧИНАЛИСЬ ^У ^ПОРОГА",
-    "КАК БУДТО КТО-ТО ВЫШЕЛ ^ИЗНУТРИ",
-    "А СТУЛ СТОЯЛ ПОД РУЧКОЙ. И $КОЛОКОЛЬЧИК ^МОЛЧАЛ",
-    "ЧАСТЬ ЧЕТВЁРТАЯ. $КТО НОЧЕВАЛ В МОЁМ ДОМЕ?",
+    "АНЯ В $МОСКВЕ. Я ПИШУ: ТЫ ГДЕ? ОТВЕТ: $ДОМА, $СПЛЮ",
+    "ЗНАЧИТ, ЗА ДВЕРЬЮ ^НЕ ^ОНА. ПРАВИЛО ПЕРВОЕ: НЕ ОТВЕЧАЙ",
+    "ГОЛОС ЗОВЁТ ЕЩЁ ДВАЖДЫ. А ПОТОМ В ДВЕРЬ СТУЧАТ. ^ТРИ ^РАЗА",
+    "И ~ТИШИНА",
+    "Я ВЫКЛЮЧАЮ ЛАМПУ И ОТОДВИГАЮ КРАЙ $ОДЕЯЛА",
+    "ДВОР ПОД ЛУНОЙ ~ПУСТОЙ. ТОЛЬКО ИНЕЙ",
+    "А НА ИНЕЕ — ^СЛЕДЫ. ^БОСЫЕ. ПРИ МИНУС ШЕСТИ",
+    "ОНИ ИДУТ ОТ КАЛИТКИ ПРЯМО К МОЕМУ $КРЫЛЬЦУ",
+    "И ОБРАТНО ^НЕ ^ВОЗВРАЩАЮТСЯ",
+    "ЗНАЧИТ, ОН ^ВСЁ ^ЕЩЁ ^ЗДЕСЬ",
+    "Я ПРИЖИМАЮСЬ К СТЕКЛУ, ЧТОБЫ РАЗГЛЯДЕТЬ КРЫЛЬЦО",
+    "И ВИЖУ В СТЕКЛЕ СВОЁ $ОТРАЖЕНИЕ",
+    "А ЗА МОИМ ПЛЕЧОМ — ^ЕЩЁ ^ДВА ^ГЛАЗА",
+    "КТО-ТО СТОИТ В КОМНАТЕ. ^ПРЯМО ^ЗА ^МНОЙ",
+    "ЧАСТЬ ЧЕТВЁРТАЯ. $ОБЕРНУТЬСЯ ИЛИ НЕТ?",
   ],
   scenes: [
     { until: 4, tape: ["!", "СЕЗОН ЗАКРЫТ · ЧАСТЬ 3"], stamp: "НОЧЬ 4 · 02:00", render: (at, dur) => <Voice at={at} dur={dur} /> },
-    { until: 8, tape: ["1.", "ПРОВЕРИТЬ"], stamp: "НОЧЬ 4 · 02:04", render: (at, dur) => <Check at={at} dur={dur} /> },
-    { until: 12, tape: ["2.", "ПОСМОТРЕТЬ"], stamp: "НОЧЬ 4 · 02:09", render: (at, dur) => <Peek at={at} dur={dur} /> },
-    { until: 16, tape: ["3.", "СЛЕДЫ"], stamp: "УТРО · 06:12", render: (at, dur) => <Frost at={at} dur={dur} /> },
-    { until: 20, tape: ["!", "ОДНА ПРОБЛЕМА"], stamp: "УТРО · 06:14", render: (at, dur) => <Map at={at} dur={dur} /> },
-    { until: 21, tape: ["!", "ДВЕРЬ ЗАПЕРТА ИЗНУТРИ"], render: (at, dur) => <Untouched at={at} dur={dur} /> },
-    { until: 22, render: () => <EndCard /> },
+    { until: 6, tape: ["!", "НЕ ОТВЕЧАТЬ"], stamp: "НОЧЬ 4 · 02:06", render: (at, dur) => <Peek at={at} dur={dur} /> },
+    { until: 10, tape: ["!", "СЛЕДЫ"], stamp: "НОЧЬ 4 · 02:07", render: (at, dur) => <Steps at={at} dur={dur} /> },
+    { until: 14, tape: ["!", "ОТРАЖЕНИЕ"], stamp: "НОЧЬ 4 · 02:09", render: (at, dur) => <Glass at={at} dur={dur} /> },
+    { until: 15, render: () => <EndCard /> },
   ],
 };
