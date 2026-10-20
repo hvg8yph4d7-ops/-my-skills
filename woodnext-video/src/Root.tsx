@@ -14,7 +14,7 @@ import { FIN001 } from "./fin/d001";
 import { PR01, Store } from "./stuk/pr01";
 import { PR02, Train } from "./stuk/pr02";
 import { Slope, ZG01 } from "./stuk/zg01";
-import { Cover } from "./stuk/Cover";
+import { Cover, SceneReal3 } from "./stuk/Cover";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -49,6 +49,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="CoverPR01" component={() => <Cover n={0} tape="ПРАВИЛА НОЧНОЙ СМЕНЫ" kicker="АПТЕКА 24" title={["НЕ ОТКРЫВАЙ", "ОКОШКО"]} scene={<Store />} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
       <Composition id="CoverZG01" component={() => <Cover n={0} tape="ЗАГАДКА" kicker="1959 · 9 ЧЕЛОВЕК" title={["ПЕРЕВАЛ", "ДЯТЛОВА"]} scene={<Slope cut trail={1} fire />} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
       <Composition id="CoverPR02" component={() => <Cover n={0} tape="ПРАВИЛА ЭЛЕКТРИЧКИ" kicker="00:47" title={["НЕ СМОТРИ", "В ОКНО"]} scene={<Train />} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
+      <Composition id="Cover3R" component={() => <Cover n={3} title={["ГЛАЗА", "ЗА СПИНОЙ"]} scene={<SceneReal3 />} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
       <Composition id="Cover3" component={() => <Cover n={3} title={["СЛЕДЫ", "ИЗНУТРИ"]} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
     </>
   );

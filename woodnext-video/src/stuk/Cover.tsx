@@ -1,7 +1,7 @@
 // Обложки серий для Instagram/VK (1080×1920). Весь текст — в средней полосе 240–1680,
 // которую Instagram оставляет в сетке профиля (обрезка 3:4).
 import React from "react";
-import { AbsoluteFill } from "remotion";
+import { AbsoluteFill, Img, staticFile } from "remotion";
 import { C, Dacha, Fence, Forest, head, Outside, Sky, Svg } from "./kit";
 
 const Scene1 = () => (
@@ -41,6 +41,27 @@ const Scene3 = () => (
       </g>
     ))}
   </Svg>
+);
+
+// Реалистичная серия 3: морозное окно ночью и два светящихся глаза в стекле
+export const SceneReal3 = () => (
+  <AbsoluteFill>
+    <Img src={staticFile("ai/s1e03r/10.jpg")} style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scale(1.08)" }} />
+    <Svg>
+      <defs>
+        <radialGradient id="ce">
+          <stop offset="0" stopColor="#fff2c4" stopOpacity={0.95} />
+          <stop offset="1" stopColor="#fff2c4" stopOpacity={0} />
+        </radialGradient>
+      </defs>
+      {[-70, 70].map((dx) => (
+        <g key={dx}>
+          <circle cx={560 + dx} cy={720} r={80} fill="url(#ce)" />
+          <ellipse cx={560 + dx} cy={720} rx={28} ry={12} fill="#fffbe8" />
+        </g>
+      ))}
+    </Svg>
+  </AbsoluteFill>
 );
 
 export const Cover: React.FC<{ n: number; title: string[]; tape?: string; kicker?: string; scene?: React.ReactNode }> = ({
