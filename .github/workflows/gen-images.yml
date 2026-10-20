@@ -1,0 +1,31 @@
+name: Generate images
+
+on:
+  push:
+    branches: [claude/woodnext-open-day]
+    paths: ["images/jobs/**", "images/make_images.py", ".github/workflows/gen-images.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: gen-images
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get latest files
+        run: git pull --ff-only origin ${{ github.ref_name }}
+      - run: python images/make_images.py
+      - name: Commit images
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add images/out
+          git commit -m "Кадры готовы (GitHub Actions)" || exit 0
+          git pull --rebase -X ours origin ${{ github.ref_name }}
+          git push origin HEAD:${{ github.ref_name }}
