@@ -8,6 +8,7 @@ import { S1E01 } from "./stuk/s1e01";
 import { S1E02 } from "./stuk/s1e02";
 import { S1E03 } from "./stuk/s1e03";
 import { Avatar } from "./stuk/Avatar";
+import { AiDemo } from "./stuk/AiDemo";
 import { FIN001 } from "./fin/d001";
 import { PR01, Store } from "./stuk/pr01";
 import { PR02, Train } from "./stuk/pr02";
@@ -36,6 +37,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="ZG01" component={() => <Episode ep={ZG01} />} durationInFrames={episodeFrames(ZG01)} fps={FPS} width={1080} height={1920} />
       {/* «200 ₽ в день» — финансовый эксперимент */}
       <Composition id="FIN001" component={() => <Episode ep={FIN001} />} durationInFrames={episodeFrames(FIN001)} fps={FPS} width={1080} height={1920} />
+      <Composition id="AiDemo" component={AiDemo} durationInFrames={300} fps={FPS} width={1080} height={1920} />
       {/* Аватарка «Третьего стука» */}
       <Composition id="Avatar" component={() => <Avatar />} durationInFrames={1} fps={FPS} width={1080} height={1080} />
       <Composition id="AvatarOpen" component={() => <Avatar variant="open" />} durationInFrames={1} fps={FPS} width={1080} height={1080} />
