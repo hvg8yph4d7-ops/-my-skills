@@ -381,7 +381,8 @@ ${others.map(one).join('\n')}
 
 export async function askAdvisor(opts: { settings: Settings; data: FormaData; today: string; history: ChatTurn[]; others?: { name: string; data: FormaData }[] }): Promise<Advice> {
   const system = advisorSystem(opts.data) + `\n\nДанные (${userName(opts.data)}):\n` + advisorContext(opts.data, opts.today)
-    + (opts.others?.length ? '\n\n' + othersContext(opts.others, opts.today) : '');
+    + '\n\n' + (opts.others?.length ? othersContext(opts.others, opts.today)
+      : 'Дневников других людей тебе не открыто. Если пользователь просит записать что-то другому человеку («запиши Милане») — НЕ предлагай никаких действий (и не записывай это пользователю): ответь, что дневник этого человека не открыт — он должен у себя в «Форме» войти в аккаунт и дать доступ: ⚙ → «Доступ тренеру» → почта пользователя.');
   // История должна начинаться с вопроса пользователя.
   const turns = opts.history.slice(-20);
   while (turns.length && turns[0].role !== 'user') turns.shift();

@@ -203,6 +203,9 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
       // Свой дневник или чужой — с ним сравниваем и проверяем.
       const target = (x: Action) => (x.who ? loaded.get(personFor(others!.list, x.who)!.userId)! : data);
       a.actions = a.actions.filter(x => !alreadyDone(target(x), x));
+      // Еда, добавленная в приложении, сама меняет итог дня — отдельный «итог дня» в тот же день и тому же человеку задвоит.
+      const foodDay = new Set(a.actions.filter(x => /^(add|update|remove)_food$/.test(x.type)).map(x => `${x.who ?? ''}|${x.date}`));
+      a.actions = a.actions.filter(x => !(x.type === 'set_day_macros' && foodDay.has(`${x.who ?? ''}|${x.date}`)));
       // ИИ пишет «поменял/удалил/записал», но ничего не предложил — честно предупреждаем, что дневник не менялся.
       if (!a.actions.length && /(поменял|удалил|записал|исправил|обновил|добавил|переставил|зафиксировал|убрал)/i.test(a.reply))
         a.reply += '\n\n⚠ Изменений не предложено — в дневнике ничего не поменялось. Попроси ещё раз конкретнее.';
