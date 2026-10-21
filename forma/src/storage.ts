@@ -244,7 +244,13 @@ export async function saveChat(turns: StoredTurn[], key = 'chat'): Promise<void>
 }
 
 // ---- Отмена последней правки советника: снимок дневника до правки (только на телефоне) ----
-export type UndoSnap = { label: string; before: import('./types').FormaData; after: string; turn: number; actions: number[] };
+export type UndoSnap = {
+  label: string; before: import('./types').FormaData; after: string; turn: number; actions: number[];
+  /** false — свой дневник правка не меняла (только чужие). У старых снимков поля нет — значит, меняла. */
+  own?: boolean;
+  /** Правки в дневниках других людей (пользователь — их тренер): снимок до и отпечаток после. */
+  others?: { userId: string; name: string; before: import('./types').FormaData; after: string }[];
+};
 
 export async function loadUndo(key: string): Promise<UndoSnap | null> {
   return (await tx<UndoSnap | undefined>('readonly', st => st.get('undo:' + key))) || null;

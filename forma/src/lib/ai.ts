@@ -7,7 +7,7 @@ import { GROUPS, averages, recovery, sortedBench, sortedWeight, e1rm } from './c
 import { aliasesOf, benchSets, progressList, setsText } from './exercises';
 import { SLEEP_OK_MIN, sleepText } from './sleep';
 import type { SleepRec } from '../types';
-import { WDF, daysBetween, longD, wdName } from './format';
+import { WDF, daysBetween, dk, longD, wdName } from './format';
 import { aboutUser, goalText, userName } from './profile';
 import { AdviceSchema, type Advice } from './advice';
 import { geminiEntry, geminiStructured, geminiText } from './gemini';
@@ -351,8 +351,37 @@ ${FAST_FOOD}
 
 Долгая память: поле «о себе» (оно есть в описании пользователя выше) ты видишь в каждом разговоре, а переписку — только последние сообщения. Если пользователь рассказал о себе что-то важное надолго (ограничения в еде, травмы и боли, режим дня и тренировок, предпочтения, цели), предложи действие set_note: в text — ВЕСЬ текст «о себе», то есть прежний текст плюс новый факт одной короткой фразой. Ничего из прежнего не удаляй, если пользователь сам не попросил. Разовые события дня туда не пиши.`;
 
-export async function askAdvisor(opts: { settings: Settings; data: FormaData; today: string; history: ChatTurn[] }): Promise<Advice> {
-  const system = advisorSystem(opts.data) + `\n\nДанные (${userName(opts.data)}):\n` + advisorContext(opts.data, opts.today);
+/**
+ * Дневники других людей, которые дали пользователю доступ (он их тренер): коротко за последние 3 дня —
+ * чтобы советник мог записать им еду или упражнения («запиши ещё 300 г этого же Милане») и не задвоить.
+ */
+export function othersContext(others: { name: string; data: FormaData }[], today: string) {
+  if (!others.length) return '';
+  const p = today.split('-').map(Number);
+  const f = new Date(p[0], p[1] - 1, p[2] - 2);
+  const from = dk(f.getFullYear(), f.getMonth(), f.getDate());
+  const one = ({ name, data: d }: { name: string; data: FormaData }) => {
+    const t = d.targets;
+    const days = d.days.filter(x => x.date >= from && x.date <= today).sort((a, b) => a.date.localeCompare(b.date)).map(x => {
+      const m = x.macros;
+      return [
+        `  ${x.date}${x.partial ? '' : ' [закрыт]'}` + (m ? `: итог Б ${m.p} Ж ${m.f} У ${m.c} ${m.kcal} ккал` : ''),
+        ...(x.food || []).map((f, i) => `    строка еды food[${i}]: ${f}`),
+        ...(x.meals || []).map((f, i) => `    еда #${i}: ${f.name}${f.grams ? ` ${f.grams} г` : ''} (Б ${f.p} Ж ${f.f} У ${f.c} ${f.kcal} ккал)`),
+        ...(x.exercises || []).map((e, i) => `    упражнение #${i}: ${e.name} [${e.group ?? 'без группы'}]: ` + (e.sets.map(s => (s.weight != null ? s.weight + '×' : '') + s.reps).join(', ') || 'без подходов')),
+      ].join('\n');
+    });
+    const ws = sortedWeight(d), w = ws[ws.length - 1];
+    return `— ${name}: цели ${t.kcal} ккал, Б ${t.p}, Ж ${t.f}, У ${t.c}; цель — ${goalText(d)}${w ? `; последний вес ${w.value} кг (${w.date})` : ''}.\n` + (days.join('\n') || '  за 3 дня записей нет');
+  };
+  return `Дневники других людей (они дали пользователю доступ как тренеру, он может вести их записи):
+${others.map(one).join('\n')}
+Если пользователь просит записать что-то другому человеку («запиши Милане», «и Милане то же», «Милане ещё 100 г молока») — предложи действие с who = имя этого человека ровно как в списке выше (в именительном падеже), дата — сегодня, если не сказано иное. «Этой же еды 300 г» — возьми ту же еду из дневника пользователя и пересчитай КБЖУ на новый вес. «Мне и Милане» — два отдельных действия: одно с who = null, другое с who = имя. Для чужих дневников номера #N — из этого раздела; удалять и править у них можно только то, что видно здесь. Остальные действия (нормы, план, анкета) другому человеку не предлагай, если об этом прямо не просили. Действия без who — всегда про самого пользователя. Если человека с таким именем нет в списке — скажи, что его дневник не открыт (он должен дать доступ: ⚙ → «Доступ тренеру»), и ничего не предлагай.`;
+}
+
+export async function askAdvisor(opts: { settings: Settings; data: FormaData; today: string; history: ChatTurn[]; others?: { name: string; data: FormaData }[] }): Promise<Advice> {
+  const system = advisorSystem(opts.data) + `\n\nДанные (${userName(opts.data)}):\n` + advisorContext(opts.data, opts.today)
+    + (opts.others?.length ? '\n\n' + othersContext(opts.others, opts.today) : '');
   // История должна начинаться с вопроса пользователя.
   const turns = opts.history.slice(-20);
   while (turns.length && turns[0].role !== 'user') turns.shift();

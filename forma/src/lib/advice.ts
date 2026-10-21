@@ -36,6 +36,7 @@ export const ActionSchema = z.object({
     'move_exercise: date + index (#N упражнения) + number (новая позиция #, с 0) — поменять порядок упражнений',
   ),
   summary: z.string().describe('Коротко по-русски, что изменится, например «Вес 68,6 кг на 10 октября»'),
+  who: z.string().nullable().describe('Чей дневник меняем: null — самого пользователя; имя человека из раздела «Дневники других людей» — его дневник'),
   date: z.string().nullable().describe('YYYY-MM-DD'),
   number: z.number().nullable(),
   index: z.number().nullable(),
@@ -278,10 +279,32 @@ export function actionDetails(a: Action): string[] {
   return [];
 }
 
+/** Человек, чей дневник открыт пользователю (дал доступ тренеру). */
+export type Person = { userId: string; name: string };
+
+const stem = (x: string) => x.toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я]+/g, ' ').trim().split(' ')[0] || '';
+
+/**
+ * Кому действие: null — себе. Имя ИИ может прислать в любом падеже («Милане», «Миланы») —
+ * сравниваем первое слово без окончания (совпадают все буквы, кроме последних двух).
+ */
+export function personFor(people: Person[], who: string | null | undefined): Person | null | undefined {
+  const w = stem(who || '');
+  if (!w || /^(я|мне|меня|мой|моя|себе|сам)$/.test(w)) return null;
+  const hit = people.filter(p => {
+    const n = stem(p.name);
+    if (!n) return false;
+    if (n === w) return true;
+    const k = Math.max(3, Math.min(n.length, w.length) - 2);
+    return n.slice(0, k) === w.slice(0, k) && Math.abs(n.length - w.length) <= 2;
+  });
+  return hit.length === 1 ? hit[0] : undefined; // undefined — не нашли (или неоднозначно)
+}
+
 const STATUS_TEXT = { applied: 'применено', skipped: 'пропущено', stale: 'устарело', undone: 'отменено пользователем' } as const;
 /** Как предложения прошлого ответа выглядят для модели в истории — чтобы не предлагала то же самое снова. */
 export function actionsNote(actions: Action[], status: (keyof typeof STATUS_TEXT | null)[] | undefined) {
-  return '\n[Мои предложения: ' + actions.map((a, j) => `«${a.summary}» — ${STATUS_TEXT[status?.[j] as keyof typeof STATUS_TEXT] || 'ещё не решено'}`).join('; ') + ']';
+  return '\n[Мои предложения: ' + actions.map((a, j) => `«${a.who ? a.who + ': ' : ''}${a.summary}» — ${STATUS_TEXT[status?.[j] as keyof typeof STATUS_TEXT] || 'ещё не решено'}`).join('; ') + ']';
 }
 
 const norm = (x: string) => x.toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim();

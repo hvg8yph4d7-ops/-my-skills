@@ -10,7 +10,7 @@ import { Train } from './components/Train';
 import { Diary } from './components/Diary';
 import { Settings } from './components/Settings';
 import { EntryBar } from './components/EntryBar';
-import { Advisor, ClientChat } from './components/Advisor';
+import { Advisor, ClientChat, type Others } from './components/Advisor';
 import { Onboarding } from './components/Onboarding';
 import { ProfileSettings } from './components/ProfileSettings';
 import { SupplementsSettings } from './components/SupplementsSettings';
@@ -19,7 +19,7 @@ import { applyPatches, pendingPatches } from './lib/patches';
 import { mergeSleep, mergeSteps } from './lib/sleep';
 import { Splash } from './components/Splash';
 import { logError } from './lib/bugs';
-import { CloudError, cloudEnabled, getSession, onAuth, pullChat, pullClient, pullOwn, pullSleep, pullSteps, pushChat, pushDiary } from './lib/cloud';
+import { CloudError, cloudEnabled, getSession, listClients, onAuth, pullChat, pullClient, pullOwn, pullSleep, pullSteps, pushChat, pushDiary } from './lib/cloud';
 
 const TABS = [
   { id: 'overview', l: 'Обзор' },
@@ -286,6 +286,18 @@ export function App() {
       notify('Не получилось очистить: ' + (e as Error).message, true);
     }
   };
+  // Люди, которые дали мне доступ тренеру: советник может записывать и в их дневники («запиши Милане»).
+  const [people, setPeople] = useState<{ userId: string; name: string }[]>([]);
+  useEffect(() => {
+    if (!session || client || tab !== 'advisor') return;
+    listClients(session.user.id).then(c => setPeople(c.map(x => ({ userId: x.userId, name: x.name })))).catch(() => {});
+  }, [session, client, tab]);
+  const others = useMemo<Others | undefined>(() => session && people.length ? {
+    list: people,
+    load: pullClient,
+    save: (userId, d) => pushDiary(userId, session.user.id, stamp(d)),
+  } : undefined, [session, people]);
+
   const pullClientChat = useCallback(() => (client ? pullChat(client.userId) : Promise.resolve([])), [client?.userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const shown = client?.data ?? viewing ?? data;
@@ -352,7 +364,7 @@ export function App() {
             view={d => { setClient(null); setViewing(d); pick('overview'); }} session={session} sync={sync} openClient={openClient} clearChat={clearChat} />}
           {!viewing && tab === 'advisor' && client && <ClientChat name={client.data.profile?.name || 'Клиент'} pull={pullClientChat} />}
           {!viewing && tab === 'advisor' && !client && <Advisor key="own" data={shown} settings={settings} today={today} update={edit}
-            chatKey="chat" sync={ownChatSync} notify={notify} openSettings={() => pick('settings')} />}
+            chatKey="chat" sync={ownChatSync} notify={notify} openSettings={() => pick('settings')} others={others} />}
           {!viewing && tab !== 'advisor' && tab !== 'settings' && <EntryBar data={shown} settings={settings} today={today} update={edit} notify={notify} openSettings={() => pick('settings')} />}
         </>
       )}

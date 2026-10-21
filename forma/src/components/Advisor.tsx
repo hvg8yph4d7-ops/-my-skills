@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { FormaData } from '../types';
 import { loadChat, loadUndo, saveChat, saveUndo, type Settings, type StoredTurn, type UndoSnap } from '../storage';
 import { AiError, askAdvisor, hasKey, prepareAttachment, thumbnail, type Attachment } from '../lib/ai';
-import { actionDetails, actionDiff, actionsNote, alreadyDone, applyAction, asksToDelete, isRemoval, type Action, type DiffRow } from '../lib/advice';
+import { actionDetails, actionDiff, actionsNote, alreadyDone, applyAction, asksToDelete, isRemoval, personFor, type Action, type DiffRow, type Person } from '../lib/advice';
 
 type Props = {
   data: FormaData;
@@ -14,7 +14,11 @@ type Props = {
   sync?: { pull: () => Promise<StoredTurn[]>; push: (t: StoredTurn[]) => void };
   notify: (msg: string, err?: boolean) => void;
   openSettings: () => void;
+  /** Дневники людей, которые дали доступ (пользователь — их тренер): советник может записывать и им. */
+  others?: Others;
 };
+
+export type Others = { list: Person[]; load: (userId: string) => Promise<FormaData>; save: (userId: string, d: FormaData) => Promise<void> };
 
 const SUGGESTIONS = [
   'Что съесть вечером, чтобы добрать до цели?',
@@ -64,6 +68,11 @@ function ToEnd() {
 
 const mark = (st?: string | null) =>
   st === 'applied' ? '✓ ' : st === 'skipped' ? '✗ ' : st === 'stale' ? '⌛ ' : st === 'undone' ? '↶ ' : '✎ ';
+
+/** Заголовок карточки: отметка, чей дневник (если не свой) и что изменится. */
+function Summary({ a, st }: { a: Action; st: string }) {
+  return <div className="action-text">{st}{a.who ? <b className="action-who">👤 {a.who}: </b> : null}{a.summary}</div>;
+}
 
 /** «Было → станет» построчно (для старых сообщений без сохранённого сравнения — что добавится). */
 function Details({ a, diff }: { a: Action; diff?: DiffRow[] }) {
@@ -116,10 +125,12 @@ export function Rich({ text }: { text: string }) {
   );
 }
 
-export function Advisor({ data, settings, today, update, chatKey, sync, notify, openSettings }: Props) {
+export function Advisor({ data, settings, today, update, chatKey, sync, notify, openSettings, others }: Props) {
   const [turns, setTurns] = useState<StoredTurn[]>([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  // Идёт сохранение в чужой дневник — кнопки «Применить» ждут.
+  const [saving, setSaving] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -172,13 +183,31 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
         text: t.text + (i !== last && t.files?.length ? `\n[было прикреплено: ${t.files.map(f => f.name).join(', ')}]` : '') + (t.actions?.length ? actionsNote(t.actions, t.status) : ''),
         ...(i === last && atts.length ? { files: atts.map(f => f.att) } : {}),
       }));
-      const a = await askAdvisor({ settings, data, today, history });
-      a.actions = a.actions.filter(x => !alreadyDone(data, x));
+      // Дневники других людей — свежие, с сервера: ИИ для контекста, коду — для проверок и «было → станет».
+      const loaded = new Map<string, FormaData>();
+      if (others?.list.length) await Promise.all(others.list.map(p => others.load(p.userId).then(d => { loaded.set(p.userId, d); }, () => {})));
+      const ctx = (others?.list ?? []).filter(p => loaded.has(p.userId)).map(p => ({ name: p.name, data: loaded.get(p.userId)! }));
+      const a = await askAdvisor({ settings, data, today, history, others: ctx });
+      // Кому действие: имя в любом падеже → человек из списка. Не нашли — предложение не показываем.
+      const lost: string[] = [];
+      a.actions = a.actions.filter(x => {
+        if (!x.who) { x.who = null; return true; }
+        const p = personFor(others?.list ?? [], x.who);
+        if (p === null) { x.who = null; return true; }
+        if (!p || !loaded.has(p.userId)) { lost.push(x.who); return false; }
+        x.who = p.name;
+        return true;
+      });
+      if (lost.length)
+        a.reply += `\n\n⚠ Не могу записать: ${[...new Set(lost)].join(', ')} — дневник не открыт. Человек должен дать тебе доступ: у себя в «Форме» ⚙ → «Доступ тренеру» → твоя почта.`;
+      // Свой дневник или чужой — с ним сравниваем и проверяем.
+      const target = (x: Action) => (x.who ? loaded.get(personFor(others!.list, x.who)!.userId)! : data);
+      a.actions = a.actions.filter(x => !alreadyDone(target(x), x));
       // ИИ пишет «поменял/удалил/записал», но ничего не предложил — честно предупреждаем, что дневник не менялся.
       if (!a.actions.length && /(поменял|удалил|записал|исправил|обновил|добавил|переставил|зафиксировал|убрал)/i.test(a.reply))
         a.reply += '\n\n⚠ Изменений не предложено — в дневнике ничего не поменялось. Попроси ещё раз конкретнее.';
       // Удалять целиком — только если пользователь прямо написал «удали». Иначе такие предложения не показываем.
-      const blocked = asksToDelete(q) ? [] : a.actions.filter(x => isRemoval(data, x));
+      const blocked = asksToDelete(q) ? [] : a.actions.filter(x => isRemoval(target(x), x));
       if (blocked.length) {
         const rest = a.actions.filter(x => !blocked.includes(x));
         const what = blocked.map(x => x.summary).join('; ');
@@ -192,7 +221,7 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
       const prev = a.actions.length
         ? withQ.map(t => (t.actions?.some((_, j) => !t.status?.[j]) ? { ...t, status: t.actions.map((_, j) => t.status?.[j] ?? 'stale' as const) } : t))
         : withQ;
-      persist([...prev, { role: 'assistant', text: a.reply, at: new Date().toISOString(), actions: a.actions, status: a.actions.map(() => null), diffs: a.actions.map(x => actionDiff(data, x)) }]);
+      persist([...prev, { role: 'assistant', text: a.reply, at: new Date().toISOString(), actions: a.actions, status: a.actions.map(() => null), diffs: a.actions.map(x => actionDiff(target(x), x)) }]);
     } catch (e) {
       // Вопрос без ответа убираем, текст возвращаем в поле — можно отправить ещё раз.
       setTurns(turns); setText(typed); setFiles(atts);
@@ -202,46 +231,91 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
     }
   };
 
-  const decide = (ti: number, ai: number, apply: boolean) => {
+  /**
+   * Применить предложения ti-го ответа с номерами idx. Свои — в дневник на телефоне,
+   * чужие — сразу на сервер в дневник того человека. Некорректное действие ничего не трогает.
+   */
+  const applyMany = async (ti: number, idx: number[]) => {
+    const t = turns[ti];
+    let own = data, ownTouched = false;
+    const theirs = new Map<string, { p: Person; before: FormaData; d: FormaData; idx: number[] }>();
+    const done = new Set<number>();
+    const errors: string[] = [];
+    for (const j of idx) {
+      const a = t.actions![j];
+      try {
+        if (!a.who) { own = applyAction(own, a); ownTouched = true; done.add(j); continue; }
+        const p = personFor(others?.list ?? [], a.who);
+        if (!p || !others) throw new Error(`дневник «${a.who}» не открыт`);
+        let x = theirs.get(p.userId);
+        if (!x) { const d = await others.load(p.userId); x = { p, before: d, d, idx: [] }; theirs.set(p.userId, x); }
+        x.d = applyAction(x.d, a);
+        x.idx.push(j);
+        done.add(j);
+      } catch (e) {
+        errors.push((a.who ? a.who + ': ' : '') + (e as Error).message);
+      }
+    }
+    const saved: NonNullable<UndoSnap['others']> = [];
+    for (const x of theirs.values()) {
+      try {
+        await others!.save(x.p.userId, x.d);
+        saved.push({ userId: x.p.userId, name: x.p.name, before: x.before, after: fingerprint(x.d) });
+      } catch (e) {
+        x.idx.forEach(j => done.delete(j));
+        errors.push(x.p.name + ': ' + (e as Error).message);
+      }
+    }
+    const result = own;
+    if (ownTouched) update(() => result);
+    if (done.size) {
+      const list = [...done].sort((a, b) => a - b);
+      const label = t.actions!.filter((_, j) => done.has(j)).map(a => (a.who ? a.who + ': ' : '') + a.summary).join('; ');
+      remember({ label: list.length > 1 ? `${list.length} изм.: ${label}` : label, before: data, after: fingerprint(result), turn: ti, actions: list, own: ownTouched, ...(saved.length ? { others: saved } : {}) });
+    }
+    return { done, errors };
+  };
+
+  const decide = async (ti: number, ai: number, apply: boolean) => {
     const t = turns[ti], action = t.actions![ai];
     if (apply) {
-      try {
-        applyAction(data, action); // проверка до записи: некорректное действие не трогает дневник
-      } catch (e) {
-        notify('Не получилось: ' + (e as Error).message, true);
-        return;
-      }
-      const after = applyAction(data, action);
-      update(() => after);
-      remember({ label: action.summary, before: data, after: fingerprint(after), turn: ti, actions: [ai] });
-      notify('Готово: ' + action.summary);
+      setSaving(true);
+      const { done, errors } = await applyMany(ti, [ai]).finally(() => setSaving(false));
+      if (!done.size) { notify('Не получилось: ' + errors.join('; '), true); return; }
+      notify('Готово: ' + (action.who ? action.who + ': ' : '') + action.summary);
     }
     persist(turns.map((x, i) => (i === ti ? { ...x, status: x.actions!.map((_, j) => (j === ai ? (apply ? 'applied' : 'skipped') : x.status?.[j] ?? null)) } : x)));
   };
 
-  const applyAll = (ti: number) => {
+  const applyAll = async (ti: number) => {
     const t = turns[ti];
-    let d = data, ok = 0;
-    const status = t.actions!.map((a, j) => {
-      if (t.status?.[j]) return t.status[j];
-      try { d = applyAction(d, a); ok++; return 'applied' as const; } catch { return null; }
-    });
-    const result = d;
-    update(() => result);
-    if (ok) remember({ label: `${ok} изм.: ${t.actions!.filter((_, j) => status[j] === 'applied' && !t.status?.[j]).map(a => a.summary).join('; ')}`, before: data, after: fingerprint(result), turn: ti, actions: status.map((s, j) => (s === 'applied' && !t.status?.[j] ? j : -1)).filter(j => j >= 0) });
+    setSaving(true);
+    const { done, errors } = await applyMany(ti, t.actions!.map((_, j) => j).filter(j => !t.status?.[j])).finally(() => setSaving(false));
+    const status = t.actions!.map((_, j) => t.status?.[j] ?? (done.has(j) ? 'applied' as const : null));
     persist(turns.map((x, i) => (i === ti ? { ...x, status } : x)));
-    notify(`Применено изменений: ${ok}`);
+    notify(`Применено изменений: ${done.size}` + (errors.length ? `. Не получилось: ${errors.join('; ')}` : ''), !!errors.length && !done.size);
   };
 
-  // Отмена последней правки: возвращаем дневник к снимку до неё.
-  const undoLast = () => {
+  // Отмена последней правки: возвращаем дневники (свой и чужие) к снимку до неё.
+  const undoLast = async () => {
     if (!undo) return;
-    if (fingerprint(data) !== undo.after && !confirm('После этой правки дневник ещё менялся — эти изменения тоже откатятся. Всё равно отменить?')) return;
-    const before = { ...undo.before, ownerId: data.ownerId };
-    update(() => before);
-    persist(turns.map((x, i) => (i === undo.turn && x.status ? { ...x, status: x.status.map((s, j) => (undo.actions.includes(j) ? 'undone' : s)) } : x)));
-    remember(null);
-    notify('Отменено: ' + undo.label);
+    const own = undo.own !== false;
+    setSaving(true);
+    try {
+      if (undo.others?.length && !others) throw new Error('нужно войти в аккаунт');
+      const cur = await Promise.all((undo.others || []).map(o => others!.load(o.userId).then(d => ({ o, d }))));
+      const changed = (own && fingerprint(data) !== undo.after) || cur.some(x => fingerprint(x.d) !== x.o.after);
+      if (changed && !confirm('После этой правки дневник ещё менялся — эти изменения тоже откатятся. Всё равно отменить?')) return;
+      for (const x of cur) await others!.save(x.o.userId, { ...x.o.before, ownerId: x.d.ownerId });
+      if (own) { const before = { ...undo.before, ownerId: data.ownerId }; update(() => before); }
+      persist(turns.map((x, i) => (i === undo.turn && x.status ? { ...x, status: x.status.map((s, j) => (undo.actions.includes(j) ? 'undone' : s)) } : x)));
+      remember(null);
+      notify('Отменено: ' + undo.label);
+    } catch (e) {
+      notify('Не получилось отменить: ' + (e as Error).message, true);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -266,19 +340,19 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
                   const st = t.status?.[j];
                   return (
                     <div key={j} className={'action' + (st ? ' done' : '')}>
-                      <div className="action-text">{mark(st)}{a.summary}</div>
+                      <Summary a={a} st={mark(st)} />
                       <Details a={a} diff={t.diffs?.[j]} />
                       {!st && (
                         <div className="action-btns">
-                          <button className="btn" onClick={() => decide(i, j, true)}>Применить</button>
-                          <button className="btn ghost" onClick={() => decide(i, j, false)}>Пропустить</button>
+                          <button className="btn" onClick={() => decide(i, j, true)} disabled={saving}>Применить</button>
+                          <button className="btn ghost" onClick={() => decide(i, j, false)} disabled={saving}>Пропустить</button>
                         </div>
                       )}
                     </div>
                   );
                 })}
                 {t.actions.filter((_, j) => !t.status?.[j]).length > 1 && (
-                  <button className="btn full" style={{ marginTop: 6, marginBottom: 0 }} onClick={() => applyAll(i)}>Применить всё</button>
+                  <button className="btn full" style={{ marginTop: 6, marginBottom: 0 }} onClick={() => applyAll(i)} disabled={saving}>Применить всё</button>
                 )}
               </div>
             )}
@@ -291,7 +365,7 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
       {undo && <div style={{ height: 34 }} />}
       {!atEnd && <ToEnd />}
       <div className="entry-bar">
-        {undo && !busy && <div className="undo-wrap"><button className="undo-btn" onClick={undoLast} aria-label="Отменить последнюю правку">↶ Отменить</button></div>}
+        {undo && !busy && <div className="undo-wrap"><button className="undo-btn" onClick={undoLast} disabled={saving} aria-label="Отменить последнюю правку">↶ Отменить</button></div>}
         {files.length > 0 && (
           <div className="att-row">
             {files.map((f, i) => (
@@ -351,7 +425,7 @@ export function ClientChat({ name, pull }: { name: string; pull: () => Promise<S
               <div className="actions">
                 {t.actions.map((a, j) => {
                   const st = t.status?.[j];
-                  return <div key={j} className="action done"><div className="action-text">{st ? mark(st) : '… '}{a.summary}</div><Details a={a} diff={t.diffs?.[j]} /></div>;
+                  return <div key={j} className="action done"><Summary a={a} st={st ? mark(st) : '… '} /><Details a={a} diff={t.diffs?.[j]} /></div>;
                 })}
               </div>
             )}
