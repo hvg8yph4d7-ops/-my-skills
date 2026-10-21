@@ -64,6 +64,11 @@ export const SceneReal3 = () => (
   </AbsoluteFill>
 );
 
+// Реалистичная обложка: кадр нейросети целиком
+export const Photo: React.FC<{ src: string }> = ({ src }) => (
+  <Img src={staticFile(src)} style={{ position: "absolute", width: "100%", height: "100%", objectFit: "cover" }} />
+);
+
 export const Cover: React.FC<{ n: number; title: string[]; tape?: string; kicker?: string; scene?: React.ReactNode }> = ({
   n,
   title,

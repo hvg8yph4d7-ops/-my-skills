@@ -8,7 +8,7 @@ import { clamp, EndCard, Mood, sec, Sfx } from "./kit";
 
 
 // Кадр с медленным наездом; shakeAt — кадр, с которого камера вздрагивает
-const Shot: React.FC<{
+export const Shot: React.FC<{
   src: string;
   dur: number;
   from?: number;
@@ -41,7 +41,7 @@ const Shot: React.FC<{
 };
 
 // Дымка у земли
-const Fog: React.FC<{ o?: number }> = ({ o = 0.18 }) => {
+export const Fog: React.FC<{ o?: number }> = ({ o = 0.18 }) => {
   const f = useCurrentFrame();
   return (
     <AbsoluteFill
@@ -54,12 +54,12 @@ const Fog: React.FC<{ o?: number }> = ({ o = 0.18 }) => {
 };
 
 // Редкое «моргание» плёнки
-const Flicker: React.FC = () => {
+export const Flicker: React.FC = () => {
   const f = useCurrentFrame();
   return <AbsoluteFill style={{ background: "#000", opacity: random(`fk${Math.floor(f / 3)}`) > 0.88 ? 0.3 : 0 }} />;
 };
 
-const Look: React.FC<{ fog?: number }> = ({ fog }) => (
+export const Look: React.FC<{ fog?: number }> = ({ fog }) => (
   <>
     {fog !== undefined && <Fog o={fog} />}
     <Flicker />
@@ -68,7 +68,8 @@ const Look: React.FC<{ fog?: number }> = ({ fog }) => (
 );
 
 // Переписка с сестрой поверх экрана телефона
-const Chat: React.FC<{ at: (i: number) => number }> = ({ at }) => {
+// msgs: [текст, моё ли сообщение, кадр появления]
+export const Chat: React.FC<{ msgs: [string, boolean, number][] }> = ({ msgs }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const bubble = (from: number, text: string, mine: boolean, k: number) => {
@@ -95,8 +96,7 @@ const Chat: React.FC<{ at: (i: number) => number }> = ({ at }) => {
   };
   return (
     <AbsoluteFill style={{ padding: "520px 120px 0", display: "flex", flexDirection: "column", gap: 24 }}>
-      {bubble(at(1) + sec(0.9), "Ты где?", true, 0)}
-      {bubble(at(1) + sec(2.2), "Дома, сплю 😴", false, 1)}
+      {msgs.map(([text, mine, from], k) => bubble(from, text, mine, k))}
     </AbsoluteFill>
   );
 };
@@ -143,7 +143,7 @@ const Reflection: React.FC = () => (
   </AbsoluteFill>
 );
 
-const Flash: React.FC<{ at: number }> = ({ at }) => {
+export const Flash: React.FC<{ at: number }> = ({ at }) => {
   const f = useCurrentFrame();
   return <AbsoluteFill style={{ background: "#fff", opacity: interpolate(f - at, [0, 2, 10], [0, 0.55, 0], clamp) }} />;
 };
@@ -173,7 +173,12 @@ export const S1E03R: EpisodeDef = {
         <>
           <Shot src={K("02")} dur={dur} from={1.08} to={1.0} />
           <Look />
-          <Chat at={at} />
+          <Chat
+            msgs={[
+              ["Ты где?", true, at(1) + sec(0.9)],
+              ["Дома, сплю 😴", false, at(1) + sec(2.2)],
+            ]}
+          />
           <Sfx src="tap.mp3" at={at(1) + sec(0.7)} volume={0.8} />
           <Sfx src="click.wav" at={at(1) + sec(2.1)} volume={0.5} />
         </>

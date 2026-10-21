@@ -17,7 +17,7 @@ export type EpisodeDef = {
   captions: string[]; // по одной на фразу озвучки, разметка как в Caption
   timing: number[]; // длительности фраз, секунды (src/stuk/timing/<id>.json)
   scenes: Scene[];
-  music?: "horror" | "fin" | "real"; // фон: страшилки (по умолчанию), финансовый ритм или живой ветер под реалистичные кадры
+  music?: "horror" | "fin" | "real" | "sea"; // фон: страшилки (по умолчанию), финансовый ритм, живой ветер или море под реалистичные кадры
 };
 
 const LEAD = 0.25; // тишина до первой фразы
@@ -44,14 +44,14 @@ export const layout = (ep: EpisodeDef) => {
 export const episodeFrames = (ep: EpisodeDef) => layout(ep).total;
 
 // Фон: мрачный эмбиент с нотами + нагнетание (страшилки) или спокойный ритм (финансы)
-const Music: React.FC<{ total: number; kind: "horror" | "fin" | "real" }> = ({ total, kind }) => {
+const Music: React.FC<{ total: number; kind: "horror" | "fin" | "real" | "sea" }> = ({ total, kind }) => {
   const f = useCurrentFrame();
   const v = (peak: number) => interpolate(f, [0, 10, total - 40, total], [0, peak, peak, 0], clamp);
   if (kind === "fin") return <Audio src={staticFile("fin/beat.mp3")} volume={v(0.45)} />;
-  if (kind === "real")
+  if (kind === "real" || kind === "sea")
     return (
       <>
-        <Audio src={staticFile("stuk/sfx/wind.mp3")} volume={v(0.55)} loop />
+        <Audio src={staticFile(`stuk/sfx/${kind === "sea" ? "sea" : "wind"}.mp3`)} volume={v(0.55)} loop />
         <Audio src={staticFile("stuk/sfx/drone.mp3")} volume={v(0.35)} />
         <Audio src={staticFile("stuk/sfx/tension.mp3")} volume={v(0.15)} />
       </>
