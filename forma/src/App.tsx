@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { FormaData } from './types';
-import { DEFAULT_SETTINGS, load, loadSettings, requestPersist, save, saveChat, saveSettings, type Settings as AppSettings, type StoredTurn } from './storage';
+import { DEFAULT_SETTINGS, load, loadBase, loadSettings, requestPersist, save, saveBase, saveChat, saveSettings, type Settings as AppSettings, type StoredTurn } from './storage';
 import { longD, todayKey } from './lib/format';
 import { Overview } from './components/Overview';
 import { Progress } from './components/Progress';
@@ -17,6 +17,7 @@ import { SupplementsSettings } from './components/SupplementsSettings';
 import { needsSuppUpgrade, upgradeSupps } from './lib/supplements';
 import { applyPatches, pendingPatches } from './lib/patches';
 import { mergeSleep, mergeSteps } from './lib/sleep';
+import { syncPlan } from './lib/merge';
 import { Splash } from './components/Splash';
 import { logError } from './lib/bugs';
 import { CloudError, cloudEnabled, getSession, listClients, onAuth, pullChat, pullClient, pullOwn, pullSleep, pullSteps, pushChat, pushDiary } from './lib/cloud';
@@ -76,15 +77,48 @@ export function App() {
 
   // ---- Синхронизация своего дневника ----
 
+  // Версия, которая последней совпадала с сервером: если сервер с тех пор поменял кто-то другой (тренер записал еду),
+  // свои правки сливаются с его, а не затирают их.
+  const baseRef = useRef<FormaData | null>(null);
+  const setBase = (d: FormaData) => { baseRef.current = d; saveBase(d).catch(() => {}); };
+  /**
+   * Свести дневник телефона с сервером по общему предку: только чужие правки — берём сервер, только свои — отправляем,
+   * и те и другие — сливаем. Возвращает false, если предка нет (тогда старое правило «побеждает свежий»).
+   */
+  const syncWithBase = async (s: Session, local: FormaData, remote: FormaData | null) => {
+    const uid = s.user.id, base = baseRef.current;
+    if (!base || !remote || local.ownerId !== uid || base.ownerId !== uid) return false;
+    const plan = syncPlan(base, local, remote);
+    if (plan.kind === 'same') { setBase(local); return true; }
+    if (plan.kind === 'remote') {
+      const d = { ...remote, ownerId: uid };
+      setData(d); await save(d); setBase(d);
+      return true;
+    }
+    const d = plan.kind === 'merge' ? stamp({ ...plan.data, ownerId: uid }) : local;
+    if (plan.kind === 'merge') { setData(d); await save(d); }
+    await pushDiary(uid, uid, d, s.user.email);
+    setBase(d);
+    return true;
+  };
+
   const pushOwn = useCallback((d: FormaData, now = false) => {
     const s = sessionRef.current;
     if (!s) return;
     clearTimeout(pushTimer.current);
-    const run = () => {
+    const run = async () => {
       setSync('saving');
-      pushDiary(s.user.id, s.user.id, d, s.user.email)
-        .then(() => setSync('ok'))
-        .catch(e => { setSync('error'); logError(String(e?.message || e)); });
+      try {
+        const remote = await pullOwn(s.user.id);
+        const local = dataRef.current?.updatedAt && dataRef.current.updatedAt > (d.updatedAt || '') ? dataRef.current : d;
+        if (!(await syncWithBase(s, local, remote?.data ?? null))) {
+          await pushDiary(s.user.id, s.user.id, local, s.user.email);
+          setBase(local);
+        }
+        setSync('ok');
+      } catch (e) {
+        setSync('error'); logError(String((e as Error)?.message || e));
+      }
     };
     if (now) run(); else pushTimer.current = setTimeout(run, 1500);
   }, []);
@@ -97,6 +131,8 @@ export function App() {
       const remote = await pullOwn(uid);
       const local = dataRef.current;
       const mine = (d: FormaData) => ({ ...d, ownerId: uid });
+      // Есть общий предок — сводим по содержимому (правки тренера не теряются).
+      if (local && (await syncWithBase(s, local, remote?.data ?? null))) { setSync('ok'); return; }
       if (remote) {
         const foreign = local && local.ownerId && local.ownerId !== uid;
         const unsynced = local && !local.ownerId && local.days.length > 0;
@@ -105,15 +141,15 @@ export function App() {
           ? confirm(`На этом телефоне есть дневник «${local!.profile?.name || 'без имени'}», а в аккаунте — «${remote.data.profile?.name || 'без имени'}».\n\nОК — открыть дневник из аккаунта.\nОтмена — заменить дневник в аккаунте дневником с телефона.`)
           : remote.updatedAt > localAt);
         // Одинаковые версии — ничего не делаем (иначе можно затереть чужую правку).
-        if (!useRemote && !unsynced && local!.ownerId === uid && remote.updatedAt === localAt) { setSync('ok'); return; }
+        if (!useRemote && !unsynced && local!.ownerId === uid && remote.updatedAt === localAt) { if (!baseRef.current) setBase(local!); setSync('ok'); return; }
         if (useRemote) {
           const d = mine(remote.data);
           setData(d); setFirstRun(false);
-          await save(d);
+          await save(d); setBase(d);
         } else {
           const d = mine(local!);
           setData(d); await save(d);
-          await pushDiary(uid, uid, d, s.user.email);
+          await pushDiary(uid, uid, d, s.user.email); setBase(d);
         }
       } else if (local) {
         const foreign = local.ownerId && local.ownerId !== uid;
@@ -122,7 +158,7 @@ export function App() {
         } else {
           const d = mine(local);
           setData(d); await save(d);
-          await pushDiary(uid, uid, d, s.user.email);
+          await pushDiary(uid, uid, d, s.user.email); setBase(d);
         }
       }
       setSync('ok');
@@ -139,6 +175,7 @@ export function App() {
         const d = await load();
         if (d) setData(d); else setFirstRun(true);
         dataRef.current = d;
+        baseRef.current = await loadBase().catch(() => null);
       } catch (e) {
         setError(String((e as Error)?.message || e));
         return;
@@ -163,7 +200,9 @@ export function App() {
       if (sessionRef.current) reconcile(sessionRef.current);
     };
     document.addEventListener('visibilitychange', onShow);
-    return () => { unsub(); document.removeEventListener('visibilitychange', onShow); };
+    // Пока приложение открыто — раз в минуту проверяем, не записал ли что-то тренер.
+    const poll = setInterval(() => { if (document.visibilityState === 'visible' && sessionRef.current) reconcile(sessionRef.current); }, 60_000);
+    return () => { unsub(); clearInterval(poll); document.removeEventListener('visibilitychange', onShow); };
   }, [reconcile]);
 
   useEffect(() => {

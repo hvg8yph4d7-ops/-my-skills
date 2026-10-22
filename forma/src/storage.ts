@@ -191,6 +191,14 @@ export async function save(data: FormaData): Promise<void> {
   await tx('readwrite', s => s.put(data, KEY));
 }
 
+/** Последняя версия дневника, совпадавшая с сервером, — общий предок для слияния с правками тренера. */
+export async function loadBase(): Promise<FormaData | null> {
+  return (await tx<FormaData | undefined>('readonly', s => s.get('base'))) || null;
+}
+export async function saveBase(data: FormaData): Promise<void> {
+  await tx('readwrite', s => s.put(data, 'base'));
+}
+
 /** Просим браузер не удалять данные при нехватке места. */
 export async function requestPersist(): Promise<boolean> {
   try {
