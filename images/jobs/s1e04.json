@@ -1,0 +1,17 @@
+{
+  "width": 768,
+  "height": 1344,
+  "seed": 41,
+  "style": "cinematic horror film still, shot on 35mm, dark moody low-key lighting, cold moonlight, muted colors, film grain, photorealistic, highly detailed, no people, no faces, no text, no watermark",
+  "prompts": [
+    "dark bedroom of an old wooden Russian country house at night, the door to a pitch black corridor slightly ajar, moonlight on the floor, empty room",
+    "close up of an old door handle in a dark room with a metal spoon hanging on it, moonlight, wooden door",
+    "a black and tan dog lying on the floor at the threshold of a dark wooden room at night, seen from behind, ears up, watching the door, moonlight",
+    "hand holding a smartphone in a dark room at night, glowing screen lights the fingers, no face",
+    "small lonely watchman hut with one dim window in a snowy dacha village at night, fog, distant, wooden fences, dark forest",
+    "old wooden front door of a country house seen from inside at night, thin line of yellow flashlight light under the door, shadow of feet under the door, ominous",
+    "a dog sitting perfectly still in a dark corridor staring at a closed wooden door, seen from behind, moonlight, silent, eerie",
+    "old handwritten paper note with three numbered lines, the last line unfinished, lying on a wooden table under a dim lamp at night",
+    "close up of a smartphone screen glowing in the dark on a wooden floor, blurred text message, eerie blue light"
+  ]
+}
