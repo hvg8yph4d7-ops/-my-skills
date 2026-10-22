@@ -1,4 +1,5 @@
 import { Composition } from "remotion";
+import { NewsMorning, NEWS_TOTAL } from "./NewsMorning";
 import { Promo, PromoFresh, TOTAL, FPS } from "./Promo";
 import { PromoRef, REF_TOTAL } from "./PromoRef";
 import { PromoStory, STORY_TOTAL } from "./PromoStory";
@@ -57,6 +58,8 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="Cover4" component={() => <Cover n={4} title={["НЕ ОТКРЫВАЙ", "ПАЛЫЧУ"]} scene={<Photo src="ai/s1e04/07.jpg" />} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
       <Composition id="CoverZG02" component={() => <Cover n={0} tape="ЗАГАДКА" kicker="1872 · 10 ЧЕЛОВЕК" title={["КОРАБЛЬ", "БЕЗ ЛЮДЕЙ"]} scene={<Photo src="ai/zg02/01.jpg" />} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
       <Composition id="Cover3" component={() => <Cover n={3} title={["СЛЕДЫ", "ИЗНУТРИ"]} />} durationInFrames={1} fps={FPS} width={1080} height={1920} />
+      {/* Утренний выпуск новостей 22.10.2026 */}
+      <Composition id="NewsMorning" component={NewsMorning} durationInFrames={NEWS_TOTAL} fps={30} width={1080} height={1920} />
     </>
   );
 };
