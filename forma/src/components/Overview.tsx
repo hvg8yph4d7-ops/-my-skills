@@ -63,7 +63,7 @@ export function Overview({ data, today }: { data: FormaData; today: string }) {
       </div>
 
       <div className="stat-strip">
-        <div className="stat-box"><div className="n">{marks.filter(m => m.g).length}</div><div className="l">тренировок</div></div>
+        <div className="stat-box"><Flame n={marks.filter(m => m.g).length} /><div className="l">тренировок</div></div>
         <div className="stat-box"><div className="n">{marks.filter(m => m.p).length}</div><div className="l">дней с добавками</div></div>
         <div className="stat-box"><div className="n">{data.days.length}</div><div className="l">дней в дневнике</div></div>
       </div>
@@ -119,5 +119,24 @@ export function Overview({ data, today }: { data: FormaData; today: string }) {
         <div className="verdict">{lastDay?.verdict || 'Записей пока нет'}</div>
       </div>
     </>
+  );
+}
+
+/** Огонёк с числом тренировок внутри. */
+function Flame({ n }: { n: number }) {
+  return (
+    <div className="flame" aria-label={`${n} тренировок`}>
+      <svg viewBox="0 0 40 48" aria-hidden="true">
+        <defs>
+          <linearGradient id="flame-g" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stopColor="#e2481c" />
+            <stop offset="0.55" stopColor="#f58a1f" />
+            <stop offset="1" stopColor="#f5c542" />
+          </linearGradient>
+        </defs>
+        <path d="M20 2c2 7 9 11 12 18 4 9 0 24-12 26C8 44 4 33 7 24c1.5-4.5 4.5-6 5-11 3 2 4 5 4 8 2-6 1-13 4-19z" fill="url(#flame-g)" />
+      </svg>
+      <span>{n}</span>
+    </div>
   );
 }
