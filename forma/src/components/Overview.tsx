@@ -1,6 +1,6 @@
 import type { FormaData } from '../types';
 import { averages, planDays, rate, sortedBench, sortedWeight } from '../lib/calc';
-import { WD, WDF, daysBetween, longD, num, plural, shortD, wdIndex } from '../lib/format';
+import { WD, WDF, daysBetween, dk, longD, num, plural, shortD, wdIndex } from '../lib/format';
 import { BigNum, Chart } from './common';
 
 export function Overview({ data, today }: { data: FormaData; today: string }) {
@@ -63,7 +63,8 @@ export function Overview({ data, today }: { data: FormaData; today: string }) {
       </div>
 
       <div className="stat-strip">
-        <div className="stat-box"><Flame n={marks.filter(m => m.g).length} /><div className="l">тренировок</div></div>
+        <div className="stat-box"><Flame n={foodStreak(data, today)} /><div className="l">{plural(foodStreak(data, today), 'день', 'дня', 'дней')} подряд с едой</div></div>
+        <div className="stat-box"><div className="n">{marks.filter(m => m.g).length}</div><div className="l">тренировок</div></div>
         <div className="stat-box"><div className="n">{marks.filter(m => m.p).length}</div><div className="l">дней с добавками</div></div>
         <div className="stat-box"><div className="n">{data.days.length}</div><div className="l">дней в дневнике</div></div>
       </div>
@@ -122,10 +123,24 @@ export function Overview({ data, today }: { data: FormaData; today: string }) {
   );
 }
 
-/** Огонёк с числом тренировок внутри. */
+/**
+ * Сколько дней подряд записана еда. Сегодня ещё пусто — серия не сгорает, считаем от вчера
+ * (утром огонёк не должен обнуляться).
+ */
+function foodStreak(data: FormaData, today: string) {
+  const has = new Set(data.days.filter(d => d.meals?.length || d.food?.length).map(d => d.date));
+  const [y, m, d] = today.split('-').map(Number);
+  const cur = new Date(y, m - 1, d);
+  if (!has.has(today)) cur.setDate(cur.getDate() - 1);
+  let n = 0;
+  while (has.has(dk(cur.getFullYear(), cur.getMonth(), cur.getDate()))) { n++; cur.setDate(cur.getDate() - 1); }
+  return n;
+}
+
+/** Огонёк с числом внутри — серия дней с записанной едой. */
 function Flame({ n }: { n: number }) {
   return (
-    <div className="flame" aria-label={`${n} тренировок`}>
+    <div className="flame" aria-label={`${n} ${plural(n, 'день', 'дня', 'дней')} подряд с едой`}>
       <svg viewBox="0 0 40 48" aria-hidden="true">
         <defs>
           <linearGradient id="flame-g" x1="0" y1="1" x2="0" y2="0">

@@ -235,6 +235,13 @@ export async function prepareImage(file: File): Promise<ImageInput> {
 // ---- Советник: чат с ИИ, который видит дневник ----
 
 /** Сводка дневника для советника: профиль, цели, последние 14 дней, вес, жим, мышцы. */
+/** Дата на n дней раньше/позже, YYYY-MM-DD. */
+function shiftDay(key: string, n: number) {
+  const d = new Date(key + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return dk(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
 export function advisorContext(data: FormaData, today: string) {
   const t = data.targets;
   const av = averages(data);
@@ -270,7 +277,7 @@ export function advisorContext(data: FormaData, today: string) {
   }).join('; ');
   const sober = data.soberSince ? daysBetween(data.soberSince, today) : null;
   return [
-    `Сегодня ${today}, ${wdName(today)}.`,
+    `Сегодня ${today}, ${wdName(today)}. Вчера — ${shiftDay(today, -1)}, позавчера — ${shiftDay(today, -2)}. «Вчера съел» = дата вчера.`,
     `Цели в день: ${t.kcal} ккал, белок ≥ ${t.p} г, жиры до ~${t.f} г, углеводы ~${t.c} г, клетчатка ${t.fib} г. Цель — ${goalText(data)}.`,
     av ? `Среднее по ${av.n} закрытым дням: ${Math.round(av.avg.kcal)} ккал, Б ${Math.round(av.avg.p)}, Ж ${Math.round(av.avg.f)}, У ${Math.round(av.avg.c)}, клетч. ${Math.round(av.avg.fib)}.` : '',
     data.weight.length ? `Вес: ${sortedWeight(data).map(w => `${w.date} ${w.value}`).join(', ')}.` : 'Взвешиваний пока нет.',
@@ -357,9 +364,7 @@ ${FAST_FOOD}
  */
 export function othersContext(others: { name: string; data: FormaData }[], today: string) {
   if (!others.length) return '';
-  const p = today.split('-').map(Number);
-  const f = new Date(p[0], p[1] - 1, p[2] - 2);
-  const from = dk(f.getFullYear(), f.getMonth(), f.getDate());
+  const from = shiftDay(today, -2);
   const one = ({ name, data: d }: { name: string; data: FormaData }) => {
     const t = d.targets;
     const days = d.days.filter(x => x.date >= from && x.date <= today).sort((a, b) => a.date.localeCompare(b.date)).map(x => {

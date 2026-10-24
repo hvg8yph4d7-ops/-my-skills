@@ -55,8 +55,8 @@ button { font-family: inherit; }
 .row2 > .card { flex: 1; margin-bottom: 12px; }
 .sub-note { font-size: 11px; color: var(--dim); margin-top: 5px; line-height: 1.45; }
 
-.stat-strip { display: flex; gap: 10px; margin-bottom: 12px; }
-.stat-box { flex: 1; background: var(--navy-2); border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; text-align: center; }
+.stat-strip { display: flex; gap: 8px; margin-bottom: 12px; }
+.stat-box { flex: 1; min-width: 0; background: var(--navy-2); border: 1px solid var(--line); border-radius: 12px; padding: 11px 6px; text-align: center; }
 .stat-box .n { font-family: 'Oswald', sans-serif; font-size: 22px; font-weight: 600; line-height: 1; }
 .stat-box .l { font-size: 10px; color: var(--dim); margin-top: 4px; }
 .flame { position: relative; width: 40px; height: 48px; margin: -6px auto -2px; }
@@ -220,6 +220,7 @@ select.inp { -webkit-appearance: none; appearance: none; }
 .action { background: var(--navy); border: 1px solid var(--yellow); border-radius: 10px; padding: 8px 10px; }
 .action.done { border-color: var(--line); opacity: 0.7; }
 .action-text { font-size: 13px; }
+.action-date { color: var(--dim); white-space: nowrap; }
 .action-who { color: var(--accent); font-weight: 600; }
 .action-btns { display: flex; gap: 6px; margin-top: 7px; }
 .action-btns .btn { padding: 6px 12px; font-size: 12px; }

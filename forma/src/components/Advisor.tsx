@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { shortD } from '../lib/format';
 import type { FormaData } from '../types';
 import { loadChat, loadUndo, saveChat, saveUndo, type Settings, type StoredTurn, type UndoSnap } from '../storage';
 import { AiError, askAdvisor, hasKey, prepareAttachment, thumbnail, type Attachment } from '../lib/ai';
@@ -70,8 +71,13 @@ const mark = (st?: string | null) =>
   st === 'applied' ? '✓ ' : st === 'skipped' ? '✗ ' : st === 'stale' ? '⌛ ' : st === 'undone' ? '↶ ' : '✎ ';
 
 /** Заголовок карточки: отметка, чей дневник (если не свой) и что изменится. */
-function Summary({ a, st }: { a: Action; st: string }) {
-  return <div className="action-text">{st}{a.who ? <b className="action-who">👤 {a.who}: </b> : null}{a.summary}</div>;
+function Summary({ a, st, today }: { a: Action; st: string; today?: string }) {
+  return (
+    <div className="action-text">
+      {st}{a.who ? <b className="action-who">👤 {a.who}: </b> : null}{a.summary}
+      {a.date && a.date !== today && <span className="action-date"> · 📅 {shortD(a.date)}</span>}
+    </div>
+  );
 }
 
 /** «Было → станет» построчно (для старых сообщений без сохранённого сравнения — что добавится). */
@@ -202,7 +208,11 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
         a.reply += `\n\n⚠ Не могу записать: ${[...new Set(lost)].join(', ')} — дневник не открыт. Человек должен дать тебе доступ: у себя в «Форме» ⚙ → «Доступ тренеру» → твоя почта.`;
       // Свой дневник или чужой — с ним сравниваем и проверяем.
       const target = (x: Action) => (x.who ? loaded.get(personFor(others!.list, x.who)!.userId)! : data);
-      a.actions = a.actions.filter(x => !alreadyDone(target(x), x));
+      // Повтор упражнения или веса — прячем. Еду с тем же названием — нет (это может быть вторая порция), но предупреждаем.
+      a.actions = a.actions.filter(x => x.type === 'add_food' || !alreadyDone(target(x), x));
+      a.actions.forEach(x => {
+        if (x.type === 'add_food' && alreadyDone(target(x), x)) x.summary += ' — ⚠ такое уже записано в этот день; применяй, только если это ещё одна порция';
+      });
       // Еда, добавленная в приложении, сама меняет итог дня — отдельный «итог дня» в тот же день и тому же человеку задвоит.
       const foodDay = new Set(a.actions.filter(x => /^(add|update|remove)_food$/.test(x.type)).map(x => `${x.who ?? ''}|${x.date}`));
       a.actions = a.actions.filter(x => !(x.type === 'set_day_macros' && foodDay.has(`${x.who ?? ''}|${x.date}`)));
@@ -343,7 +353,7 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
                   const st = t.status?.[j];
                   return (
                     <div key={j} className={'action' + (st ? ' done' : '')}>
-                      <Summary a={a} st={mark(st)} />
+                      <Summary a={a} st={mark(st)} today={today} />
                       <Details a={a} diff={t.diffs?.[j]} />
                       {!st && (
                         <div className="action-btns">
