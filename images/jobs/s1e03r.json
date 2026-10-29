@@ -1,0 +1,19 @@
+{
+  "width": 768,
+  "height": 1344,
+  "seed": 31,
+  "style": "cinematic horror film still, shot on 35mm, dark moody low-key lighting, cold moonlight, muted colors, film grain, photorealistic, highly detailed, no people, no faces, no text, no watermark",
+  "prompts": [
+    "old wooden front door of a Russian country house seen from inside at night, a wooden chair wedged under the door handle, small brass bell hanging on the handle, thin line of cold moonlight under the door, worn floorboards",
+    "close up of a hand holding a smartphone in a pitch dark wooden room at night, the phone screen glowing blue lighting the fingers, blurred background, no face",
+    "a handwritten paper note held by a magnet on an old white soviet refrigerator in a dark country kitchen at night, moonlight from the window",
+    "close up of the same old wooden door at night from inside, door handle and keyhole, deep shadows, dust in moonlight, ominous",
+    "hand slowly pulling the edge of an old checkered wool blanket hung over a window aside, cold blue moonlight entering through the gap, dark wooden room, no face",
+    "empty moonlit yard of a Russian dacha at night, white frost on the grass, wooden picket fence and gate, dark pine forest behind, full moon, mist, silence",
+    "close up of fresh bare human footprints in white frost on the grass at night, moonlight, sharp shadows, eerie",
+    "view from a window of a trail of bare footprints in white frost leading from a wooden garden gate straight to the wooden porch of the house at night, moonlight",
+    "dark narrow corridor inside an old wooden country house at night, open doorway leading into complete darkness, faint moonlight on the floor",
+    "dark night window glass seen from inside a room, frost patterns on the glass edges, dark garden outside, the dark room faintly reflected in the glass, no people",
+    "dark corner of an old wooden room at night, a tall thin dark human silhouette barely visible standing motionless in the deep shadow, no face visible, moonlight on the floor, horror"
+  ]
+}

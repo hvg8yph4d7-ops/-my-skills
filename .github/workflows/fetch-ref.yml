@@ -1,0 +1,32 @@
+name: Fetch reference
+
+on:
+  push:
+    branches: [claude/woodnext-open-day]
+    paths: ["refs/links.txt", ".github/workflows/fetch-ref.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q -U yt-dlp
+      - name: Download
+        run: |
+          mkdir -p dl
+          while read -r url; do
+            [ -z "$url" ] && continue
+            yt-dlp --no-playlist -f "b[ext=mp4]/b" -o "dl/ref-%(id)s.%(ext)s" --write-info-json "$url" || echo "FAILED $url"
+          done < refs/links.txt
+          ls -la dl
+      - name: Upload to release "video"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls dl/* >/dev/null 2>&1 || { echo "nothing downloaded"; exit 1; }
+          gh release upload video dl/* --clobber

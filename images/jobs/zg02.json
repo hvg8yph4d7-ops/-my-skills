@@ -1,0 +1,16 @@
+{
+  "width": 768,
+  "height": 1344,
+  "seed": 51,
+  "style": "cinematic mystery film still, shot on 35mm, dark moody low-key lighting, grey overcast light, muted colors, film grain, photorealistic, highly detailed, no people, no faces, no text, no watermark",
+  "prompts": [
+    "19th century two-masted brigantine sailing ship drifting alone on a grey stormy Atlantic ocean, empty deck, no people, fog, ghost ship",
+    "empty deck of an old 19th century wooden sailing ship, torn sails, coils of rope, grey sea and fog, no people",
+    "captain's cabin of a 19th century ship, wooden table with an open logbook, an oil lamp, a sextant, dim light, empty",
+    "old wooden barrels stacked in the dark cargo hold of a 19th century ship, lantern light, damp",
+    "empty wooden davits and ropes at the stern of an old sailing ship where a lifeboat is missing, grey sea",
+    "a small wooden rowing lifeboat alone on the vast dark ocean at dusk, seen from far away, no visible people, fog",
+    "blue flame flash wave in a dark ship cargo hold among wooden barrels, eerie light",
+    "old ship logbook page handwritten in ink, 1872, close up, candlelight"
+  ]
+}
