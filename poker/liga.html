@@ -1,0 +1,653 @@
+<title>Покерная лига</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column like a scorer's pad on the table; top tabs; leader shown as a playing card. */
+:root{
+  --bg:#ECEFE8; --surface:#FBFCF8; --surface-2:#E2E7DE; --line:#CCD5CA;
+  --ink:#16201B; --muted:#5A675F;
+  --felt:#1D5A43; --felt-ink:#F3F6EE; --brass:#A9741F;
+  --pos:#23784A; --neg:#B0353A; --card:#FFFEFA; --card-ink:#16201B; --red-suit:#C0333A;
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0D1612; --surface:#14211B; --surface-2:#1B2B23; --line:#2A3D33;
+  --ink:#E7EEE8; --muted:#93A69A;
+  --felt:#4DB287; --felt-ink:#08130E; --brass:#DDAA52;
+  --pos:#5CC68C; --neg:#EE7272; --card:#F4F1E6; --card-ink:#16201B; --red-suit:#C0333A;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1612; --surface:#14211B; --surface-2:#1B2B23; --line:#2A3D33;
+  --ink:#E7EEE8; --muted:#93A69A;
+  --felt:#4DB287; --felt-ink:#08130E; --brass:#DDAA52;
+  --pos:#5CC68C; --neg:#EE7272; --card:#F4F1E6; --card-ink:#16201B; --red-suit:#C0333A;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 48px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(22px,5.5vw,30px);font-weight:800}
+h2{font-size:18px;font-weight:700}
+h3{font-size:15px;font-weight:700}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.suits{font-size:13px;letter-spacing:.3em;color:var(--muted)}
+.suits .r{color:var(--red-suit)}
+
+nav.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--surface-2);padding:4px;border-radius:12px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+nav.tabs a{text-align:center;padding:9px 4px;border-radius:9px;text-decoration:none;color:var(--muted);font-weight:700;font-size:13px;position:relative}
+nav.tabs a[aria-current="page"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+nav.tabs a .dot{position:absolute;top:6px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--neg)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+
+.banner{background:var(--surface-2);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:13px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
+
+.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:700;background:var(--felt);color:var(--felt-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--neg);border:1px solid var(--line)}
+.btn.danger.armed{background:var(--neg);color:#fff;border-color:var(--neg)}
+.btn.sm{padding:7px 11px;font-size:13px;border-radius:8px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{justify-content:space-between}
+input[type=text],input[type=number],input[type=date]{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;min-width:0}
+input[type=number]{font-family:var(--f-num)}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted);flex:1;min-width:130px}
+
+/* Leader card */
+.hero{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;background:var(--felt);color:var(--felt-ink);border-radius:18px;padding:18px;
+  background-image:radial-gradient(circle at 20% 0%,rgba(255,255,255,.14),transparent 55%),repeating-linear-gradient(45deg,rgba(255,255,255,.025) 0 2px,transparent 2px 6px)}
+.pcard{width:92px;aspect-ratio:5/7;max-width:100%;background:var(--card);color:var(--card-ink);border-radius:9px;position:relative;box-shadow:0 6px 18px rgba(0,0,0,.28);transform:rotate(-4deg)}
+.pcard .c{position:absolute;font-family:var(--f-display);font-weight:800;font-size:16px;line-height:1;text-align:center}
+.pcard .tl{top:7px;left:7px} .pcard .br{bottom:7px;right:7px;transform:rotate(180deg)}
+.pcard .mid{position:absolute;inset:0;display:grid;place-items:center;font-size:40px}
+.pcard.red{color:var(--red-suit)}
+.hero .who{display:flex;flex-direction:column;gap:4px;min-width:0}
+.hero .name{font-family:var(--f-display);font-weight:800;font-size:clamp(22px,6vw,32px);line-height:1.05;overflow-wrap:anywhere}
+.hero .meta{font-size:13px;opacity:.85}
+.hero .title{display:inline-block;align-self:flex-start;background:rgba(255,255,255,.16);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
+
+/* Leaderboard */
+.board{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.lrow{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border:0;border-top:1px solid var(--line);background:transparent;text-align:left;width:100%}
+.lrow:first-child{border-top:0}
+.lrow:hover{background:var(--surface-2)}
+.mini{width:34px;height:46px;border-radius:5px;background:var(--card);color:var(--card-ink);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:800;font-size:13px;line-height:1.05}
+.mini.red{color:var(--red-suit)}
+.lrow .nm{font-weight:700;font-size:16px;overflow-wrap:anywhere}
+.lrow .sub{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.form{display:inline-flex;gap:3px}
+.form i{width:8px;height:8px;border-radius:2px;background:var(--line)}
+.form i.w{background:var(--pos)} .form i.l{background:var(--neg)}
+.lrow .rt{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.lrow .rt .big{font-family:var(--f-num);font-weight:700;font-size:18px}
+.lrow .rt small{font-family:var(--f-num);font-size:12px}
+.spark{display:block}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px}
+.stat{background:var(--surface-2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--f-num);font-size:17px}
+.stat span{font-size:12px;color:var(--muted)}
+
+/* Chronicle */
+.night{display:flex;flex-direction:column;gap:10px}
+.night .head{font-family:var(--f-display);font-weight:700;font-size:16px;line-height:1.25}
+table.res{width:100%;border-collapse:collapse;font-size:14px}
+table.res td{padding:6px 0;border-top:1px solid var(--line)}
+table.res td.r{text-align:right;font-family:var(--f-num);white-space:nowrap;padding-left:10px}
+.transfers{display:flex;flex-direction:column;gap:6px;background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:14px}
+.transfers .t{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-weight:600;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--felt);color:var(--felt-ink);border-color:var(--felt)}
+
+/* Live table */
+.seat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.seat:first-of-type{border-top:0}
+.seat .nm{font-weight:700;font-size:16px;overflow-wrap:anywhere}
+.stack{display:inline-flex;gap:2px;vertical-align:middle;margin-left:4px}
+.stack i{width:12px;height:12px;border-radius:50%;background:var(--brass);border:2px dashed rgba(255,255,255,.55)}
+.seat .ctrl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.seat input{width:110px}
+.balance{border-radius:10px;padding:10px 12px;font-weight:700;font-size:14px;background:var(--surface-2)}
+.balance.ok{color:var(--pos)} .balance.bad{color:var(--neg)}
+
+/* Achievements */
+.ach{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.badge{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:3px;background:var(--surface)}
+.badge .g{font-family:var(--f-display);font-weight:800;font-size:18px;color:var(--brass)}
+.badge b{font-size:13px}
+.badge span{font-size:12px;color:var(--muted)}
+.badge.off{opacity:.38}
+.badge.off .g{color:var(--muted)}
+
+.sheet-bg{position:fixed;inset:0;background:rgba(5,12,9,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:720px;max-height:92%;overflow:auto;border-radius:18px 18px 0 0;
+  padding:18px max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;z-index:30;max-width:calc(100% - 32px)}
+.empty{text-align:center;padding:28px 16px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.empty .big{font-size:40px;letter-spacing:.2em}
+@media (prefers-reduced-motion:no-preference){.pcard{transition:transform .3s}.hero:hover .pcard{transform:rotate(2deg) translateY(-3px)}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="suits">♠<span class="r">♥</span>♣<span class="r">♦</span></div>
+      <h1 id="leagueName">Покерная лига</h1>
+    </div>
+    <div class="muted" id="seasonLine" style="font-size:13px"></div>
+  </header>
+  <nav class="tabs" id="tabs">
+    <a href="#rating">Рейтинг</a>
+    <a href="#live">Стол</a>
+    <a href="#nights">Вечера</a>
+    <a href="#players">Игроки</a>
+  </nav>
+  <div id="notice"></div>
+  <main id="view"></main>
+</div>
+<div id="sheet"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const SUITS = ["♠","♥","♣","♦"];
+const RANKS = ["A","K","Q","J","10","9","8","7","6","5","4","3","2"];
+const hash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const suitOf = id => SUITS[hash(id) % 4];
+const isRed = s => s === "♥" || s === "♦";
+const fmtDate = iso => { try { return new Date(iso + "T12:00:00").toLocaleDateString("ru-RU", {day:"numeric", month:"long", year:"numeric"}); } catch { return iso; } };
+const plural = (n, a, b, c) => { n = Math.abs(n) % 100; const n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; };
+
+/* ---------- state ---------- */
+const S = {
+  mode: "loading",            // loading | db | local | demo
+  players: {}, games: {}, settings: {name: "Покерная лига", currency: "₽", buyIn: 1000},
+  readOnly: false, stale: false,
+  real: null,                 // stashed real data while demo is shown
+  profile: null,              // player id for profile sheet
+  draft: {date: today(), buyIn: null, picked: null},
+  armed: null,                // id of armed delete button
+};
+let db = null;
+const money = (n, sign) => {
+  const v = Math.round(n);
+  const s = Math.abs(v).toLocaleString("ru-RU") + " " + (S.settings.currency || "₽");
+  if (!sign) return (v < 0 ? "−" : "") + s;
+  return (v > 0 ? "+" : v < 0 ? "−" : "") + s;
+};
+
+/* ---------- storage layer ---------- */
+const LS_KEY = "poker-league-local-v1";
+function lsLoad(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch { return null; } }
+function lsSave(){ try { localStorage.setItem(LS_KEY, JSON.stringify({players:S.players, games:S.games, settings:S.settings})); } catch {} }
+
+const queues = {};
+function queued(path, fn){ const p = (queues[path] || Promise.resolve()).then(fn, fn); queues[path] = p.catch(() => {}); return p; }
+
+function writeErr(e){
+  if (e && e.code === "invalid_argument") { S.readOnly = true; toast("Нет прав на запись. Попросите владельца лиги дать вам доступ редактора."); render(); }
+  else if (e && e.code === "quota_exceeded") toast("Хранилище заполнено, удалите старые вечера.");
+  else toast("Не сохранилось, проверьте связь и повторите.");
+}
+async function put(coll, id, data){
+  if (S.mode === "demo") { toast("Это пример — изменения не сохраняются"); return; }
+  if (coll === "settings") S.settings = data; else S[coll][id] = data;
+  if (S.mode === "local") { lsSave(); render(); return; }
+  render();
+  const path = coll + "/" + id;
+  try { await queued(path, () => db.doc(path).set(data)); } catch (e) { writeErr(e); }
+}
+async function del(coll, id){
+  if (S.mode === "demo") { toast("Это пример — изменения не сохраняются"); return; }
+  delete S[coll][id];
+  if (S.mode === "local") { lsSave(); render(); return; }
+  render();
+  const path = coll + "/" + id;
+  try { await queued(path, () => db.doc(path).delete()); } catch (e) { writeErr(e); }
+}
+
+/* ---------- math ---------- */
+const gameNets = g => {
+  const out = {};
+  for (const [pid, e] of Object.entries(g.entries || {})) {
+    const bi = (e.buyIns || []).reduce((a, b) => a + b, 0);
+    out[pid] = {buyIn: bi, cashOut: e.cashOut, net: (e.cashOut == null ? NaN : e.cashOut - bi), rebuys: (e.buyIns || []).length};
+  }
+  return out;
+};
+function settle(nets){
+  const debt = [], cred = [];
+  for (const [pid, n] of Object.entries(nets)) { if (n < -0.5) debt.push([pid, -n]); else if (n > 0.5) cred.push([pid, n]); }
+  debt.sort((a, b) => b[1] - a[1]); cred.sort((a, b) => b[1] - a[1]);
+  const res = []; let i = 0, j = 0;
+  while (i < debt.length && j < cred.length) {
+    const amt = Math.min(debt[i][1], cred[j][1]);
+    if (amt > 0.5) res.push({from: debt[i][0], to: cred[j][0], amount: Math.round(amt)});
+    debt[i][1] -= amt; cred[j][1] -= amt;
+    if (debt[i][1] < 0.5) i++; if (cred[j][1] < 0.5) j++;
+  }
+  return res;
+}
+const doneGames = () => Object.entries(S.games).map(([id, g]) => ({id, ...g})).filter(g => g.status === "done")
+  .sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.createdAt || 0) - (b.createdAt || 0));
+const liveGame = () => { const e = Object.entries(S.games).find(([, g]) => g.status === "live"); return e ? {id: e[0], ...e[1]} : null; };
+
+function compute(){
+  const games = doneGames();
+  const P = {};
+  const ensure = pid => P[pid] || (P[pid] = {id: pid, rating: 1000, hist: [1000], games: 0, wins: 0, total: 0, best: -Infinity, worst: Infinity,
+    nets: [], maxRebuys: 0, doubled: false, lastDelta: 0, paid: {}, got: {}, comeback: false});
+  for (const pid of Object.keys(S.players)) ensure(pid);
+  let record = null;
+  for (const g of games) {
+    const nets = gameNets(g); const ids = Object.keys(nets).filter(p => !isNaN(nets[p].net));
+    ids.forEach(ensure);
+    const deltas = {}; ids.forEach(p => deltas[p] = 0);
+    const K = 32;
+    for (const a of ids) for (const b of ids) if (a !== b) {
+      const sa = nets[a].net > nets[b].net ? 1 : nets[a].net < nets[b].net ? 0 : .5;
+      const ea = 1 / (1 + Math.pow(10, (P[b].rating - P[a].rating) / 400));
+      deltas[a] += K * (sa - ea) / (ids.length - 1);
+    }
+    const flat = {}; ids.forEach(p => flat[p] = nets[p].net);
+    for (const t of settle(flat)) { P[t.from].paid[t.to] = (P[t.from].paid[t.to] || 0) + t.amount; P[t.to].got[t.from] = (P[t.to].got[t.from] || 0) + t.amount; }
+    for (const p of ids) {
+      const s = P[p], n = nets[p].net;
+      const prev3 = s.nets.slice(-3);
+      if (n > 0 && prev3.length === 3 && prev3.every(x => x.net < 0)) s.comeback = true;
+      s.rating += deltas[p]; s.lastDelta = deltas[p]; s.hist.push(s.rating);
+      s.games++; if (n > 0) s.wins++; s.total += n;
+      s.best = Math.max(s.best, n); s.worst = Math.min(s.worst, n);
+      s.nets.push({gid: g.id, net: n, date: g.date});
+      s.maxRebuys = Math.max(s.maxRebuys, nets[p].rebuys);
+      if (nets[p].buyIn > 0 && nets[p].cashOut >= nets[p].buyIn * 2) s.doubled = true;
+      if (!record || n > record.net) record = {pid: p, net: n};
+    }
+  }
+  const list = Object.values(P).filter(p => S.players[p.id]);
+  const ranked = list.filter(p => p.games > 0).sort((a, b) => b.rating - a.rating);
+  const fresh = list.filter(p => p.games === 0).sort((a, b) => (S.players[a.id].name || "").localeCompare(S.players[b.id].name || ""));
+  const mostLoss = list.filter(p => p.games).sort((a, b) => a.total - b.total)[0];
+  return {P, ranked, fresh, games, record, mostLoss};
+}
+
+/* ---------- achievements ---------- */
+function achievements(p, C){
+  const streak = (() => { let best = 0, cur = 0; for (const x of p.nets) { cur = x.net > 0 ? cur + 1 : 0; best = Math.max(best, cur); } return best; })();
+  const enemy = Object.entries(p.paid).sort((a, b) => b[1] - a[1])[0];
+  return [
+    {g:"A♠", t:"Первая кровь", d:"Первый вечер в плюсе", on: p.wins > 0},
+    {g:"3×", t:"Горячая рука", d:"Три вечера подряд в плюсе", on: streak >= 3},
+    {g:"2×", t:"Удвоение", d:"Вывел вдвое больше, чем закупил", on: p.doubled},
+    {g:"↺", t:"Феникс", d:"Плюс после трёх минусов подряд", on: p.comeback},
+    {g:"♦♦♦", t:"Ребай-король", d:"Три и больше закупа за вечер", on: p.maxRebuys >= 3},
+    {g:"10", t:"Завсегдатай", d:"Десять вечеров за столом", on: p.games >= 10},
+    {g:"♛", t:"Акула", d:"Рекорд лиги за один вечер", on: !!(C.record && C.record.pid === p.id && C.record.net > 0)},
+    {g:"$", t:"Банкомат", d:"Самый большой общий минус в лиге", on: !!(C.mostLoss && C.mostLoss.id === p.id && p.total < 0)},
+    {g:"Q♥", t:"Заклятый друг", d: enemy ? "Больше всех платишь: " + name(enemy[0]) : "Тот, кому ты платишь чаще всех", on: !!enemy},
+  ];
+}
+const name = pid => (S.players[pid] && S.players[pid].name) || "Гость";
+function titleFor(p, rankIdx, total){
+  if (rankIdx === 0) return "Дон стола";
+  if (rankIdx === total - 1 && total > 2) return "Спонсор вечера";
+  if (p.lastDelta > 12) return "На взлёте";
+  if (p.lastDelta < -12) return "В пике";
+  return "";
+}
+
+/* ---------- headlines for the chronicle ---------- */
+function headline(g){
+  const nets = gameNets(g); const ids = Object.keys(nets).filter(p => !isNaN(nets[p].net));
+  if (!ids.length) return "Тихий вечер";
+  ids.sort((a, b) => nets[b].net - nets[a].net);
+  const w = name(ids[0]), l = name(ids[ids.length - 1]);
+  const wn = money(nets[ids[0]].net), ln = money(-nets[ids[ids.length - 1]].net);
+  const reb = ids.slice().sort((a, b) => nets[b].rebuys - nets[a].rebuys)[0];
+  const opts = [
+    `${w} забирает ${wn}, ${l} оплачивает банкет`,
+    `${w} снова за кассой: ${wn} в плюс`,
+    `${l} оставил на столе ${ln}. ${w} говорит спасибо`,
+    `Вечер имени ${w}: ${wn}`,
+  ];
+  if (nets[reb].rebuys >= 3) opts.push(`${name(reb)} закупался ${nets[reb].rebuys} раза, а забрал всё ${w}`);
+  return opts[hash(g.id) % opts.length];
+}
+
+/* ---------- small renderers ---------- */
+function spark(hist, w = 90, h = 26){
+  if (hist.length < 2) return "";
+  const min = Math.min(...hist), max = Math.max(...hist), span = max - min || 1;
+  const pts = hist.map((v, i) => [ (i / (hist.length - 1)) * (w - 4) + 2, h - 3 - ((v - min) / span) * (h - 6) ]);
+  const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const up = hist[hist.length - 1] >= hist[0];
+  const last = pts[pts.length - 1];
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <path d="${d} L ${last[0].toFixed(1)} ${h} L 2 ${h} Z" fill="var(${up ? "--pos" : "--neg"})" opacity=".12"/>
+    <path d="${d}" fill="none" stroke="var(${up ? "--pos" : "--neg"})" stroke-width="1.6" stroke-linejoin="round"/>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.4" fill="var(${up ? "--pos" : "--neg"})"/></svg>`;
+}
+const miniCard = (rank, pid) => { const s = suitOf(pid); return `<span class="mini ${isRed(s) ? "red" : ""}" aria-hidden="true">${rank}<span>${s}</span></span>`; };
+const formDots = nets => `<span class="form" title="Последние вечера">${nets.slice(-5).map(x => `<i class="${x.net > 0 ? "w" : x.net < 0 ? "l" : ""}"></i>`).join("")}</span>`;
+
+/* ---------- views ---------- */
+function vRating(){
+  const C = compute();
+  if (!Object.keys(S.players).length) return emptyState();
+  if (!C.ranked.length) return `<div class="panel empty"><div class="big">♠♥♣♦</div><h2>Рейтинг появится после первого вечера</h2>
+    <p class="muted">Откройте «Стол», отметьте закупы, а в конце впишите, кто сколько вывел.</p><a class="btn" href="#live">Начать вечер</a></div>`;
+  const L = C.ranked[0], s = suitOf(L.id);
+  let html = `<section class="hero" aria-label="Лидер">
+    <div class="pcard ${isRed(s) ? "red" : ""}"><span class="c tl">A<br>${s}</span><span class="mid">${s}</span><span class="c br">A<br>${s}</span></div>
+    <div class="who"><span class="eyebrow" style="color:inherit;opacity:.75">Лидер лиги</span>
+      <div class="name">${esc(name(L.id))}</div>
+      <div class="meta num">${Math.round(L.rating)} очк. · ${L.games} ${plural(L.games,"вечер","вечера","вечеров")} · ${money(L.total, true)}</div>
+      <span class="title">Дон стола</span></div></section>`;
+  html += `<div class="row spread"><h2>Таблица</h2><span class="muted" style="font-size:12px">Ранг карты = место. Очки — рейтинг Эло по вечерам</span></div><div class="board">`;
+  C.ranked.forEach((p, i) => {
+    const t = titleFor(p, i, C.ranked.length);
+    html += `<button class="lrow" data-act="profile" data-id="${p.id}">
+      ${miniCard(RANKS[Math.min(i, RANKS.length - 1)], p.id)}
+      <span style="min-width:0;display:flex;flex-direction:column;gap:3px"><span class="nm">${esc(name(p.id))}</span>
+        <span class="sub">${formDots(p.nets)}<span class="num ${p.total >= 0 ? "pos" : "neg"}">${money(p.total, true)}</span>${t ? `<span>· ${t}</span>` : ""}</span></span>
+      <span class="rt"><span class="big">${Math.round(p.rating)}</span>
+        <small class="${p.lastDelta >= 0 ? "pos" : "neg"}">${p.lastDelta >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(p.lastDelta))}</small>${spark(p.hist, 70, 20)}</span>
+    </button>`;
+  });
+  C.fresh.forEach(p => {
+    html += `<button class="lrow" data-act="profile" data-id="${p.id}">${miniCard("·", p.id)}
+      <span style="min-width:0"><span class="nm">${esc(name(p.id))}</span><span class="sub">ещё не играл</span></span><span class="rt"><span class="big muted">1000</span></span></button>`;
+  });
+  html += `</div>`;
+  const facts = [];
+  if (C.record) facts.push(["Рекорд вечера", money(C.record.net, true), name(C.record.pid)]);
+  facts.push(["Сыграно вечеров", String(C.games.length), ""]);
+  const bank = C.games.reduce((a, g) => a + Object.values(gameNets(g)).reduce((x, y) => x + y.buyIn, 0), 0);
+  facts.push(["Прошло через банк", money(bank), ""]);
+  html += `<div class="stats">${facts.map(f => `<div class="stat"><span>${f[0]}</span><b>${f[1]}</b>${f[2] ? `<span>${esc(f[2])}</span>` : ""}</div>`).join("")}</div>`;
+  return html;
+}
+
+function emptyState(){
+  return `<div class="panel empty"><div class="big">♠<span style="color:var(--red-suit)">♥</span>♣<span style="color:var(--red-suit)">♦</span></div>
+    <h2>Лига пока пустая</h2>
+    <p class="muted" style="max-width:46ch">Добавьте друзей во вкладке «Игроки», потом проведите вечер во вкладке «Стол». Рейтинг, ачивки и расчёт «кто кому должен» посчитаются сами.</p>
+    <div class="row" style="justify-content:center"><a class="btn" href="#players">Добавить игроков</a>
+    ${S.mode !== "demo" ? `<button class="btn ghost" data-act="demo-on">Показать на примере</button>` : ""}</div></div>`;
+}
+
+function vLive(){
+  const g = liveGame();
+  const pids = Object.keys(S.players);
+  if (!g) {
+    if (!pids.length) return emptyState();
+    const picked = S.draft.picked || new Set(pids);
+    S.draft.picked = picked;
+    const bi = S.draft.buyIn ?? S.settings.buyIn ?? 1000;
+    return `<section class="panel"><div><span class="eyebrow">Новый вечер</span><h2>Кто сегодня за столом?</h2></div>
+      <div class="chips">${pids.sort((a, b) => name(a).localeCompare(name(b))).map(p => `<button class="chip" data-act="pick" data-id="${p}" aria-pressed="${picked.has(p)}">${esc(name(p))}</button>`).join("")}</div>
+      <div class="row"><label class="fld">Дата<input type="date" id="d-date" value="${esc(S.draft.date)}"></label>
+        <label class="fld">Закуп<input type="number" id="d-buyin" inputmode="numeric" min="0" step="100" value="${bi}"></label></div>
+      <button class="btn" data-act="start" ${picked.size < 2 || S.readOnly ? "disabled" : ""}>Раздать фишки (${picked.size})</button>
+      <p class="muted" style="font-size:13px;margin:0">Каждому сразу запишется один закуп. Ребаи добавляйте по ходу игры кнопкой «+».</p></section>`;
+  }
+  const nets = gameNets(g);
+  const ids = Object.keys(g.entries);
+  const bank = ids.reduce((a, p) => a + nets[p].buyIn, 0);
+  const outSum = ids.reduce((a, p) => a + (nets[p].cashOut || 0), 0);
+  const allOut = ids.every(p => nets[p].cashOut != null);
+  const diff = outSum - bank;
+  const ro = S.readOnly ? "disabled" : "";
+  let html = `<section class="panel"><div class="row spread"><div><span class="eyebrow">Идёт игра · ${fmtDate(g.date)}</span><h2>Банк <span class="num">${money(bank)}</span></h2></div>
+     <label class="fld" style="max-width:130px;flex:0">Ребай<input type="number" id="g-buyin" inputmode="numeric" min="0" step="100" value="${g.buyIn}" ${ro}></label></div>`;
+  for (const p of ids) {
+    const n = nets[p], cnt = n.rebuys;
+    html += `<div class="seat"><div style="min-width:0"><div class="nm">${esc(name(p))}<span class="stack">${"<i></i>".repeat(Math.min(cnt, 6))}</span></div>
+        <div class="muted num" style="font-size:13px">закуп ${money(n.buyIn)}${cnt > 1 ? ` · ${cnt} ${plural(cnt,"раз","раза","раз")}` : ""}${n.cashOut != null ? ` · <span class="${n.net >= 0 ? "pos" : "neg"}">${money(n.net, true)}</span>` : ""}</div></div>
+      <div class="ctrl"><button class="btn ghost sm" data-act="unbuy" data-id="${p}" aria-label="Убрать закуп" ${cnt < 1 || ro ? "disabled" : ""}>−</button>
+        <button class="btn sm" data-act="rebuy" data-id="${p}" ${ro}>+ ${(g.buyIn || 0).toLocaleString("ru-RU")}</button>
+        <input type="number" inputmode="numeric" min="0" step="50" placeholder="вывел" id="out-${p}" data-act="cashout" data-id="${p}" value="${n.cashOut ?? ""}" aria-label="Вывел ${esc(name(p))}" ${ro}></div></div>`;
+  }
+  const late = Object.keys(S.players).filter(p => !g.entries[p]);
+  if (late.length) html += `<div><span class="eyebrow">Подсел позже</span><div class="chips" style="margin-top:6px">${late.map(p => `<button class="chip" data-act="join" data-id="${p}" ${ro}>+ ${esc(name(p))}</button>`).join("")}</div></div>`;
+  if (allOut) {
+    html += `<div class="balance ${Math.abs(diff) < 1 ? "ok" : "bad"}">${Math.abs(diff) < 1 ? "Фишки сходятся с банком" : diff > 0 ? `Выведено на ${money(diff)} больше банка — проверьте подсчёт` : `Не хватает ${money(-diff)} до банка — проверьте подсчёт`}</div>`;
+    const flat = {}; ids.forEach(p => flat[p] = nets[p].net);
+    const tr = settle(flat);
+    if (tr.length) html += `<div class="transfers"><span class="eyebrow">Кто кому переводит</span>${tr.map(t => `<div class="t"><span>${esc(name(t.from))} → ${esc(name(t.to))}</span><b class="num">${money(t.amount)}</b></div>`).join("")}</div>`;
+  } else {
+    const left = ids.filter(p => nets[p].cashOut == null).length;
+    html += `<div class="balance">Осталось вписать вывод: ${left} ${plural(left,"игрок","игрока","игроков")}</div>`;
+  }
+  const armedFinish = S.armed === "finish";
+  html += `<div class="row"><button class="btn" data-act="finish" ${!allOut || ro ? "disabled" : ""}>${allOut && Math.abs(diff) >= 1 ? (armedFinish ? "Да, записать как есть" : "Записать с расхождением") : "Закончить вечер"}</button>
+     <button class="btn danger ${S.armed === "cancel" ? "armed" : ""}" data-act="cancel" ${ro}>${S.armed === "cancel" ? "Точно отменить вечер?" : "Отменить вечер"}</button></div></section>`;
+  return html;
+}
+
+function vNights(){
+  const games = doneGames().reverse();
+  if (!games.length) return Object.keys(S.players).length ? `<div class="panel empty"><div class="big">♣</div><h2>Здесь будет хроника вечеров</h2><p class="muted">После каждого вечера — заголовок, итоги и расчёт переводов.</p><a class="btn" href="#live">Начать вечер</a></div>` : emptyState();
+  return `<h2>Хроника</h2>` + games.map(g => {
+    const nets = gameNets(g); const ids = Object.keys(nets).filter(p => !isNaN(nets[p].net)).sort((a, b) => nets[b].net - nets[a].net);
+    const flat = {}; ids.forEach(p => flat[p] = nets[p].net);
+    const tr = settle(flat);
+    const bank = ids.reduce((a, p) => a + nets[p].buyIn, 0);
+    const k = "del-" + g.id;
+    return `<article class="panel night"><span class="eyebrow">${fmtDate(g.date)} · банк ${money(bank)}</span>
+      <div class="head">${esc(headline(g))}</div>
+      <table class="res"><tbody>${ids.map((p, i) => `<tr><td>${i === 0 ? "♛ " : ""}${esc(name(p))}<span class="muted" style="font-size:12px"> · закуп ${money(nets[p].buyIn)}</span></td><td class="r ${nets[p].net >= 0 ? "pos" : "neg"}">${money(nets[p].net, true)}</td></tr>`).join("")}</tbody></table>
+      ${tr.length ? `<details><summary class="muted" style="cursor:pointer;font-size:13px">Кто кому переводил</summary><div class="transfers" style="margin-top:8px">${tr.map(t => `<div class="t"><span>${esc(name(t.from))} → ${esc(name(t.to))}</span><b class="num">${money(t.amount)}</b></div>`).join("")}</div></details>` : ""}
+      ${S.readOnly || S.mode === "demo" ? "" : `<div class="row"><button class="btn ghost sm" data-act="reopen" data-id="${g.id}">Исправить</button>
+        <button class="btn danger sm ${S.armed === k ? "armed" : ""}" data-act="delgame" data-id="${g.id}">${S.armed === k ? "Точно удалить?" : "Удалить"}</button></div>`}</article>`;
+  }).join("");
+}
+
+function vPlayers(){
+  const ids = Object.keys(S.players).sort((a, b) => name(a).localeCompare(name(b)));
+  const ro = S.readOnly ? "disabled" : "";
+  return `<section class="panel"><h2>Игроки</h2>
+    <form id="addForm" class="row"><input type="text" id="newName" placeholder="Имя" maxlength="24" style="flex:1" ${ro}><button class="btn" type="submit" ${ro}>Добавить</button></form>
+    ${ids.length ? `<div class="chips">${ids.map(p => `<button class="chip" data-act="profile" data-id="${p}">${suitOf(p)} ${esc(name(p))}</button>`).join("")}</div>` : `<p class="muted" style="margin:0">Пока никого. Впишите друзей по одному.</p>`}
+  </section>
+  <section class="panel"><h2>Настройки лиги</h2>
+    <div class="row"><label class="fld">Название<input type="text" id="s-name" maxlength="40" value="${esc(S.settings.name)}" ${ro}></label>
+      <label class="fld" style="max-width:110px">Валюта<input type="text" id="s-cur" maxlength="4" value="${esc(S.settings.currency)}" ${ro}></label>
+      <label class="fld" style="max-width:140px">Закуп по умолчанию<input type="number" id="s-buyin" min="0" step="100" value="${S.settings.buyIn}" ${ro}></label></div>
+    <p class="muted" style="font-size:13px;margin:0">${S.mode === "db" ? "Данные лиги общие: всё, что вы вводите, видят все, кому открыта эта страница." : S.mode === "local" ? "Сейчас данные хранятся только в этом браузере." : ""}</p>
+  </section>`;
+}
+
+function vProfile(pid){
+  const C = compute(); const p = C.P[pid]; if (!p || !S.players[pid]) return "";
+  const rank = C.ranked.findIndex(x => x.id === pid);
+  const ach = achievements(p, C);
+  const got = Object.entries(p.got).sort((a, b) => b[1] - a[1])[0];
+  const k = "delp-" + pid;
+  return `<div class="sheet-bg" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(name(pid))}">
+    <div class="row spread"><div class="row">${miniCard(rank >= 0 ? RANKS[Math.min(rank, 12)] : "·", pid)}<div><h2>${esc(name(pid))}</h2><span class="muted" style="font-size:13px">${rank >= 0 ? `${rank + 1}-е место · ${Math.round(p.rating)} очк.` : "Ещё не играл"}</span></div></div>
+      <button class="btn ghost sm" data-act="close">Закрыть</button></div>
+    ${p.hist.length > 1 ? `<div>${spark(p.hist, 320, 60).replace('width="320"', 'width="100%" preserveAspectRatio="none"')}</div>` : ""}
+    <div class="stats">
+      <div class="stat"><span>Вечеров</span><b>${p.games}</b></div>
+      <div class="stat"><span>В плюсе</span><b>${p.games ? Math.round(p.wins / p.games * 100) : 0}%</b></div>
+      <div class="stat"><span>Итого</span><b class="${p.total >= 0 ? "pos" : "neg"}">${money(p.total, true)}</b></div>
+      <div class="stat"><span>Лучший вечер</span><b>${p.games ? money(p.best, true) : "—"}</b></div>
+      <div class="stat"><span>Худший вечер</span><b>${p.games ? money(p.worst, true) : "—"}</b></div>
+      <div class="stat"><span>Чаще всех платит тебе</span><b style="font-family:var(--f-body);font-size:15px">${got ? esc(name(got[0])) : "—"}</b>${got ? `<span class="num">${money(got[1])}</span>` : ""}</div>
+    </div>
+    <h3>Ачивки <span class="muted num" style="font-weight:500">${ach.filter(a => a.on).length}/${ach.length}</span></h3>
+    <div class="ach">${ach.map(a => `<div class="badge ${a.on ? "" : "off"}"><span class="g">${a.g}</span><b>${a.t}</b><span>${esc(a.d)}</span></div>`).join("")}</div>
+    ${S.readOnly || S.mode === "demo" ? "" : `<div class="row"><button class="btn danger sm ${S.armed === k ? "armed" : ""}" data-act="delplayer" data-id="${pid}">${S.armed === k ? "Удалить игрока? История вечеров останется" : "Удалить игрока"}</button></div>`}
+  </div></div>`;
+}
+
+/* ---------- render ---------- */
+const ROUTES = {rating: vRating, live: vLive, nights: vNights, players: vPlayers};
+const route = () => { const h = (location.hash || "").slice(1); return ROUTES[h] ? h : "rating"; };
+function render(){
+  const r = route();
+  document.querySelectorAll("#tabs a").forEach(a => {
+    const on = a.getAttribute("href") === "#" + r;
+    a.toggleAttribute("aria-current", false); if (on) a.setAttribute("aria-current", "page");
+    if (a.getAttribute("href") === "#live") a.innerHTML = "Стол" + (liveGame() ? '<span class="dot" title="Идёт игра"></span>' : "");
+  });
+  $("#leagueName").textContent = S.settings.name || "Покерная лига";
+  const n = doneGames().length;
+  $("#seasonLine").textContent = n ? `${n} ${plural(n, "вечер", "вечера", "вечеров")} · ${Object.keys(S.players).length} игроков` : "";
+
+  let note = "";
+  if (S.mode === "loading") note = `<div class="banner">Загружаю лигу…</div>`;
+  else if (S.mode === "demo") note = `<div class="banner"><span><b>Пример.</b> Имена и цифры выдуманы, ничего не сохраняется.</span><button class="btn sm" data-act="demo-off">Вернуться к своей лиге</button></div>`;
+  else if (S.mode === "local") note = `<div class="banner">Общее хранилище недоступно в этом окне, поэтому данные сохраняются только на этом устройстве.</div>`;
+  else if (S.readOnly) note = `<div class="banner">Вы смотрите лигу без права записи. Вносить вечера может владелец и те, кому он дал доступ редактора.</div>`;
+  else if (S.stale) note = `<div class="banner">Не получается достучаться до хранилища — данные могут быть устаревшими.</div>`;
+  $("#notice").innerHTML = note;
+
+  // keep focus and in-progress typing across re-renders
+  const a = document.activeElement; const keepId = a && a.id && a.tagName === "INPUT" ? a.id : null;
+  const keepVal = keepId ? a.value : null; let sel = null; try { sel = keepId ? [a.selectionStart, a.selectionEnd] : null; } catch {}
+  $("#view").innerHTML = `<div class="wrap" style="max-width:none">${S.mode === "loading" ? "" : ROUTES[r]()}</div>`;
+  $("#sheet").innerHTML = S.profile ? vProfile(S.profile) : "";
+  if (keepId) { const el = document.getElementById(keepId); if (el) { el.value = keepVal; el.focus(); try { if (sel && sel[0] != null) el.setSelectionRange(sel[0], sel[1]); } catch {} } }
+}
+let toastT;
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
+
+/* ---------- actions ---------- */
+function disarm(){ if (S.armed) { S.armed = null; } }
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el) { if (S.armed) { disarm(); render(); } return; }
+  const act = el.dataset.act, id = el.dataset.id;
+  if (act === "close") { if (e.target === el || el.tagName === "BUTTON") { S.profile = null; S.armed = null; render(); } return; }
+  if (act === "cashout") return;
+  const prevArmed = S.armed; S.armed = null;
+  const g = liveGame();
+  switch (act) {
+    case "profile": S.profile = id; break;
+    case "pick": { const s = S.draft.picked; s.has(id) ? s.delete(id) : s.add(id); break; }
+    case "start": {
+      const bi = Math.max(0, Number($("#d-buyin").value) || 0); const date = $("#d-date").value || today();
+      const entries = {}; for (const p of S.draft.picked) if (S.players[p]) entries[p] = {buyIns: [bi], cashOut: null};
+      put("games", uid(), {date, status: "live", buyIn: bi, entries, createdAt: Date.now()}); S.draft.picked = null; return;
+    }
+    case "rebuy": if (g) { const ge = structuredClone(g); delete ge.id; ge.entries[id].buyIns.push(g.buyIn || 0); put("games", g.id, ge); } return;
+    case "unbuy": if (g) { const ge = structuredClone(g); delete ge.id; ge.entries[id].buyIns.pop(); put("games", g.id, ge); } return;
+    case "join": if (g) { const ge = structuredClone(g); delete ge.id; ge.entries[id] = {buyIns: [g.buyIn || 0], cashOut: null}; put("games", g.id, ge); } return;
+    case "finish": if (g) {
+      const nets = gameNets(g); const diff = Object.values(nets).reduce((a, n) => a + n.net, 0);
+      if (Math.abs(diff) >= 1 && prevArmed !== "finish") { S.armed = "finish"; break; }
+      const ge = structuredClone(g); delete ge.id; ge.status = "done"; ge.finishedAt = Date.now(); put("games", g.id, ge);
+      location.hash = "#nights"; toast("Вечер записан. Рейтинг пересчитан");
+    } return;
+    case "cancel": if (g) { if (prevArmed !== "cancel") { S.armed = "cancel"; break; } del("games", g.id); toast("Вечер отменён"); } return;
+    case "reopen": {
+      if (liveGame()) { toast("Сначала закончите вечер, который идёт сейчас"); break; }
+      const ge = structuredClone(S.games[id]); ge.status = "live"; put("games", id, ge); location.hash = "#live"; return;
+    }
+    case "delgame": if (prevArmed !== "del-" + id) { S.armed = "del-" + id; break; } del("games", id); toast("Вечер удалён"); return;
+    case "delplayer": if (prevArmed !== "delp-" + id) { S.armed = "delp-" + id; break; } S.profile = null; del("players", id); toast("Игрок удалён"); return;
+    case "demo-on": startDemo(); return;
+    case "demo-off": stopDemo(); return;
+  }
+  render();
+});
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.dataset.act === "cashout") {
+    const g = liveGame(); if (!g) return;
+    const v = el.value.trim() === "" ? null : Math.max(0, Number(el.value) || 0);
+    const ge = structuredClone(g); delete ge.id;
+    if (!ge.entries[el.dataset.id] || ge.entries[el.dataset.id].cashOut === v) return;
+    ge.entries[el.dataset.id].cashOut = v; el.blur(); put("games", g.id, ge); return;
+  }
+  if (el.id === "g-buyin") { const g = liveGame(); if (!g) return; const ge = structuredClone(g); delete ge.id; ge.buyIn = Math.max(0, Number(el.value) || 0); el.blur(); put("games", g.id, ge); return; }
+  if (el.id === "d-date") { S.draft.date = el.value; return; }
+  if (el.id === "d-buyin") { S.draft.buyIn = Number(el.value) || 0; return; }
+  if (["s-name", "s-cur", "s-buyin"].includes(el.id)) {
+    const s = {...S.settings, name: $("#s-name").value.trim() || "Покерная лига", currency: $("#s-cur").value.trim() || "₽", buyIn: Math.max(0, Number($("#s-buyin").value) || 0)};
+    el.blur(); put("settings", "main", s); toast("Сохранено");
+  }
+});
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset && e.target.dataset.act === "cashout") e.target.blur(); if (e.key === "Escape" && S.profile) { S.profile = null; render(); } });
+document.addEventListener("submit", e => {
+  if (e.target.id !== "addForm") return; e.preventDefault();
+  const inp = $("#newName"); const nm = inp.value.trim(); if (!nm) return;
+  if (Object.values(S.players).some(p => p.name.toLowerCase() === nm.toLowerCase())) { toast("Такой игрок уже есть"); return; }
+  inp.value = ""; put("players", uid(), {name: nm, createdAt: Date.now()});
+});
+window.addEventListener("hashchange", () => { S.armed = null; render(); window.scrollTo(0, 0); });
+
+/* ---------- demo ---------- */
+function startDemo(){
+  S.real = {players: S.players, games: S.games, settings: S.settings, mode: S.mode};
+  const names = ["Дима", "Саша", "Лёша", "Макс", "Аня", "Костя"];
+  const players = {}; names.forEach((n, i) => players["demo" + i] = {name: n, createdAt: i});
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const games = {};
+  for (let k = 0; k < 9; k++) {
+    const entries = {}; const ids = Object.keys(players).filter(() => rnd() > .12);
+    let bank = 0;
+    ids.forEach(p => { const n = 1 + Math.floor(rnd() * rnd() * 4); entries[p] = {buyIns: Array(n).fill(1000), cashOut: 0}; bank += n * 1000; });
+    const w = ids.map(p => Math.pow(rnd(), 1.6) * (p === "demo1" ? 1.6 : 1)); const ws = w.reduce((a, b) => a + b, 0);
+    let left = bank; ids.forEach((p, i) => { const v = i === ids.length - 1 ? left : Math.round(bank * w[i] / ws / 50) * 50; entries[p].cashOut = v; left -= v; });
+    const d = new Date(2026, 6 + Math.floor(k / 2), 3 + (k % 2) * 14);
+    games["dg" + k] = {date: d.toISOString().slice(0, 10), status: "done", buyIn: 1000, entries, createdAt: k};
+  }
+  S.players = players; S.games = games; S.settings = {name: "Пятничный стол", currency: "₽", buyIn: 1000}; S.mode = "demo";
+  location.hash = "#rating"; render();
+}
+function stopDemo(){ const r = S.real; S.players = r.players; S.games = r.games; S.settings = r.settings; S.mode = r.mode; S.real = null; S.profile = null; render(); }
+
+/* ---------- boot ---------- */
+function goLocal(){
+  const d = lsLoad(); if (d) { S.players = d.players || {}; S.games = d.games || {}; S.settings = {...S.settings, ...(d.settings || {})}; }
+  S.mode = "local"; render();
+}
+function apply(coll, snap){
+  const map = {}; snap.docs.forEach(d => { map[d.id] = d.data(); });
+  const target = S.mode === "demo" && S.real ? S.real : S;
+  if (coll === "settings") target.settings = {...{name: "Покерная лига", currency: "₽", buyIn: 1000}, ...(map.main || {})};
+  else target[coll] = map;
+}
+async function boot(){
+  render();
+  const c = window.claude;
+  if (!c || typeof c.use !== "function") { goLocal(); return; }
+  try { db = await c.use("db"); } catch { db = null; }
+  if (!db) { goLocal(); return; }
+  S.mode = "db";
+  let pending = 3; const t = setTimeout(() => { S.stale = true; render(); }, 10000);
+  const done = snap => { if (!snap.metadata.fromCache && pending > 0) { pending--; if (!pending) { clearTimeout(t); S.stale = false; } } };
+  const fail = e => { clearTimeout(t); if (e && e.code !== "revoked") S.stale = true; render(); };
+  for (const coll of ["players", "games", "settings"]) {
+    db.collection(coll).onSnapshot(snap => { apply(coll, snap); done(snap); render(); }, fail);
+  }
+  render();
+}
+boot();
+})();
+</script>
