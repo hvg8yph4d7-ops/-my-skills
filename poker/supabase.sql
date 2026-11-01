@@ -256,4 +256,4 @@ to anon, authenticated;
 -- При первом входе на сайте вы сами придумаете 4-значный PIN.
 insert into public.poker_players (id, name, phone, is_admin)
 values ('admin', 'Давид', public.poker_norm_phone('79990000000'), true)
-on conflict (id) do update set is_admin = true, phone = excluded.phone;
+on conflict (id) do nothing;  -- повторный запуск не трогает уже записанного админа и его номер
