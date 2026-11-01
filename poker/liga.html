@@ -190,7 +190,7 @@ const suitOf = id => SUITS[hash(id) % 4];
 const isRed = s => s === "♥" || s === "♦";
 const fmtDate = iso => { try { return new Date(iso + "T12:00:00").toLocaleDateString("ru-RU", {day:"numeric", month:"long", year:"numeric"}); } catch { return iso; } };
 const plural = (n, a, b, c) => { n = Math.abs(n) % 100; const n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; };
-const DEFAULTS = {name: "Покерная лига", currency: "₽", entry: 300, split: "3:2:1"};
+const DEFAULTS = {name: "Покерная лига", currency: "₽", entry: 300, split: "3:2:1", refund: true};
 const parseSplit = str => { const a = String(str || "").split(/[:\s/,-]+/).map(Number).filter(x => x > 0); return a.length ? a.slice(0, 6) : [3, 2, 1]; };
 
 /* ---------- state ---------- */
@@ -240,18 +240,22 @@ async function del(coll, id){
 
 /* ---------- tournament math ---------- */
 // game: {date, status, entry, split:[3,2,1], holder, players:[pid], out:[pid] (first busted first), createdAt}
-function prizeTable(n, entry, split){
+// refund: the last paid place (from 3 paid places up) gets exactly its entry back; the places above split the rest by the ratio
+function prizeTable(n, entry, split, refund){
   const pool = n * entry;
   if (n < 2) return {pool, prizes: [pool]};
   const k = Math.max(1, Math.min(split.length, n - 1));
-  const w = split.slice(0, k), ws = w.reduce((a, b) => a + b, 0);
-  const prizes = w.map(x => Math.floor(pool * x / ws / 10) * 10);
-  prizes[0] += pool - prizes.reduce((a, b) => a + b, 0);
+  const back = refund && k >= 3 ? entry : 0;
+  const top = back ? k - 1 : k;
+  const w = split.slice(0, top), ws = w.reduce((a, b) => a + b, 0), rest = pool - back;
+  const prizes = w.map(x => Math.floor(rest * x / ws / 10) * 10);
+  prizes[0] += rest - prizes.reduce((a, b) => a + b, 0);
+  if (back) prizes.push(back);
   return {pool, prizes};
 }
 function results(g){
   const n = g.players.length, out = g.out || [];
-  const {pool, prizes} = prizeTable(n, g.entry, g.split || [3, 2, 1]);
+  const {pool, prizes} = prizeTable(n, g.entry, g.split || [3, 2, 1], g.refund !== false);
   const res = {};
   out.forEach((p, i) => { res[p] = {place: n - i}; });
   const alive = g.players.filter(p => !out.includes(p));
@@ -409,7 +413,7 @@ function vLive(){
     const picked = S.draft.picked || (S.draft.picked = new Set(pids));
     const entry = S.draft.entry ?? S.settings.entry ?? 300;
     const split = parseSplit(S.settings.split);
-    const pt = prizeTable(picked.size, entry, split);
+    const pt = prizeTable(picked.size, entry, split, S.settings.refund !== false);
     const sorted = pids.slice().sort((a, b) => name(a).localeCompare(name(b)));
     const holder = S.draft.holder && picked.has(S.draft.holder) ? S.draft.holder : "";
     return `<section class="panel"><div><span class="eyebrow">Новый вечер</span><h2>Кто сегодня за столом?</h2></div>
@@ -470,7 +474,7 @@ function vNights(){
 function vPlayers(){
   const ids = Object.keys(S.players).sort((a, b) => name(a).localeCompare(name(b)));
   const ro = S.readOnly ? "disabled" : "";
-  const ex = prizeTable(6, S.settings.entry || 300, parseSplit(S.settings.split));
+  const ex = prizeTable(6, S.settings.entry || 300, parseSplit(S.settings.split), S.settings.refund !== false);
   return `<section class="panel"><h2>Игроки</h2>
     <form id="addForm" class="row"><input type="text" id="newName" placeholder="Имя" maxlength="24" style="flex:1" ${ro}><button class="btn" type="submit" ${ro}>Добавить</button></form>
     ${ids.length ? `<div class="chips">${ids.map(p => `<button class="chip" data-act="profile" data-id="${p}">${suitOf(p)} ${esc(name(p))}</button>`).join("")}</div>` : `<p class="muted" style="margin:0">Пока никого. Впишите друзей по одному.</p>`}
@@ -480,8 +484,9 @@ function vPlayers(){
       <label class="fld" style="max-width:100px">Валюта<input type="text" id="s-cur" maxlength="4" value="${esc(cur())}" ${ro}></label></div>
     <div class="row"><label class="fld">Взнос по умолчанию<input type="number" id="s-entry" min="0" step="50" value="${S.settings.entry}" ${ro}></label>
       <label class="fld">Деление банка<input type="text" id="s-split" maxlength="20" value="${esc(S.settings.split)}" ${ro}></label></div>
+    <label class="row" style="gap:8px;font-weight:600"><input type="checkbox" id="s-refund" ${S.settings.refund !== false ? "checked" : ""} ${ro}> Третье место возвращает свой взнос (уходит в ноль)</label>
     <div><span class="eyebrow">Пример: 6 игроков по ${money(S.settings.entry || 300)}</span><div style="margin-top:6px">${prizeChips(ex.prizes)}</div></div>
-    <p class="muted" style="font-size:13px;margin:0">«3:2:1» — банк делится на 6 частей: 3 части первому, 2 второму, 1 третьему. Можно вписать «1» (всё победителю) или «5:3:2». Если игроков мало, призовых мест на одно меньше, чем игроков.</p>
+    <p class="muted" style="font-size:13px;margin:0">С галочкой: третьему возвращается взнос, остальное делят первый и второй как 3:2. Без галочки банк делится как 3:2:1. Можно вписать «1» — всё победителю. Если игроков мало, призовых мест на одно меньше, чем игроков.</p>
     <p class="muted" style="font-size:13px;margin:0">${S.mode === "db" ? "Данные лиги общие: всё, что вы вводите, видят все, кому открыта эта страница." : S.mode === "local" ? "Сейчас данные хранятся только в этом браузере." : ""}</p>
   </section>`;
 }
@@ -555,7 +560,7 @@ document.addEventListener("click", e => {
       const entry = Math.max(0, Number($("#d-entry").value) || 0), date = $("#d-date").value || today();
       const players = [...S.draft.picked].filter(p => S.players[p]);
       const holder = $("#d-holder").value || null;
-      put("games", uid(), {date, status: "live", entry, split: parseSplit(S.settings.split), holder, players, out: [], createdAt: Date.now()});
+      put("games", uid(), {date, status: "live", entry, split: parseSplit(S.settings.split), refund: S.settings.refund !== false, holder, players, out: [], createdAt: Date.now()});
       S.draft.picked = null; S.draft.entry = null; return;
     }
     case "bust": if (g) { const c = cloneGame(g); c.out = [...(c.out || []), id]; put("games", g.id, c); } return;
@@ -579,9 +584,9 @@ document.addEventListener("change", e => {
   if (el.id === "d-date") { S.draft.date = el.value; return; }
   if (el.id === "d-entry") { S.draft.entry = Math.max(0, Number(el.value) || 0); el.blur(); render(); return; }
   if (el.id === "d-holder") { S.draft.holder = el.value || null; return; }
-  if (["s-name", "s-cur", "s-entry", "s-split"].includes(el.id)) {
+  if (["s-name", "s-cur", "s-entry", "s-split", "s-refund"].includes(el.id)) {
     const s = {...S.settings, name: $("#s-name").value.trim() || DEFAULTS.name, currency: $("#s-cur").value.trim() || "₽",
-      entry: Math.max(0, Number($("#s-entry").value) || 0), split: parseSplit($("#s-split").value).join(":")};
+      entry: Math.max(0, Number($("#s-entry").value) || 0), split: parseSplit($("#s-split").value).join(":"), refund: $("#s-refund").checked};
     el.blur(); put("settings", "main", s); toast("Сохранено");
   }
 });
@@ -606,7 +611,7 @@ function startDemo(){
     const ids = Object.keys(players).filter((p, i) => i < 5 || rnd() > .4);
     const order = ids.map(p => [p, rnd() * skill[+p.slice(4)]]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
     const d = new Date(2026, 6 + Math.floor(k / 3), 4 + (k % 3) * 9);
-    games["dg" + k] = {date: d.toISOString().slice(0, 10), status: "done", entry: 300, split: [3, 2, 1], holder: ids[k % ids.length],
+    games["dg" + k] = {date: d.toISOString().slice(0, 10), status: "done", entry: 300, split: [3, 2, 1], refund: true, holder: ids[k % ids.length],
       players: ids, out: order.slice(0, -1), createdAt: k};
   }
   S.players = players; S.games = games; S.settings = {...DEFAULTS, name: "Пятничный стол"}; S.mode = "demo";
