@@ -637,7 +637,7 @@ function profileBlock(pid, own){
   return html;
 }
 
-const VERSION = "1 ноября · свои заголовки";
+const VERSION = "1 ноября · кнопка «Название»";
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 const standalone = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
 function vHome(){
@@ -698,7 +698,7 @@ function vNights(){
       <table class="res"><tbody>${ids.map(p => { const r = R.res[p]; return `<tr class="${p === mine ? "mine" : ""}"><td><span class="place ${r.prize ? "cash" : ""}">${r.place === 1 && !r.tie ? "♛" : r.label}</span> <a href="#p-${p}" style="color:inherit">${esc(name(p))}</a></td><td class="r">${r.prize ? `<b>${money(r.prize)}</b> <span class="${r.net >= 0 ? "pos" : "neg"}" style="font-size:12px">${money(r.net, true)}</span>` : `<span class="neg">${money(r.net, true)}</span>`}</td></tr>`; }).join("")}</tbody></table>
       ${g.hasPhoto ? (ph === "loading" ? `<p class="muted">Загружаю фото…</p>` : ph ? `<img class="photo" src="${esc(ph)}" alt="Последняя раздача вечера ${fmtDate(g.date)}">` : `<button class="btn ghost sm" data-act="photo" data-id="${g.id}">Фото последней раздачи</button>`) : ""}
       ${g.holder ? `<span class="muted" style="font-size:13px">Деньги собирал(а) ${esc(name(g.holder))}</span>` : ""}
-      ${isAdmin() ? `<div class="row"><button class="btn ghost sm" data-act="edit-game" data-id="${g.id}">Исправить</button>
+      ${isAdmin() ? `<div class="row"><button class="btn ghost sm" data-act="title-edit" data-id="${g.id}">✎ Название</button><button class="btn ghost sm" data-act="edit-game" data-id="${g.id}">Исправить</button>
         <button class="btn danger sm ${S.armed === k ? "armed" : ""}" data-act="delgame" data-id="${g.id}">${S.armed === k ? "Точно удалить?" : "Удалить"}</button></div>` : ""}</article>`;
   }).join("");
 }
@@ -724,7 +724,9 @@ function aResult(){
   const pt = prizeTable(f.order.length, f.entry, parseSplit(S.settings.split), S.settings.refund !== false);
   const sh = shareOut(f.order, pt.prizes, chopPids(f));
   const photoState = f.photo ? `<img class="photo" src="${esc(f.photo)}" alt="Фото раздачи">` : f.photo === null ? `<p class="muted">Фото будет удалено</p>` : f.hadPhoto ? `<p class="muted">Фото уже загружено</p>` : "";
-  return `<section class="panel"><div><span class="eyebrow">${f.id ? "Исправление вечера" : "Новый вечер"}</span><h2>Кто какое место занял</h2></div>
+  return `<section class="panel"><div><span class="eyebrow">${f.id ? "Исправление вечера" : "Новый вечер"}</span></div>
+    <label class="fld">Название вечера<input type="text" id="f-title" maxlength="80" placeholder="Необязательно — иначе придумается само" value="${esc(f.title || "")}"></label>
+    <h2>Кто какое место занял</h2>
     <p class="muted" style="font-size:13px">Нажимайте на игроков по порядку мест: сначала победителя, потом второго, третьего и дальше до последнего.</p>
     <div class="chips">${ids.map(p => `<button class="chip" data-act="f-add" data-id="${p}" ${f.order.includes(p) ? "disabled" : ""}>+ ${esc(name(p))}</button>`).join("")}</div>
     ${f.order.length ? `<div class="order">${f.order.map((p, i) => `<div class="o"><span class="place ${sh[i].prize ? "cash" : ""}">${sh[i].label}</span><span class="nm">${esc(name(p))}</span>
@@ -733,7 +735,6 @@ function aResult(){
     <div class="row"><label class="fld">Дата<input type="date" id="f-date" value="${esc(f.date)}"></label>
       <label class="fld">Ставка с человека<input type="number" id="f-entry" inputmode="numeric" min="0" step="50" value="${f.entry}"></label></div>
     <label class="fld">Деньги собирал<select id="f-holder"><option value="">не важно</option>${f.order.map(p => `<option value="${p}" ${p === f.holder ? "selected" : ""}>${esc(name(p))}</option>`).join("")}</select></label>
-    <label class="fld">Заголовок вечера<input type="text" id="f-title" maxlength="80" placeholder="Необязательно — иначе придумается сам" value="${esc(f.title || "")}"></label>
     <label class="fld">Комментарий<input type="text" id="f-note" maxlength="140" placeholder="Например: финал на ривере, флеш против стрита" value="${esc(f.note)}"></label>
     <div class="row"><label class="btn ghost sm" style="cursor:pointer">Фото последней раздачи<input type="file" id="f-photo" accept="image/*" hidden></label>
       ${f.photo || f.hadPhoto ? `<button class="btn ghost sm" data-act="f-nophoto">Убрать фото</button>` : ""}</div>
@@ -912,7 +913,7 @@ document.addEventListener("click", async e => {
     case "edit-game": {
       const og = S.games[id];
       const ord = orderOf({id, ...og});
-      S.form = {id, date: og.date, entry: og.entry, order: ord, chop: (og.chop || []).map(p => ord.indexOf(p)).filter(i => i > 0), holder: og.holder || "", note: og.note || "", title: og.title || "", photo: undefined, hadPhoto: !!og.hasPhoto};
+      S.form = {id, date: og.date, entry: og.entry, order: ord, chop: (og.chop || []).map(p => ord.indexOf(p)).filter(i => i > 0), holder: og.holder || "", note: og.note || "", title: og.title || headline({id, ...og}), photo: undefined, hadPhoto: !!og.hasPhoto};
       S.adminTab = "result"; location.hash = "#admin"; return;
     }
     case "delgame": if (prev !== "del-" + id) { S.armed = "del-" + id; break; } await act("poker_delete_game", {p_id: id}, "Вечер удалён"); return;
