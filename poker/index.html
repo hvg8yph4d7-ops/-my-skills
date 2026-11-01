@@ -233,6 +233,10 @@ input[type=text],input[type=tel],input[type=number],input[type=date],input[type=
 .place{white-space:nowrap}
 .order .o{grid-template-columns:42px minmax(0,1fr) auto}
 table.res a{text-decoration:none}
+#view{display:flex;flex-direction:column;gap:14px}
+#view > *{flex:none}
+.chart{position:relative;height:64px;overflow:hidden;flex:none}
+.chart svg{position:absolute;inset:0;width:100%!important;height:100%!important}
 .a2hs .x{border:0;background:transparent;font-size:20px;color:var(--muted);padding:4px 8px}
 .ver{font-size:12px;color:var(--muted)}
 
@@ -612,7 +616,7 @@ function profileBlock(pid, own){
       </div></div>
     <div class="status"><div class="r1"><span class="badge">${st.n}</span><span>${st.hint}</span></div><div class="bar"><i style="width:${Math.round(st.pct * 100)}%"></i></div></div>
   </section>`;
-  if (p.hist.length > 1) html += `<section class="panel" style="gap:6px"><div class="row spread"><span class="eyebrow">Рейтинг по вечерам</span><span class="num muted" style="font-size:12px">${Math.round(Math.min(...p.hist))}–${Math.round(Math.max(...p.hist))}</span></div>${spark(p.hist, 320, 64, true)}</section>`;
+  if (p.hist.length > 1) html += `<section class="panel" style="gap:6px"><div class="row spread"><span class="eyebrow">Рейтинг по вечерам</span><span class="num muted" style="font-size:12px">${Math.round(Math.min(...p.hist))}–${Math.round(Math.max(...p.hist))}</span></div><div class="chart">${spark(p.hist, 320, 64, true)}</div></section>`;
   html += `<div class="stats">
     <div class="stat"><span>В призах</span><b>${p.games ? Math.round(p.cashes / p.games * 100) : 0}%</b></div>
     <div class="stat"><span>Ср. место</span><b>${avg}</b></div>
@@ -632,7 +636,7 @@ function profileBlock(pid, own){
   return html;
 }
 
-const VERSION = "1 ноября · делёж, сукно";
+const VERSION = "1 ноября · график";
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 const standalone = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
 function vHome(){
