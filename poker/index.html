@@ -552,6 +552,7 @@ function titleFor(p, i, total){
   return "";
 }
 function headline(g){
+  if (g.title && String(g.title).trim()) return String(g.title).trim();
   const R = results(g); if (!R.finished) return "Вечер без победителя";
   const order = orderOf(g);
   const w = name(order[0]), first = name(order[order.length - 1]), second = order[1] ? name(order[1]) : "";
@@ -636,7 +637,7 @@ function profileBlock(pid, own){
   return html;
 }
 
-const VERSION = "1 ноября · график";
+const VERSION = "1 ноября · свои заголовки";
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 const standalone = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
 function vHome(){
@@ -689,7 +690,10 @@ function vNights(){
   return `<h2>Вечера</h2>` + games.map(g => {
     const R = results(g), ids = orderOf(g), k = "del-" + g.id, ph = S.photos[g.id];
     return `<article class="panel night"><span class="eyebrow">${fmtDate(g.date)} · ${R.n} ${plural(R.n, "игрок", "игрока", "игроков")} по ${money(g.entry)} · банк ${money(R.pool)}</span>
-      <div class="head">${esc(headline(g))}</div>
+      ${S.editTitle === g.id
+        ? `<form id="titleForm" data-id="${g.id}" class="row" style="gap:6px"><input type="text" id="t-title" maxlength="80" style="flex:1" placeholder="${esc(headline({...g, title: ""}))}" value="${esc(g.title || "")}"><button class="btn sm" type="submit" ${S.busy ? "disabled" : ""}>OK</button><button class="btn ghost sm" type="button" data-act="title-cancel">Отмена</button></form>
+           <p class="muted" style="font-size:12px">Оставьте пустым — вернётся автоматический заголовок.</p>`
+        : `<div class="row" style="gap:8px;flex-wrap:nowrap;align-items:flex-start"><div class="head" style="flex:1">${esc(headline(g))}</div>${isAdmin() ? `<button class="iconbtn" data-act="title-edit" data-id="${g.id}" aria-label="Изменить заголовок">✎</button>` : ""}</div>`}
       ${g.note ? `<p>${esc(g.note)}</p>` : ""}
       <table class="res"><tbody>${ids.map(p => { const r = R.res[p]; return `<tr class="${p === mine ? "mine" : ""}"><td><span class="place ${r.prize ? "cash" : ""}">${r.place === 1 && !r.tie ? "♛" : r.label}</span> <a href="#p-${p}" style="color:inherit">${esc(name(p))}</a></td><td class="r">${r.prize ? `<b>${money(r.prize)}</b> <span class="${r.net >= 0 ? "pos" : "neg"}" style="font-size:12px">${money(r.net, true)}</span>` : `<span class="neg">${money(r.net, true)}</span>`}</td></tr>`; }).join("")}</tbody></table>
       ${g.hasPhoto ? (ph === "loading" ? `<p class="muted">Загружаю фото…</p>` : ph ? `<img class="photo" src="${esc(ph)}" alt="Последняя раздача вечера ${fmtDate(g.date)}">` : `<button class="btn ghost sm" data-act="photo" data-id="${g.id}">Фото последней раздачи</button>`) : ""}
@@ -706,7 +710,7 @@ function vAdmin(){
   return `<div class="chips">${tabs.map(([k, t]) => `<button class="chip" data-act="atab" data-id="${k}" aria-pressed="${S.adminTab === k}">${t}${k === "live" && liveGame() ? " •" : ""}</button>`).join("")}</div>`
     + ({result: aResult, live: aLive, players: aPlayers, rules: aRules})[S.adminTab]();
 }
-function newForm(){ return {id: null, date: today(), entry: S.settings.entry || 300, order: [], chop: [], holder: "", note: "", photo: undefined, hadPhoto: false}; }
+function newForm(){ return {id: null, date: today(), entry: S.settings.entry || 300, order: [], chop: [], holder: "", note: "", title: "", photo: undefined, hadPhoto: false}; }
 const chopPids = f => (f.chop || []).filter(i => i > 0 && i < f.order.length).map(i => f.order[i]);
 function chopChips(n, k, isOn, act){
   const m = Math.min(k, n - 1); if (m < 1) return "";
@@ -729,6 +733,7 @@ function aResult(){
     <div class="row"><label class="fld">Дата<input type="date" id="f-date" value="${esc(f.date)}"></label>
       <label class="fld">Ставка с человека<input type="number" id="f-entry" inputmode="numeric" min="0" step="50" value="${f.entry}"></label></div>
     <label class="fld">Деньги собирал<select id="f-holder"><option value="">не важно</option>${f.order.map(p => `<option value="${p}" ${p === f.holder ? "selected" : ""}>${esc(name(p))}</option>`).join("")}</select></label>
+    <label class="fld">Заголовок вечера<input type="text" id="f-title" maxlength="80" placeholder="Необязательно — иначе придумается сам" value="${esc(f.title || "")}"></label>
     <label class="fld">Комментарий<input type="text" id="f-note" maxlength="140" placeholder="Например: финал на ривере, флеш против стрита" value="${esc(f.note)}"></label>
     <div class="row"><label class="btn ghost sm" style="cursor:pointer">Фото последней раздачи<input type="file" id="f-photo" accept="image/*" hidden></label>
       ${f.photo || f.hadPhoto ? `<button class="btn ghost sm" data-act="f-nophoto">Убрать фото</button>` : ""}</div>
@@ -889,11 +894,13 @@ document.addEventListener("click", async e => {
     case "f-del": { const [p] = f.order.splice(+id, 1); if (f.holder === p) f.holder = ""; break; }
     case "f-chop": { const i = +id; f.chop = f.chop.includes(i) ? f.chop.filter(x => x !== i) : [...f.chop, i]; break; }
     case "f-nophoto": f.photo = null; break;
+    case "title-edit": S.editTitle = id; render(); setTimeout(() => { const i = $("#t-title"); if (i) i.focus(); }, 0); return;
+    case "title-cancel": S.editTitle = null; break;
     case "f-reset": S.form = newForm(); break;
     case "f-save": {
       const gid = f.id || uid(), old = f.id ? S.games[f.id] : null;
       const data = {date: f.date || today(), status: "done", entry: Math.max(0, +f.entry || 0), split: parseSplit(S.settings.split), refund: S.settings.refund !== false,
-        holder: f.holder || null, players: f.order.slice(), out: f.order.slice(1).reverse(), chop: chopPids(f), note: f.note.trim(),
+        holder: f.holder || null, players: f.order.slice(), out: f.order.slice(1).reverse(), chop: chopPids(f), note: f.note.trim(), title: (f.title || "").trim(),
         createdAt: old && old.createdAt || Date.now(), finishedAt: Date.now()};
       if (await saveGame(gid, data)) {
         if (f.photo !== undefined) await act("poker_save_photo", {p_game: gid, p_data: f.photo || ""});
@@ -905,7 +912,7 @@ document.addEventListener("click", async e => {
     case "edit-game": {
       const og = S.games[id];
       const ord = orderOf({id, ...og});
-      S.form = {id, date: og.date, entry: og.entry, order: ord, chop: (og.chop || []).map(p => ord.indexOf(p)).filter(i => i > 0), holder: og.holder || "", note: og.note || "", photo: undefined, hadPhoto: !!og.hasPhoto};
+      S.form = {id, date: og.date, entry: og.entry, order: ord, chop: (og.chop || []).map(p => ord.indexOf(p)).filter(i => i > 0), holder: og.holder || "", note: og.note || "", title: og.title || "", photo: undefined, hadPhoto: !!og.hasPhoto};
       S.adminTab = "result"; location.hash = "#admin"; return;
     }
     case "delgame": if (prev !== "del-" + id) { S.armed = "del-" + id; break; } await act("poker_delete_game", {p_id: id}, "Вечер удалён"); return;
@@ -938,6 +945,7 @@ document.addEventListener("change", async e => {
   else if (el.id === "f-entry") { f.entry = Math.max(0, +el.value || 0); render(); }
   else if (el.id === "f-holder") f.holder = el.value;
   else if (el.id === "f-note") f.note = el.value;
+  else if (el.id === "f-title") f.title = el.value;
   else if (el.id === "f-photo" && el.files && el.files[0]) {
     try { f.photo = await compressImage(el.files[0]); } catch (err) { toast(err.message); }
     render();
@@ -952,7 +960,7 @@ document.addEventListener("change", async e => {
   else if (el.id === "e-phone" && S.editPlayer) S.editPlayer.phone = el.value;
   else if (el.id === "e-admin" && S.editPlayer) S.editPlayer.admin = el.checked;
 });
-document.addEventListener("input", e => { if (e.target.id === "f-note" && S.form) S.form.note = e.target.value; });
+document.addEventListener("input", e => { if (!S.form) return; if (e.target.id === "f-note") S.form.note = e.target.value; if (e.target.id === "f-title") S.form.title = e.target.value; });
 
 document.addEventListener("submit", async e => {
   e.preventDefault();
@@ -970,6 +978,12 @@ document.addEventListener("submit", async e => {
       }
     } catch (err) { S.loginErr = err.message; }
     S.busy = false; render(); return;
+  }
+  if (id === "titleForm") {
+    const gid = e.target.dataset.id, og = S.games[gid]; if (!og) return;
+    const c = cloneGame({id: gid, ...og}); c.title = $("#t-title").value.trim();
+    if (await saveGame(gid, c)) { S.editTitle = null; toast(c.title ? "Заголовок сохранён" : "Вернул автоматический заголовок"); render(); }
+    return;
   }
   if (id === "renameForm") { const v = $("#r-name").value.trim(); if (v && await act("poker_rename", {p_name: v}, "Имя сохранено")) S.editName = false; render(); return; }
   if (id === "pinForm") { if (await act("poker_change_pin", {p_old: $("#p-old").value, p_new: $("#p-new").value}, "PIN изменён")) S.pinForm = false; render(); return; }
