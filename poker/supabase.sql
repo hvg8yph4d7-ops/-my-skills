@@ -251,7 +251,8 @@ to anon, authenticated;
 
 -- ---------- первый админ ----------
 -- Замените 79990000000 на свой номер (и имя, если хотите), потом нажмите Run.
+-- Номер можно писать как угодно: '89991234567', '+7 999 123-45-67' — главное, оставить кавычки.
 -- При первом входе на сайте вы сами придумаете 4-значный PIN.
 insert into public.poker_players (id, name, phone, is_admin)
-values ('admin', 'Давид', '79990000000', true)
-on conflict (id) do update set is_admin = true;
+values ('admin', 'Давид', public.poker_norm_phone('79990000000'), true)
+on conflict (id) do update set is_admin = true, phone = excluded.phone;
