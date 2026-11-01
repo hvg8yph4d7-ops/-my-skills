@@ -236,6 +236,8 @@ table.res a{text-decoration:none}
 #view{display:flex;flex-direction:column;gap:14px}
 #view > *{flex:none}
 .chart{position:relative;height:64px;overflow:hidden;flex:none}
+.explain summary{cursor:pointer;font-size:15px;list-style-position:inside}
+.explain p{margin:0}
 .chart svg{position:absolute;inset:0;width:100%!important;height:100%!important}
 .a2hs .x{border:0;background:transparent;font-size:20px;color:var(--muted);padding:4px 8px}
 .ver{font-size:12px;color:var(--muted)}
@@ -513,8 +515,8 @@ function compute(){
 
 /* ================= statuses & achievements ================= */
 const LEVELS = [
-  {n: "Рыба", min: -Infinity}, {n: "Любитель", min: 960}, {n: "Регуляр", min: 1000},
-  {n: "Акула", min: 1040}, {n: "Профи", min: 1080}, {n: "Легенда", min: 1120},
+  {n: "Ебанный шакал", min: -Infinity}, {n: "Шакал", min: 960}, {n: "Лэйм", min: 1000},
+  {n: "Акула", min: 1040}, {n: "Профи", min: 1080}, {n: "Madk1d", min: 1120},
 ];
 function statusOf(p){
   if (p.games < 3) return {n: "Новичок", next: "статуса", pct: p.games / 3, hint: `ещё ${3 - p.games} ${plural(3 - p.games, "вечер", "вечера", "вечеров")} до статуса`};
@@ -637,7 +639,7 @@ function profileBlock(pid, own){
   return html;
 }
 
-const VERSION = "1 ноября · кнопка «Название»";
+const VERSION = "1 ноября · как считаются очки";
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 const standalone = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
 function vHome(){
@@ -667,6 +669,7 @@ function vRating(){
   let html = `<a class="hero" href="#p-${L.id}" style="text-decoration:none">${pcard("A", L.id)}
     <div style="min-width:0;display:flex;flex-direction:column;gap:4px"><span class="eyebrow">Лидер лиги · Дон стола</span><div class="name">${esc(name(L.id))}</div>
     <div class="num muted" style="font-size:13px">${Math.round(L.rating)} очк. · ${L.wins} ${plural(L.wins, "победа", "победы", "побед")} · ${money(L.total, true)}</div></div></a>`;
+  html += explainBlock(C);
   html += `<div class="row spread"><h2>Таблица</h2><span class="muted" style="font-size:12px">Ранг карты = место · очки Эло</span></div><div class="board">`;
   C.ranked.forEach((p, i) => {
     const t = titleFor(p, i, C.ranked.length);
@@ -683,6 +686,35 @@ function vRating(){
   return html;
 }
 
+// Сколько очков получит pid, если обыграет всех (win) или проиграет всем за столом ids — по тем же правилам, что compute().
+function sweep(C, pid, ids, win){
+  const k = 32 / (ids.length - 1), me = C.P[pid].rating;
+  return ids.filter(o => o !== pid).reduce((a, o) => a + k * ((win ? 1 : 0) - 1 / (1 + Math.pow(10, (C.P[o].rating - me) / 400))), 0);
+}
+function explainBlock(C){
+  const ids = C.ranked.map(p => p.id), n = ids.length;
+  const sgn = v => (v >= 0 ? "+" : "−") + Math.abs(Math.round(v));
+  let ex = "";
+  if (n >= 3) {
+    const top = ids[0], low = ids[n - 1], me = S.me && ids.includes(S.me.playerId) ? S.me.playerId : null;
+    const lowWin = sweep(C, low, ids, true), topWin = sweep(C, top, ids, true), topLast = sweep(C, top, ids, false);
+    ex = `<p><b>Примеры по нашей таблице</b> (если все ${n} сядут за стол):</p><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px">
+      <li><b>${esc(name(low))}</b> (последний в таблице) выигрывает вечер → <b>${sgn(lowWin)}</b>. Это сенсация — его победы не ждут, поэтому больше. Для сравнения: лидер ${esc(name(top))} за такую же победу получил бы ${sgn(topWin)}.</li>
+      <li><b>${esc(name(top))}</b> (лидер) занимает последнее место → <b>${sgn(topLast)}</b>. Провал фаворита — теряет больше обычного.</li>
+      ${me && me !== top && me !== low ? `<li><b>Вы</b> (${esc(name(me))}): победа → <b>${sgn(sweep(C, me, ids, true))}</b>, последнее место → <b>${sgn(sweep(C, me, ids, false))}</b>.</li>` : ""}
+    </ul>
+    <p class="muted" style="font-size:13px">Сейчас очки у всех близко, поэтому разница небольшая. Чем больше разрыв, тем сильнее сенсация: кто на 100 очков ниже всех и выиграл, получит около +20.</p>`;
+  }
+  return `<details class="panel explain"><summary><b>Как считаются очки?</b></summary>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;font-size:14px">
+    <p>Все начинают с <b>1000</b>. Вечер — это мини-матчи <b>каждого с каждым</b>: занял место выше соперника — забрал у него немного очков, ниже — отдал. За соперника с таким же рейтингом это около <b>±3</b>, за весь вечер на 6 человек — около <b>±16</b>.</p>
+    <p><b>Обыграть сильного выгоднее, чем слабого.</b> Если побеждает тот, кто ниже в таблице, — это сенсация, очков больше. Если проигрывает фаворит — он теряет больше.</p>
+    ${ex}
+    <p><b>Делёж</b> — это ничья: оба получают поровну.</p>
+    <p><b>Статусы:</b> ${LEVELS.map(l => isFinite(l.min) ? `${esc(l.n)} (${l.min})` : esc(l.n)).join(" → ")}. Первые 3 вечера — Новичок.</p>
+    <p><b>Деньги ≠ очки.</b> Рубли — сколько выиграл. Очки — насколько хорошо играешь против тех, кто сидел за столом.</p>
+    </div></details>`;
+}
 function vNights(){
   if (!S.loaded) return "";
   const games = doneGames().reverse(), mine = S.me && S.me.playerId;
