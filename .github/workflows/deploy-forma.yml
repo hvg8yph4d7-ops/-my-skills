@@ -38,7 +38,7 @@ jobs:
       - name: Добавить «Покерную лигу»
         run: |
           mkdir -p dist/poker
-          cp ../poker/index.html dist/poker/index.html
+          cp ../poker/index.html ../poker/manifest.webmanifest ../poker/*.png dist/poker/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: forma/dist
