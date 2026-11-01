@@ -3,34 +3,35 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0D1612">
+<meta name="theme-color" content="#0D5C3A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Покер">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
 <title>Покерная лига</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Layout: phone-first app. One column, cabinet card on top, bottom tab bar. Leader and ranks drawn as playing cards. */
+/* Layout: phone-first app on poker felt. Panels are white "cards" with black ink, red is the only accent.
+   One deliberate look in any OS theme: green cloth, white, black, red. */
 :root{
-  --bg:#ECEFE8; --surface:#FBFCF8; --surface-2:#E2E7DE; --line:#CCD5CA;
-  --ink:#16201B; --muted:#5A675F;
-  --felt:#1D5A43; --felt-ink:#F3F6EE; --brass:#A9741F;
-  --pos:#23784A; --neg:#B0353A; --card:#FFFEFA; --card-ink:#16201B; --red-suit:#C0333A;
+  --cloth:#0D5C3A; --cloth-hi:#16774B; --cloth-lo:#083F28; --on-cloth:#FFFFFF; --on-cloth-muted:rgba(255,255,255,.72);
+  --bg:#F3F3F1; --surface:#FFFFFF; --surface-2:#F0F0EE; --line:#DEDEDB;
+  --ink:#111111; --muted:#666666;
+  --felt:#111111; --felt-ink:#FFFFFF; --brass:#C8102E; --accent:#C8102E;
+  --pos:#111111; --neg:#C8102E; --card:#FFFFFF; --card-ink:#111111; --red-suit:#C8102E;
   --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
   --f-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-num:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
   --r:14px; color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#0D1612; --surface:#14211B; --surface-2:#1B2B23; --line:#2A3D33;
-  --ink:#E7EEE8; --muted:#93A69A;
-  --felt:#4DB287; --felt-ink:#08130E; --brass:#DDAA52;
-  --pos:#5CC68C; --neg:#EE7272; --card:#F4F1E6;
-  color-scheme:dark}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+body{margin:0;color:var(--on-cloth);--muted:var(--on-cloth-muted);
+  background:var(--cloth) radial-gradient(ellipse at 50% 0%,var(--cloth-hi) 0%,var(--cloth) 45%,var(--cloth-lo) 100%) fixed;font-family:var(--f-body);font-size:15px;line-height:1.45;
   padding-top:env(safe-area-inset-top,0px);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
@@ -52,7 +53,7 @@ a{color:var(--felt)}
 
 header.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .suits{font-size:12px;letter-spacing:.3em;color:var(--muted)}
-.suits .r,.r{color:var(--red-suit)}
+.suits .r{color:var(--red-suit)}
 
 nav.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--surface);border-top:1px solid var(--line);
   padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
@@ -192,9 +193,83 @@ table.res tr.mine td{font-weight:700}
 .toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;z-index:30;max-width:calc(100% - 32px)}
 .spin{opacity:.6}
 @media (prefers-reduced-motion:no-preference){.pcard{transition:transform .3s}.me:hover .pcard,.hero:hover .pcard{transform:rotate(2deg) translateY(-3px)}}
+/* ---- paper surfaces on the cloth ---- */
+.panel,.board,.stat,.badge-a,.hero,.banner,.transfers,.prize,.chip,.iconbtn,.btn.ghost,.btn.danger{color:var(--ink);--muted:#666666}
+.panel{box-shadow:0 6px 18px rgba(0,0,0,.18);border-color:transparent}
+.board,.hero,.stat,.badge-a{border-color:transparent;box-shadow:0 4px 12px rgba(0,0,0,.14)}
+.banner{background:var(--surface);border:0}
+.panel .transfers,.panel .prize{background:var(--surface-2)}
+.btn{background:var(--accent);color:#fff}
+.btn.ghost{background:var(--surface);border-color:var(--line)}
+.btn.danger{background:var(--surface)}
+.chip{background:var(--surface);border-color:var(--surface)}
+.chip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.panel .chip{border-color:var(--line)}
+.panel .chip[aria-pressed="true"]{border-color:var(--ink)}
+a{color:inherit}
+.panel a,.board a{color:var(--ink)}
+.place.cash{color:var(--accent)}
+nav.tabbar{background:#0B0B0B;border-top:0}
+nav.tabbar a{color:rgba(255,255,255,.65)}
+nav.tabbar a[aria-current="page"]{color:#fff;background:var(--accent)}
+nav.tabbar a .dot{background:#fff}
+.me{background:#111 repeating-linear-gradient(45deg,rgba(255,255,255,.03) 0 2px,transparent 2px 6px);color:#fff;box-shadow:0 10px 26px rgba(0,0,0,.35)}
+.me .status .badge{background:var(--accent);color:#fff}
+.me .bar{background:rgba(255,255,255,.18)} .me .bar i{background:var(--accent)}
+.me .name button{background:rgba(255,255,255,.14)}
+.winner{background:#111}
+.tag.on{background:var(--accent);color:#fff}
+.lrow.mine{background:#FFF1F3}
+.badge-a .g{color:var(--accent)}
+.badge-a .pr .bar i{background:var(--accent)}
+.form i.g{background:var(--accent)} .form i.w{background:#111} .form i.l{background:#D7D7D4}
+.err{color:#fff;background:var(--accent);border-radius:8px;padding:8px 10px}
+.panel .err{color:#fff}
+.toast{background:#111;color:#fff}
+.suits,.suits .r{color:var(--on-cloth)} header .suits .r{color:#FF5A6E}
+input[type=text],input[type=tel],input[type=number],input[type=date],input[type=password],select,textarea{color:var(--ink)}
+.login .fan .pcard{box-shadow:0 10px 24px rgba(0,0,0,.4)}
+.a2hs{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:nowrap}
+.place{white-space:nowrap}
+.order .o{grid-template-columns:42px minmax(0,1fr) auto}
+table.res a{text-decoration:none}
+.a2hs .x{border:0;background:transparent;font-size:20px;color:var(--muted);padding:4px 8px}
+.ver{font-size:12px;color:var(--muted)}
+
+/* ---- splash: the dealer runs out a straight ---- */
+#splash{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+  background:var(--cloth) radial-gradient(ellipse at 50% 40%,var(--cloth-hi) 0%,var(--cloth) 50%,var(--cloth-lo) 100%);transition:opacity .35s}
+#splash.out{opacity:0;pointer-events:none}
+#splash .board5{display:flex;gap:6px}
+#splash .sc{width:min(15vw,62px);aspect-ratio:5/7;perspective:600px}
+#splash .in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transform:rotateY(0deg)}
+#splash .face,#splash .back{position:absolute;inset:0;border-radius:7px;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 6px 14px rgba(0,0,0,.35)}
+#splash .back{background:#C8102E repeating-linear-gradient(45deg,rgba(255,255,255,.22) 0 3px,transparent 3px 8px);border:3px solid #fff}
+#splash .face{background:#fff;color:#111;transform:rotateY(180deg);font-family:var(--f-display);font-weight:800}
+#splash .face.red{color:#C8102E}
+#splash .face .c{position:absolute;left:5px;top:4px;font-size:clamp(11px,3.2vw,14px);line-height:1;text-align:center}
+#splash .face .m{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(20px,7vw,30px);padding-top:8px}
+#splash p{margin:0;color:rgba(255,255,255,.8);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+@keyframes deal{from{transform:translate(0,-60vh) rotate(-25deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes flip{from{transform:rotateY(0deg)}to{transform:rotateY(180deg)}}
+#splash .sc{animation:deal .32s cubic-bezier(.2,.8,.3,1) both}
+#splash .in{animation:flip .3s ease-in-out both}
+#splash .sc:nth-child(1){animation-delay:0s}   #splash .sc:nth-child(1) .in{animation-delay:.45s}
+#splash .sc:nth-child(2){animation-delay:.08s} #splash .sc:nth-child(2) .in{animation-delay:.5s}
+#splash .sc:nth-child(3){animation-delay:.16s} #splash .sc:nth-child(3) .in{animation-delay:.55s}
+#splash .sc:nth-child(4){animation-delay:.85s} #splash .sc:nth-child(4) .in{animation-delay:1.05s}
+#splash .sc:nth-child(5){animation-delay:1.25s} #splash .sc:nth-child(5) .in{animation-delay:1.45s}
+@media (prefers-reduced-motion:reduce){#splash .sc,#splash .in{animation:none}#splash .in{transform:rotateY(180deg)}}
 </style>
 </head>
 <body>
+<div id="splash" aria-label="Загрузка"><div class="board5">
+  <div class="sc"><div class="in"><div class="back"></div><div class="face"><span class="c">10<br>♠</span><span class="m">♠</span></div></div></div>
+  <div class="sc"><div class="in"><div class="back"></div><div class="face red"><span class="c">J<br>♥</span><span class="m">♥</span></div></div></div>
+  <div class="sc"><div class="in"><div class="back"></div><div class="face"><span class="c">Q<br>♣</span><span class="m">♣</span></div></div></div>
+  <div class="sc"><div class="in"><div class="back"></div><div class="face red"><span class="c">K<br>♦</span><span class="m">♦</span></div></div></div>
+  <div class="sc"><div class="in"><div class="back"></div><div class="face"><span class="c">A<br>♠</span><span class="m">♠</span></div></div></div>
+</div><p>Раздаю…</p></div>
 <div class="wrap">
   <header class="top">
     <div><div class="suits">♠<span class="r">♥</span>♣<span class="r">♦</span></div><h1 id="leagueName">Покерная лига</h1></div>
@@ -557,9 +632,15 @@ function profileBlock(pid, own){
   return html;
 }
 
+const VERSION = "1 ноября · делёж, сукно";
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const standalone = () => window.navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
 function vHome(){
   if (!S.me) return vLogin();
   let html = profileBlock(S.me.playerId, true);
+  if (!standalone() && !lsGet("poker-a2hs-hidden")) html = `<div class="banner a2hs"><span>${isIOS
+      ? "Добавьте лигу на экран «Домой»: внизу Safari нажмите <b>Поделиться</b> → <b>На экран «Домой»</b>. Тогда вход не слетит."
+      : "Добавьте лигу на главный экран: меню браузера → <b>Добавить на главный экран</b>. Тогда вход не слетит."}</span><button class="x" data-act="a2hs-hide" aria-label="Скрыть">×</button></div>` + html;
   const lg = liveGame();
   if (lg && lg.players.includes(S.me.playerId)) html = `<div class="banner"><span><b>Идёт игра.</b> Вы за столом, банк ${money(results(lg).pool)}.</span></div>` + html;
   html += `<section class="panel"><h3>Аккаунт</h3>
@@ -568,6 +649,7 @@ function vHome(){
         <label class="fld">Новый PIN<input type="password" id="p-new" inputmode="numeric" maxlength="4" class="num"></label>
         <button class="btn" type="submit">Сохранить</button></form>`
       : `<div class="row"><button class="btn ghost sm" data-act="pin-form">Сменить PIN</button><button class="btn ghost sm" data-act="logout">Выйти</button></div>`}
+    <span class="ver">Версия сайта: ${VERSION}</span>
   </section>`;
   return html;
 }
@@ -577,7 +659,7 @@ function vRating(){
   const C = compute();
   if (!C.ranked.length) return empty("♠♥♣♦", "Рейтинг появится после первого вечера", "Как только админ запишет первый вечер, здесь будет таблица лиги.");
   const L = C.ranked[0], mine = S.me && S.me.playerId;
-  let html = `<a class="hero" href="#p-${L.id}" style="text-decoration:none;color:inherit">${pcard("A", L.id)}
+  let html = `<a class="hero" href="#p-${L.id}" style="text-decoration:none">${pcard("A", L.id)}
     <div style="min-width:0;display:flex;flex-direction:column;gap:4px"><span class="eyebrow">Лидер лиги · Дон стола</span><div class="name">${esc(name(L.id))}</div>
     <div class="num muted" style="font-size:13px">${Math.round(L.rating)} очк. · ${L.wins} ${plural(L.wins, "победа", "победы", "побед")} · ${money(L.total, true)}</div></div></a>`;
   html += `<div class="row spread"><h2>Таблица</h2><span class="muted" style="font-size:12px">Ранг карты = место · очки Эло</span></div><div class="board">`;
@@ -787,6 +869,7 @@ document.addEventListener("click", async e => {
     case "logout": try { await rpc("poker_logout", {p_token: S.token}); } catch {} logoutLocal(); S.guest = false; location.hash = ""; break;
     case "edit-name": S.editName = true; render(); setTimeout(() => { const i = $("#r-name"); if (i) i.focus(); }, 0); return;
     case "pin-form": S.pinForm = true; break;
+    case "a2hs-hide": lsSet("poker-a2hs-hidden", "1"); break;
     case "reload": location.reload(); return;
     case "demo-reset": lsSet(DEMO_KEY, null); logoutLocal(); location.hash = ""; location.reload(); return;
     case "photo": {
@@ -910,6 +993,14 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden && (S
 setInterval(() => { if (!document.hidden && (S.me || S.guest) && !S.busy && liveGame() && location.hash !== "#admin") loadState(); }, 20000);
 
 /* ================= boot ================= */
+const SPLASH_T0 = performance.now();
+function hideSplash(){
+  const sp = document.getElementById("splash"); if (!sp || sp.classList.contains("out")) return;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const wait = Math.max(0, (reduce ? 300 : 1850) - (performance.now() - SPLASH_T0));
+  setTimeout(() => { sp.classList.add("out"); setTimeout(() => sp.remove(), 400); }, wait);
+}
+setTimeout(hideSplash, 8000);
 (async function boot(){
   render();
   if (S.token) {
@@ -917,7 +1008,7 @@ setInterval(() => { if (!document.hidden && (S.me || S.guest) && !S.busy && live
     catch (e) { S.err = e.message; }
   }
   if (S.me) { await loadState(); if (!location.hash) location.hash = "#home"; }
-  render();
+  render(); hideSplash();
 })();
 // Guest and login screens also need the league data (rating, names).
 window.addEventListener("hashchange", () => { if (S.guest && !S.loaded) loadState(); });
