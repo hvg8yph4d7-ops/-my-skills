@@ -365,20 +365,37 @@ function prizeTable(n, entry, split, refund){
   if (back) prizes.push(back);
   return {pool, prizes};
 }
+// Делёж: игрок из chop делит место с тем, кто стоит прямо над ним. Деньги этих мест складываются
+// и делятся поровну, место у всех — верхнее из группы («2–3»), в рейтинге это ничья.
+function shareOut(order, prizes, chop){
+  const out = []; let i = 0;
+  while (i < order.length) {
+    let j = i; while (j + 1 < order.length && chop.includes(order[j + 1])) j++;
+    const size = j - i + 1, total = prizes.slice(i, j + 1).reduce((a, b) => a + (b || 0), 0);
+    for (let k = i; k <= j; k++) out[k] = {place: i + 1, label: size > 1 ? `${i + 1}–${j + 1}` : String(i + 1), tie: size > 1, prize: Math.round(total / size)};
+    i = j + 1;
+  }
+  return out;
+}
 function results(g){
   const n = g.players.length, out = g.out || [];
   const {pool, prizes} = prizeTable(n, g.entry, g.split || [3, 2, 1], g.refund !== false);
   const res = {};
-  out.forEach((p, i) => { res[p] = {place: n - i}; });
   const alive = g.players.filter(p => !out.includes(p));
-  if (alive.length === 1) res[alive[0]] = {place: 1};
-  for (const p of Object.keys(res)) { const pr = prizes[res[p].place - 1] || 0; res[p].prize = pr; res[p].net = pr - g.entry; }
-  return {res, alive, pool, prizes, n, finished: alive.length === 1};
+  const finished = alive.length === 1;
+  const order = finished ? [alive[0], ...out.slice().reverse()] : out.slice().reverse();
+  const sh = finished ? shareOut(order, prizes, g.chop || []) : null;
+  order.forEach((p, i) => {
+    const place = finished ? i + 1 : n - out.length + 1 + i;
+    const r = sh ? sh[i] : {place, label: String(place), tie: false, prize: prizes[place - 1] || 0};
+    res[p] = {...r, net: r.prize - g.entry};
+  });
+  return {res, alive, pool, prizes, n, finished, order};
 }
 const allGames = () => Object.entries(S.games).map(([id, g]) => ({id, ...g})).filter(g => Array.isArray(g.players));
 const doneGames = () => allGames().filter(g => g.status === "done").sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.createdAt || 0) - (b.createdAt || 0));
 const liveGame = () => allGames().find(g => g.status === "live") || null;
-const orderOf = g => { const R = results(g); return Object.keys(R.res).sort((a, b) => R.res[a].place - R.res[b].place); };
+const orderOf = g => results(g).order;
 
 function compute(){
   const games = doneGames(), P = {};
@@ -390,20 +407,20 @@ function compute(){
     const ids = Object.keys(R.res); ids.forEach(ensure);
     const k = R.prizes.length, d = {}; ids.forEach(p => d[p] = 0);
     for (const a of ids) for (const b of ids) if (a !== b) {
-      const sa = R.res[a].place < R.res[b].place ? 1 : 0;
+      const sa = R.res[a].place < R.res[b].place ? 1 : R.res[a].place === R.res[b].place ? .5 : 0;
       const ea = 1 / (1 + Math.pow(10, (P[b].rating - P[a].rating) / 400));
       d[a] += 32 * (sa - ea) / (ids.length - 1);
-      if (sa) { P[a].below[b] = (P[a].below[b] || 0) + 1; P[b].above[a] = (P[b].above[a] || 0) + 1; }
+      if (sa === 1) { P[a].below[b] = (P[a].below[b] || 0) + 1; P[b].above[a] = (P[b].above[a] || 0) + 1; }
     }
     for (const p of ids) {
       const s = P[p], r = R.res[p], cashed = r.prize > 0, last3 = s.log.slice(-3);
       if (cashed && last3.length === 3 && last3.every(x => !x.cashed)) s.comeback = true;
       s.rating += d[p]; s.lastDelta = d[p]; s.maxDelta = Math.max(s.maxDelta, d[p]); s.hist.push(s.rating);
-      s.games++; if (r.place === 1) s.wins++; if (cashed) s.cashes++;
+      s.games++; if (r.place === 1 && !r.tie) s.wins++; if (cashed) s.cashes++;
       s.total += r.net; s.places.push(r.place);
       if (r.place === k + 1) s.bubble = true;
       if (r.place === R.n && R.n > 2) s.firstOut = true;
-      s.log.push({gid: g.id, date: g.date, place: r.place, n: R.n, cashed, net: r.net, prize: r.prize});
+      s.log.push({gid: g.id, date: g.date, place: r.place, label: r.label, tie: r.tie, n: R.n, cashed, net: r.net, prize: r.prize});
     }
   }
   const list = Object.values(P).filter(p => S.players[p.id]);
@@ -459,6 +476,9 @@ function headline(g){
   const R = results(g); if (!R.finished) return "Вечер без победителя";
   const order = orderOf(g);
   const w = name(order[0]), first = name(order[order.length - 1]), second = order[1] ? name(order[1]) : "";
+  const tied = order.filter(p => R.res[p].tie && R.res[p].prize > 0);
+  if (tied.length) { const lab = R.res[tied[0]].label; const grp = tied.filter(p => R.res[p].label === lab);
+    return `${grp.map(name).join(" и ")} поделили ${lab} места: по ${money(R.res[grp[0]].prize)}`; }
   const opts = [`${w} забирает ${money(R.res[order[0]].prize)}`, `${w} выигрывает, ${first} первым уходит из-за стола`,
     `${w} дожимает ${second} в хедз-апе`, `Вечер имени ${w}: банк ${money(R.pool)}`];
   return opts[hash(g.id) % opts.length];
@@ -477,7 +497,7 @@ function spark(hist, w = 90, h = 26, full){
 }
 const pcard = (rank, pid) => { const s = suitOf(pid); return `<div class="pcard ${isRed(s) ? "red" : ""}" aria-hidden="true"><span class="c tl">${rank}<br>${s}</span><span class="mid">${s}</span><span class="c br">${rank}<br>${s}</span></div>`; };
 const miniCard = (rank, pid) => { const s = suitOf(pid); return `<span class="mini ${isRed(s) ? "red" : ""}" aria-hidden="true">${rank}<span>${s}</span></span>`; };
-const formDots = log => `<span class="form" title="Последние вечера: золото — победа, зелёный — в призах">${log.slice(-5).map(x => `<i class="${x.place === 1 ? "g" : x.cashed ? "w" : "l"}"></i>`).join("")}</span>`;
+const formDots = log => `<span class="form" title="Последние вечера: золото — победа, зелёный — в призах">${log.slice(-5).map(x => `<i class="${x.place === 1 && !x.tie ? "g" : x.cashed ? "w" : "l"}"></i>`).join("")}</span>`;
 const prizeChips = prizes => `<div class="prizes">${prizes.map((x, i) => `<span class="prize"><span class="place cash">${i + 1}</span><b>${money(x)}</b></span>`).join("")}</div>`;
 const empty = (big, title, text, cta) => `<div class="panel empty"><div class="big">${big}</div><h2>${title}</h2><p class="muted" style="max-width:44ch">${text}</p>${cta || ""}</div>`;
 
@@ -532,7 +552,7 @@ function profileBlock(pid, own){
     <div class="ach">${ach.map(a => `<div class="badge-a ${a.on ? "" : "off"}"><span class="g">${a.g}</span><b>${a.t}</b><span>${esc(a.d)}</span>
       ${a.goal > 1 ? `<div class="pr"><div class="bar"><i style="width:${Math.round(a.cur / a.goal * 100)}%"></i></div><small>${a.cur}/${a.goal}</small></div>` : ""}</div>`).join("")}</div></section>`;
   if (p.log.length) {
-    html += `<section class="panel"><h3>История</h3><table class="res"><tbody>${p.log.slice().reverse().slice(0, 12).map(x => `<tr><td><span class="place ${x.cashed ? "cash" : ""}">${x.place === 1 ? "♛" : x.place}</span> ${fmtDate(x.date)} <span class="muted" style="font-size:12px">· из ${x.n}</span></td><td class="r ${x.net >= 0 ? "pos" : "neg"}">${money(x.net, true)}</td></tr>`).join("")}</tbody></table></section>`;
+    html += `<section class="panel"><h3>История</h3><table class="res"><tbody>${p.log.slice().reverse().slice(0, 12).map(x => `<tr><td><span class="place ${x.cashed ? "cash" : ""}">${x.place === 1 && !x.tie ? "♛" : x.label || x.place}</span> ${fmtDate(x.date)} <span class="muted" style="font-size:12px">· из ${x.n}</span></td><td class="r ${x.net >= 0 ? "pos" : "neg"}">${money(x.net, true)}</td></tr>`).join("")}</tbody></table></section>`;
   }
   return html;
 }
@@ -585,7 +605,7 @@ function vNights(){
     return `<article class="panel night"><span class="eyebrow">${fmtDate(g.date)} · ${R.n} ${plural(R.n, "игрок", "игрока", "игроков")} по ${money(g.entry)} · банк ${money(R.pool)}</span>
       <div class="head">${esc(headline(g))}</div>
       ${g.note ? `<p>${esc(g.note)}</p>` : ""}
-      <table class="res"><tbody>${ids.map(p => { const r = R.res[p]; return `<tr class="${p === mine ? "mine" : ""}"><td><span class="place ${r.prize ? "cash" : ""}">${r.place === 1 ? "♛" : r.place}</span> <a href="#p-${p}" style="color:inherit">${esc(name(p))}</a></td><td class="r">${r.prize ? `<b>${money(r.prize)}</b> <span class="${r.net >= 0 ? "pos" : "neg"}" style="font-size:12px">${money(r.net, true)}</span>` : `<span class="neg">${money(r.net, true)}</span>`}</td></tr>`; }).join("")}</tbody></table>
+      <table class="res"><tbody>${ids.map(p => { const r = R.res[p]; return `<tr class="${p === mine ? "mine" : ""}"><td><span class="place ${r.prize ? "cash" : ""}">${r.place === 1 && !r.tie ? "♛" : r.label}</span> <a href="#p-${p}" style="color:inherit">${esc(name(p))}</a></td><td class="r">${r.prize ? `<b>${money(r.prize)}</b> <span class="${r.net >= 0 ? "pos" : "neg"}" style="font-size:12px">${money(r.net, true)}</span>` : `<span class="neg">${money(r.net, true)}</span>`}</td></tr>`; }).join("")}</tbody></table>
       ${g.hasPhoto ? (ph === "loading" ? `<p class="muted">Загружаю фото…</p>` : ph ? `<img class="photo" src="${esc(ph)}" alt="Последняя раздача вечера ${fmtDate(g.date)}">` : `<button class="btn ghost sm" data-act="photo" data-id="${g.id}">Фото последней раздачи</button>`) : ""}
       ${g.holder ? `<span class="muted" style="font-size:13px">Деньги собирал(а) ${esc(name(g.holder))}</span>` : ""}
       ${isAdmin() ? `<div class="row"><button class="btn ghost sm" data-act="edit-game" data-id="${g.id}">Исправить</button>
@@ -600,17 +620,26 @@ function vAdmin(){
   return `<div class="chips">${tabs.map(([k, t]) => `<button class="chip" data-act="atab" data-id="${k}" aria-pressed="${S.adminTab === k}">${t}${k === "live" && liveGame() ? " •" : ""}</button>`).join("")}</div>`
     + ({result: aResult, live: aLive, players: aPlayers, rules: aRules})[S.adminTab]();
 }
-function newForm(){ return {id: null, date: today(), entry: S.settings.entry || 300, order: [], holder: "", note: "", photo: undefined, hadPhoto: false}; }
+function newForm(){ return {id: null, date: today(), entry: S.settings.entry || 300, order: [], chop: [], holder: "", note: "", photo: undefined, hadPhoto: false}; }
+const chopPids = f => (f.chop || []).filter(i => i > 0 && i < f.order.length).map(i => f.order[i]);
+function chopChips(n, k, isOn, act){
+  const m = Math.min(k, n - 1); if (m < 1) return "";
+  let h = `<div><span class="eyebrow">Делили банк?</span><div class="chips" style="margin-top:6px">`;
+  for (let i = 1; i <= m; i++) h += `<button class="chip" data-act="${act}" data-id="${i}" aria-pressed="${isOn(i)}">${i} и ${i + 1} место</button>`;
+  return h + `</div><p class="muted" style="font-size:12px;margin-top:6px">Деньги этих мест делятся поровну, в рейтинге — ничья. Можно выбрать несколько: «1 и 2» + «2 и 3» = делёж на троих.</p></div>`;
+}
 function aResult(){
   const f = S.form || (S.form = newForm());
   const ids = Object.keys(S.players).sort((a, b) => name(a).localeCompare(name(b)));
   const pt = prizeTable(f.order.length, f.entry, parseSplit(S.settings.split), S.settings.refund !== false);
+  const sh = shareOut(f.order, pt.prizes, chopPids(f));
   const photoState = f.photo ? `<img class="photo" src="${esc(f.photo)}" alt="Фото раздачи">` : f.photo === null ? `<p class="muted">Фото будет удалено</p>` : f.hadPhoto ? `<p class="muted">Фото уже загружено</p>` : "";
   return `<section class="panel"><div><span class="eyebrow">${f.id ? "Исправление вечера" : "Новый вечер"}</span><h2>Кто какое место занял</h2></div>
     <p class="muted" style="font-size:13px">Нажимайте на игроков по порядку мест: сначала победителя, потом второго, третьего и дальше до последнего.</p>
     <div class="chips">${ids.map(p => `<button class="chip" data-act="f-add" data-id="${p}" ${f.order.includes(p) ? "disabled" : ""}>+ ${esc(name(p))}</button>`).join("")}</div>
-    ${f.order.length ? `<div class="order">${f.order.map((p, i) => `<div class="o"><span class="place ${pt.prizes[i] ? "cash" : ""}">${i + 1}</span><span class="nm">${esc(name(p))}</span>
-        <span class="ctl">${pt.prizes[i] ? `<b>${money(pt.prizes[i])}</b>` : ""}<button class="iconbtn" data-act="f-up" data-id="${i}" aria-label="Выше" ${i === 0 ? "disabled" : ""}>↑</button><button class="iconbtn" data-act="f-down" data-id="${i}" aria-label="Ниже" ${i === f.order.length - 1 ? "disabled" : ""}>↓</button><button class="iconbtn" data-act="f-del" data-id="${i}" aria-label="Убрать">✕</button></span></div>`).join("")}</div>` : ""}
+    ${f.order.length ? `<div class="order">${f.order.map((p, i) => `<div class="o"><span class="place ${sh[i].prize ? "cash" : ""}">${sh[i].label}</span><span class="nm">${esc(name(p))}</span>
+        <span class="ctl">${sh[i].prize ? `<b>${money(sh[i].prize)}</b>` : ""}<button class="iconbtn" data-act="f-up" data-id="${i}" aria-label="Выше" ${i === 0 ? "disabled" : ""}>↑</button><button class="iconbtn" data-act="f-down" data-id="${i}" aria-label="Ниже" ${i === f.order.length - 1 ? "disabled" : ""}>↓</button><button class="iconbtn" data-act="f-del" data-id="${i}" aria-label="Убрать">✕</button></span></div>`).join("")}</div>` : ""}
+    ${f.order.length >= 2 ? chopChips(f.order.length, pt.prizes.length, i => f.chop.includes(i), "f-chop") : ""}
     <div class="row"><label class="fld">Дата<input type="date" id="f-date" value="${esc(f.date)}"></label>
       <label class="fld">Ставка с человека<input type="number" id="f-entry" inputmode="numeric" min="0" step="50" value="${f.entry}"></label></div>
     <label class="fld">Деньги собирал<select id="f-holder"><option value="">не важно</option>${f.order.map(p => `<option value="${p}" ${p === f.holder ? "selected" : ""}>${esc(name(p))}</option>`).join("")}</select></label>
@@ -618,7 +647,7 @@ function aResult(){
     <div class="row"><label class="btn ghost sm" style="cursor:pointer">Фото последней раздачи<input type="file" id="f-photo" accept="image/*" hidden></label>
       ${f.photo || f.hadPhoto ? `<button class="btn ghost sm" data-act="f-nophoto">Убрать фото</button>` : ""}</div>
     ${photoState}
-    ${f.order.length >= 2 ? `<div class="transfers"><span class="eyebrow">Банк ${money(pt.pool)}</span>${f.order.slice(0, pt.prizes.length).map((p, i) => `<div class="t"><span>${i + 1} место · ${esc(name(p))}</span><b class="num">${money(pt.prizes[i])}</b></div>`).join("")}</div>` : ""}
+    ${f.order.length >= 2 ? `<div class="transfers"><span class="eyebrow">Банк ${money(pt.pool)}</span>${f.order.map((p, i) => sh[i].prize ? `<div class="t"><span>${sh[i].label} место · ${esc(name(p))}</span><b class="num">${money(sh[i].prize)}</b></div>` : "").join("")}</div>` : ""}
     <div class="row"><button class="btn" data-act="f-save" ${f.order.length < 2 || S.busy ? "disabled" : ""}>${S.busy ? "Сохраняю…" : f.id ? "Сохранить изменения" : "Записать вечер"}</button>
       ${f.id || f.order.length ? `<button class="btn ghost" data-act="f-reset">Очистить</button>` : ""}</div></section>`;
 }
@@ -639,15 +668,16 @@ function aLive(){
   const R = results(g), out = g.out || [];
   let html = `<section class="panel"><div><span class="eyebrow">Идёт игра · ${fmtDate(g.date)}</span><h2>Банк <span class="num">${money(R.pool)}</span></h2>${g.holder ? `<span class="muted" style="font-size:13px">банк держит ${esc(name(g.holder))}</span>` : ""}</div>${prizeChips(R.prizes)}`;
   if (R.finished) {
-    const w = R.alive[0], paid = Object.keys(R.res).filter(p => R.res[p].prize > 0).sort((a, b) => R.res[a].place - R.res[b].place);
+    const w = R.alive[0], paid = R.order.filter(p => R.res[p].prize > 0);
     html += `<div class="winner"><span class="eyebrow" style="color:inherit;opacity:.8">Победитель</span><span class="name">${esc(name(w))}</span><span class="num">${money(R.res[w].prize)}</span></div>
-      <div class="transfers"><span class="eyebrow">${g.holder ? esc(name(g.holder)) + " выдаёт призы" : "Выдать призы"}</span>${paid.map(p => `<div class="t"><span>${R.res[p].place} место · ${esc(name(p))}</span><b class="num">${money(R.res[p].prize)}</b></div>`).join("")}</div>`;
+      <div class="transfers"><span class="eyebrow">${g.holder ? esc(name(g.holder)) + " выдаёт призы" : "Выдать призы"}</span>${paid.map(p => `<div class="t"><span>${R.res[p].label} место · ${esc(name(p))}</span><b class="num">${money(R.res[p].prize)}</b></div>`).join("")}</div>`
+      + chopChips(R.n, R.prizes.length, i => (g.chop || []).includes(R.order[i]), "l-chop");
   } else {
     html += `<span class="eyebrow">В игре · ${R.alive.length}</span>` + R.alive.map(p => `<div class="seat"><div class="nm">${esc(name(p))}</div><button class="btn ghost sm" data-act="bust" data-id="${p}" ${S.busy ? "disabled" : ""}>Вылетел</button></div>`).join("");
     const late = pids.filter(p => !g.players.includes(p));
     if (late.length && !out.length) html += `<div><span class="eyebrow">Подсел позже</span><div class="chips" style="margin-top:6px">${late.map(p => `<button class="chip" data-act="join" data-id="${p}">+ ${esc(name(p))}</button>`).join("")}</div></div>`;
   }
-  if (out.length) html += `<span class="eyebrow">Вылетели</span>` + out.slice().reverse().map((p, i) => { const r = R.res[p]; return `<div class="seat"><div class="row" style="gap:6px;min-width:0"><span class="place ${r.prize ? "cash" : ""}">${r.place}</span><span class="nm">${esc(name(p))}</span></div><div class="row" style="gap:6px">${r.prize ? `<b class="num">${money(r.prize)}</b>` : ""}${i === 0 && !R.finished ? `<button class="btn ghost sm" data-act="unbust">Вернуть</button>` : ""}</div></div>`; }).join("");
+  if (out.length) html += `<span class="eyebrow">Вылетели</span>` + out.slice().reverse().map((p, i) => { const r = R.res[p]; return `<div class="seat"><div class="row" style="gap:6px;min-width:0"><span class="place ${r.prize ? "cash" : ""}">${r.label}</span><span class="nm">${esc(name(p))}</span></div><div class="row" style="gap:6px">${r.prize ? `<b class="num">${money(r.prize)}</b>` : ""}${i === 0 && !R.finished ? `<button class="btn ghost sm" data-act="unbust">Вернуть</button>` : ""}</div></div>`; }).join("");
   html += `<div class="row">${R.finished ? `<button class="btn" data-act="finish" ${S.busy ? "disabled" : ""}>Записать вечер</button><button class="btn ghost" data-act="unbust">Шаг назад</button>` : ""}
     <button class="btn danger ${S.armed === "cancel" ? "armed" : ""}" data-act="cancel">${S.armed === "cancel" ? "Точно отменить?" : "Отменить вечер"}</button></div></section>`;
   return html;
@@ -770,12 +800,13 @@ document.addEventListener("click", async e => {
     case "f-up": { const i = +id; [f.order[i - 1], f.order[i]] = [f.order[i], f.order[i - 1]]; break; }
     case "f-down": { const i = +id; [f.order[i + 1], f.order[i]] = [f.order[i], f.order[i + 1]]; break; }
     case "f-del": { const [p] = f.order.splice(+id, 1); if (f.holder === p) f.holder = ""; break; }
+    case "f-chop": { const i = +id; f.chop = f.chop.includes(i) ? f.chop.filter(x => x !== i) : [...f.chop, i]; break; }
     case "f-nophoto": f.photo = null; break;
     case "f-reset": S.form = newForm(); break;
     case "f-save": {
       const gid = f.id || uid(), old = f.id ? S.games[f.id] : null;
       const data = {date: f.date || today(), status: "done", entry: Math.max(0, +f.entry || 0), split: parseSplit(S.settings.split), refund: S.settings.refund !== false,
-        holder: f.holder || null, players: f.order.slice(), out: f.order.slice(1).reverse(), note: f.note.trim(),
+        holder: f.holder || null, players: f.order.slice(), out: f.order.slice(1).reverse(), chop: chopPids(f), note: f.note.trim(),
         createdAt: old && old.createdAt || Date.now(), finishedAt: Date.now()};
       if (await saveGame(gid, data)) {
         if (f.photo !== undefined) await act("poker_save_photo", {p_game: gid, p_data: f.photo || ""});
@@ -786,7 +817,8 @@ document.addEventListener("click", async e => {
     }
     case "edit-game": {
       const og = S.games[id];
-      S.form = {id, date: og.date, entry: og.entry, order: orderOf({id, ...og}), holder: og.holder || "", note: og.note || "", photo: undefined, hadPhoto: !!og.hasPhoto};
+      const ord = orderOf({id, ...og});
+      S.form = {id, date: og.date, entry: og.entry, order: ord, chop: (og.chop || []).map(p => ord.indexOf(p)).filter(i => i > 0), holder: og.holder || "", note: og.note || "", photo: undefined, hadPhoto: !!og.hasPhoto};
       S.adminTab = "result"; location.hash = "#admin"; return;
     }
     case "delgame": if (prev !== "del-" + id) { S.armed = "del-" + id; break; } await act("poker_delete_game", {p_id: id}, "Вечер удалён"); return;
@@ -799,7 +831,8 @@ document.addEventListener("click", async e => {
       S.live = {picked: null, entry: null, holder: null, date: today()}; return;
     }
     case "bust": if (g) { const c = cloneGame(g); c.out = [...(c.out || []), id]; await saveGame(g.id, c); } return;
-    case "unbust": if (g && (g.out || []).length) { const c = cloneGame(g); c.out.pop(); await saveGame(g.id, c); } return;
+    case "l-chop": if (g) { const R0 = results(g), pid = R0.order[+id], c = cloneGame(g); c.chop = (c.chop || []).includes(pid) ? c.chop.filter(x => x !== pid) : [...(c.chop || []), pid]; await saveGame(g.id, c); } return;
+    case "unbust": if (g && (g.out || []).length) { const c = cloneGame(g); c.out.pop(); c.chop = []; await saveGame(g.id, c); } return;
     case "join": if (g) { const c = cloneGame(g); c.players.push(id); await saveGame(g.id, c); } return;
     case "finish": if (g) { const c = cloneGame(g); c.status = "done"; c.finishedAt = Date.now(); if (await saveGame(g.id, c)) { toast("Вечер записан"); location.hash = "#nights"; } } return;
     case "cancel": if (g) { if (prev !== "cancel") { S.armed = "cancel"; break; } await act("poker_delete_game", {p_id: g.id}, "Вечер отменён"); } return;
