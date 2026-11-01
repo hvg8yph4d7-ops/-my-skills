@@ -29,8 +29,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg}', 'assets/*-{latin,cyrillic}-*.woff2'],
-        // /woodnext/ — отдельный сайт в том же GitHub Pages, «Форма» его не перехватывает
-        navigateFallbackDenylist: [/\/woodnext(\/|$)/],
+        // /woodnext/ и /poker/ — отдельные сайты в том же GitHub Pages, «Форма» их не перехватывает
+        navigateFallbackDenylist: [/\/woodnext(\/|$)/, /\/poker(\/|$)/],
       },
     }),
   ],
