@@ -108,7 +108,7 @@ declare
   first_time boolean := false;
   t uuid;
 begin
-  if p_pin !~ '^\d{4}$' then raise exception 'PIN — это 4 цифры'; end if;
+  if p_pin is null or p_pin !~ '^\d{4}$' then raise exception 'PIN — это 4 цифры'; end if;
   select * into r from public.poker_players where phone = ph for update;
   if not found then raise exception 'Этого номера нет в лиге. Попросите админа добавить вас'; end if;
   if r.locked_until is not null and r.locked_until > now() then
@@ -150,8 +150,8 @@ create or replace function public.poker_change_pin(p_token uuid, p_old text, p_n
 language plpgsql security definer set search_path = public, extensions as $$
 declare r public.poker_players := public.poker_auth(p_token);
 begin
-  if p_new !~ '^\d{4}$' then raise exception 'Новый PIN — это 4 цифры'; end if;
-  if r.pin_hash <> crypt(p_old, r.pin_hash) then raise exception 'Старый PIN неверный'; end if;
+  if p_new is null or p_new !~ '^\d{4}$' then raise exception 'Новый PIN — это 4 цифры'; end if;
+  if p_old is null or r.pin_hash is distinct from crypt(p_old, r.pin_hash) then raise exception 'Старый PIN неверный'; end if;
   update public.poker_players set pin_hash = crypt(p_new, gen_salt('bf')) where id = r.id;
   delete from public.poker_sessions where player_id = r.id and token <> p_token;
 end $$;
@@ -224,6 +224,7 @@ language plpgsql security definer set search_path = public as $$
 begin
   perform public.poker_admin(p_token);
   if p_data is null or p_data = '' then delete from public.poker_photos where game_id = p_game; return; end if;
+  if p_data !~ '^data:image/(jpeg|png|webp);base64,' then raise exception 'Это не фото'; end if;
   if length(p_data) > 900000 then raise exception 'Фото слишком большое'; end if;
   insert into public.poker_photos (game_id, data) values (p_game, p_data)
   on conflict (game_id) do update set data = excluded.data;

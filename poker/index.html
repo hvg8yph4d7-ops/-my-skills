@@ -586,7 +586,7 @@ function vNights(){
       <div class="head">${esc(headline(g))}</div>
       ${g.note ? `<p>${esc(g.note)}</p>` : ""}
       <table class="res"><tbody>${ids.map(p => { const r = R.res[p]; return `<tr class="${p === mine ? "mine" : ""}"><td><span class="place ${r.prize ? "cash" : ""}">${r.place === 1 ? "♛" : r.place}</span> <a href="#p-${p}" style="color:inherit">${esc(name(p))}</a></td><td class="r">${r.prize ? `<b>${money(r.prize)}</b> <span class="${r.net >= 0 ? "pos" : "neg"}" style="font-size:12px">${money(r.net, true)}</span>` : `<span class="neg">${money(r.net, true)}</span>`}</td></tr>`; }).join("")}</tbody></table>
-      ${g.hasPhoto ? (ph === "loading" ? `<p class="muted">Загружаю фото…</p>` : ph ? `<img class="photo" src="${ph}" alt="Последняя раздача вечера ${fmtDate(g.date)}">` : `<button class="btn ghost sm" data-act="photo" data-id="${g.id}">Фото последней раздачи</button>`) : ""}
+      ${g.hasPhoto ? (ph === "loading" ? `<p class="muted">Загружаю фото…</p>` : ph ? `<img class="photo" src="${esc(ph)}" alt="Последняя раздача вечера ${fmtDate(g.date)}">` : `<button class="btn ghost sm" data-act="photo" data-id="${g.id}">Фото последней раздачи</button>`) : ""}
       ${g.holder ? `<span class="muted" style="font-size:13px">Деньги собирал(а) ${esc(name(g.holder))}</span>` : ""}
       ${isAdmin() ? `<div class="row"><button class="btn ghost sm" data-act="edit-game" data-id="${g.id}">Исправить</button>
         <button class="btn danger sm ${S.armed === k ? "armed" : ""}" data-act="delgame" data-id="${g.id}">${S.armed === k ? "Точно удалить?" : "Удалить"}</button></div>` : ""}</article>`;
@@ -605,7 +605,7 @@ function aResult(){
   const f = S.form || (S.form = newForm());
   const ids = Object.keys(S.players).sort((a, b) => name(a).localeCompare(name(b)));
   const pt = prizeTable(f.order.length, f.entry, parseSplit(S.settings.split), S.settings.refund !== false);
-  const photoState = f.photo ? `<img class="photo" src="${f.photo}" alt="Фото раздачи">` : f.photo === null ? `<p class="muted">Фото будет удалено</p>` : f.hadPhoto ? `<p class="muted">Фото уже загружено</p>` : "";
+  const photoState = f.photo ? `<img class="photo" src="${esc(f.photo)}" alt="Фото раздачи">` : f.photo === null ? `<p class="muted">Фото будет удалено</p>` : f.hadPhoto ? `<p class="muted">Фото уже загружено</p>` : "";
   return `<section class="panel"><div><span class="eyebrow">${f.id ? "Исправление вечера" : "Новый вечер"}</span><h2>Кто какое место занял</h2></div>
     <p class="muted" style="font-size:13px">Нажимайте на игроков по порядку мест: сначала победителя, потом второго, третьего и дальше до последнего.</p>
     <div class="chips">${ids.map(p => `<button class="chip" data-act="f-add" data-id="${p}" ${f.order.includes(p) ? "disabled" : ""}>+ ${esc(name(p))}</button>`).join("")}</div>
@@ -757,7 +757,7 @@ document.addEventListener("click", async e => {
     case "logout": try { await rpc("poker_logout", {p_token: S.token}); } catch {} logoutLocal(); S.guest = false; location.hash = ""; break;
     case "edit-name": S.editName = true; render(); setTimeout(() => { const i = $("#r-name"); if (i) i.focus(); }, 0); return;
     case "pin-form": S.pinForm = true; break;
-    case "reload": S.err = ""; loadState(); return;
+    case "reload": location.reload(); return;
     case "demo-reset": lsSet(DEMO_KEY, null); logoutLocal(); location.hash = ""; location.reload(); return;
     case "photo": {
       S.photos[id] = "loading"; render();
@@ -874,7 +874,7 @@ document.addEventListener("submit", async e => {
 });
 window.addEventListener("hashchange", () => { S.armed = null; S.editName = false; render(); window.scrollTo(0, 0); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden && (S.me || S.guest)) loadState(); });
-setInterval(() => { if (!document.hidden && (S.me || S.guest) && !S.busy && (liveGame() || location.hash === "#admin")) loadState(); }, 20000);
+setInterval(() => { if (!document.hidden && (S.me || S.guest) && !S.busy && liveGame() && location.hash !== "#admin") loadState(); }, 20000);
 
 /* ================= boot ================= */
 (async function boot(){
