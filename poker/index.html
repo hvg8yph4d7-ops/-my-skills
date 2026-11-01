@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0D1612">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Покерная лига</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: phone-first app. One column, cabinet card on top, bottom tab bar. Leader and ranks drawn as playing cards. */
+:root{
+  --bg:#ECEFE8; --surface:#FBFCF8; --surface-2:#E2E7DE; --line:#CCD5CA;
+  --ink:#16201B; --muted:#5A675F;
+  --felt:#1D5A43; --felt-ink:#F3F6EE; --brass:#A9741F;
+  --pos:#23784A; --neg:#B0353A; --card:#FFFEFA; --card-ink:#16201B; --red-suit:#C0333A;
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:14px; color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0D1612; --surface:#14211B; --surface-2:#1B2B23; --line:#2A3D33;
+  --ink:#E7EEE8; --muted:#93A69A;
+  --felt:#4DB287; --felt-ink:#08130E; --brass:#DDAA52;
+  --pos:#5CC68C; --neg:#EE7272; --card:#F4F1E6;
+  color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:16px;padding-block:14px 8px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(20px,5.5vw,28px);font-weight:800}
+h2{font-size:18px;font-weight:700}
+h3{font-size:15px;font-weight:700}
+p{margin:0}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--felt)}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+[hidden]{display:none!important}
+
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.suits{font-size:12px;letter-spacing:.3em;color:var(--muted)}
+.suits .r,.r{color:var(--red-suit)}
+
+nav.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:15;background:var(--surface);border-top:1px solid var(--line);
+  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+nav.tabbar .in{max-width:720px;margin:0 auto;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px}
+nav.tabbar a{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:10px;text-decoration:none;color:var(--muted);font-size:11px;font-weight:700;position:relative}
+nav.tabbar a .ic{font-size:19px;line-height:1;font-family:var(--f-display)}
+nav.tabbar a[aria-current="page"]{color:var(--felt);background:var(--surface-2)}
+nav.tabbar a .dot{position:absolute;top:4px;right:calc(50% - 18px);width:7px;height:7px;border-radius:50%;background:var(--neg)}
+
+.banner{background:var(--surface-2);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:13px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
+
+.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:700;background:var(--felt);color:var(--felt-ink);text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:transparent;color:var(--neg);border:1px solid var(--line)}
+.btn.danger.armed{background:var(--neg);color:#fff;border-color:var(--neg)}
+.btn.sm{padding:7px 11px;font-size:13px;border-radius:8px}
+.btn.wide{width:100%}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spread{justify-content:space-between}
+input[type=text],input[type=tel],input[type=number],input[type=date],input[type=password],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px 11px;min-width:0;font-size:16px}
+input[type=number]{font-family:var(--f-num)}
+label.fld{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700;color:var(--muted);flex:1;min-width:130px}
+label.chk{display:flex;gap:8px;align-items:center;font-weight:600}
+
+/* Login */
+.login{min-height:calc(100vh - 140px);display:flex;flex-direction:column;justify-content:center;gap:18px;max-width:420px;margin:0 auto;width:100%}
+.login .fan{display:flex;justify-content:center;height:120px;position:relative}
+.login .fan .pcard{position:absolute;top:0}
+.login .pin{letter-spacing:.6em;text-align:center;font-family:var(--f-num);font-size:22px}
+.err{color:var(--neg);font-weight:600;font-size:14px}
+
+/* Playing cards */
+.pcard{width:84px;aspect-ratio:5/7;max-width:100%;background:var(--card);color:var(--card-ink);border-radius:9px;position:relative;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.pcard .c{position:absolute;font-family:var(--f-display);font-weight:800;font-size:15px;line-height:1;text-align:center}
+.pcard .tl{top:7px;left:7px} .pcard .br{bottom:7px;right:7px;transform:rotate(180deg)}
+.pcard .mid{position:absolute;inset:0;display:grid;place-items:center;font-size:36px}
+.pcard.red{color:var(--red-suit)}
+.mini{width:34px;height:46px;flex:none;border-radius:5px;background:var(--card);color:var(--card-ink);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--f-display);font-weight:800;font-size:13px;line-height:1.05}
+.mini.red{color:var(--red-suit)}
+
+/* Cabinet card */
+.me{background:var(--felt);color:var(--felt-ink);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px;
+  background-image:radial-gradient(circle at 15% 0%,rgba(255,255,255,.14),transparent 55%),repeating-linear-gradient(45deg,rgba(255,255,255,.025) 0 2px,transparent 2px 6px)}
+.me .top{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}
+.me .pcard{width:74px;transform:rotate(-4deg)}
+.me .name{font-family:var(--f-display);font-weight:800;font-size:clamp(20px,6vw,28px);line-height:1.1;overflow-wrap:anywhere;display:flex;gap:8px;align-items:center}
+.me .name button{background:rgba(255,255,255,.16);border:0;border-radius:8px;width:30px;height:30px;color:inherit;font-size:14px;flex:none}
+.me .line{display:flex;gap:12px;flex-wrap:wrap;font-size:14px;opacity:.92}
+.me .line b{font-family:var(--f-num)}
+.status{display:flex;flex-direction:column;gap:6px}
+.status .r1{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:700}
+.status .badge{background:rgba(255,255,255,.18);border-radius:999px;padding:3px 10px;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
+.bar{height:6px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--felt-ink);border-radius:99px}
+.me input[type=text]{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:inherit}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--f-num);font-size:18px}
+.stat span{font-size:12px;color:var(--muted)}
+.stat .t{font-family:var(--f-body);font-size:15px}
+
+/* Board */
+.board{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.lrow{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border:0;border-top:1px solid var(--line);background:transparent;text-align:left;width:100%;text-decoration:none;color:inherit}
+.lrow:first-child{border-top:0}
+.lrow:hover{background:var(--surface-2)}
+.lrow.mine{background:var(--surface-2)}
+.lrow .nm{font-weight:700;font-size:16px;overflow-wrap:anywhere}
+.lrow .sub{font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.lrow .rt{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.lrow .rt .big{font-family:var(--f-num);font-weight:700;font-size:18px}
+.lrow .rt small{font-family:var(--f-num);font-size:12px}
+.form{display:inline-flex;gap:3px}
+.form i{width:8px;height:8px;border-radius:2px;background:var(--line)}
+.form i.w{background:var(--pos)} .form i.l{background:var(--neg)} .form i.g{background:var(--brass)}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+.hero .pcard{transform:rotate(-4deg)}
+.hero .name{font-family:var(--f-display);font-weight:800;font-size:clamp(20px,6vw,28px);line-height:1.05;overflow-wrap:anywhere}
+
+/* Achievements */
+.ach{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.badge-a{border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:3px;background:var(--surface)}
+.badge-a .g{font-family:var(--f-display);font-weight:800;font-size:18px;color:var(--brass)}
+.badge-a b{font-size:13px}
+.badge-a span{font-size:12px;color:var(--muted)}
+.badge-a .pr{display:flex;align-items:center;gap:8px;margin-top:4px}
+.badge-a .pr .bar{flex:1;background:var(--surface-2);height:4px}
+.badge-a .pr .bar i{background:var(--brass)}
+.badge-a .pr small{font-family:var(--f-num);font-size:11px;color:var(--muted)}
+.badge-a.off .g{color:var(--muted);opacity:.6}
+.badge-a.off b{color:var(--muted)}
+
+/* Nights */
+.night .head{font-family:var(--f-display);font-weight:700;font-size:16px;line-height:1.25}
+table.res{width:100%;border-collapse:collapse;font-size:14px}
+table.res td{padding:6px 0;border-top:1px solid var(--line)}
+table.res td.r{text-align:right;font-family:var(--f-num);white-space:nowrap;padding-left:10px}
+table.res tr.mine td{font-weight:700}
+.place{font-family:var(--f-display);font-weight:800;font-size:13px;min-width:26px;display:inline-block;color:var(--muted)}
+.place.cash{color:var(--brass)}
+.photo{width:100%;border-radius:10px;display:block}
+.transfers{display:flex;flex-direction:column;gap:6px;background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:14px}
+.transfers .t{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+
+/* Admin */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 13px;font-weight:600;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--felt);color:var(--felt-ink);border-color:var(--felt)}
+.chip:disabled{opacity:.4}
+.order{display:flex;flex-direction:column}
+.order .o{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.order .o:first-child{border-top:0}
+.order .o .nm{font-weight:700;overflow-wrap:anywhere}
+.order .o .ctl{display:flex;gap:4px;align-items:center}
+.order .o .ctl b{font-family:var(--f-num);font-size:13px;margin-right:4px}
+.iconbtn{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-weight:700}
+.prizes{display:flex;gap:8px;flex-wrap:wrap}
+.prize{display:flex;align-items:baseline;gap:6px;background:var(--surface-2);border-radius:999px;padding:6px 12px;font-size:14px}
+.prize b{font-family:var(--f-num)}
+.seat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.seat .nm{font-weight:700;font-size:16px;overflow-wrap:anywhere}
+.winner{background:var(--felt);color:var(--felt-ink);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.winner .name{font-family:var(--f-display);font-weight:800;font-size:24px}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.prow:first-child{border-top:0}
+.tag{font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--surface-2);color:var(--muted)}
+.tag.on{background:var(--felt);color:var(--felt-ink)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface-2);padding:4px;border-radius:12px}
+.seg button{border:0;background:transparent;padding:9px;border-radius:9px;font-weight:700;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink)}
+
+.empty{text-align:center;padding:28px 16px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.empty .big{font-size:38px;letter-spacing:.2em}
+.toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;z-index:30;max-width:calc(100% - 32px)}
+.spin{opacity:.6}
+@media (prefers-reduced-motion:no-preference){.pcard{transition:transform .3s}.me:hover .pcard,.hero:hover .pcard{transform:rotate(2deg) translateY(-3px)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div><div class="suits">♠<span class="r">♥</span>♣<span class="r">♦</span></div><h1 id="leagueName">Покерная лига</h1></div>
+    <div class="muted" id="seasonLine" style="font-size:13px;text-align:right"></div>
+  </header>
+  <div id="notice"></div>
+  <main id="view"></main>
+</div>
+<nav class="tabbar" id="tabbar" hidden><div class="in" id="tabs"></div></nav>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+/* ================= config ================= */
+// Та же база Supabase, что у «Формы»; таблицы лиги — poker_* (см. supabase.sql).
+const CFG = {url: "https://iapnmnihusdvqmqysnxu.supabase.co", key: "sb_publishable_9-G5FJp3RAp0vAltbbV2pg_c4evmD4L"};
+const DEMO = new URLSearchParams(location.search).has("demo");
+const TOKEN_KEY = DEMO ? "poker-demo-token" : "poker-token";
+
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
+const SUITS = ["♠","♥","♣","♦"], RANKS = ["A","K","Q","J","10","9","8","7","6","5","4","3","2"];
+const hash = s => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const suitOf = id => SUITS[hash(id) % 4];
+const isRed = s => s === "♥" || s === "♦";
+const fmtDate = iso => { try { return new Date(iso + "T12:00:00").toLocaleDateString("ru-RU", {day:"numeric", month:"long", year:"numeric"}); } catch { return iso; } };
+const plural = (n, a, b, c) => { n = Math.abs(n) % 100; const n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; };
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} };
+const DEFAULTS = {name: "Покерная лига", currency: "₽", entry: 300, split: "3:2:1", refund: true};
+const parseSplit = str => { const a = String(str || "").split(/[:\s/,-]+/).map(Number).filter(x => x > 0); return a.length ? a.slice(0, 6) : [3, 2, 1]; };
+const fmtPhone = p => { const d = String(p || ""); return d.length === 11 ? `+${d[0]} ${d.slice(1,4)} ${d.slice(4,7)}-${d.slice(7,9)}-${d.slice(9)}` : (d ? "+" + d : ""); };
+
+/* ================= state ================= */
+const S = {
+  loaded: false, players: {}, games: {}, settings: {...DEFAULTS},
+  me: null,            // {playerId, isAdmin}
+  token: lsGet(TOKEN_KEY),
+  guest: false,
+  phones: null,        // admin only
+  armed: null, busy: false, err: "",
+  editName: false, photos: {}, adminTab: "result",
+  form: null, live: {picked: null, entry: null, holder: null, date: today()},
+  newPlayer: {name: "", phone: "", admin: false}, editPlayer: null,
+};
+const cur = () => S.settings.currency || "₽";
+const money = (n, sign) => {
+  const v = Math.round(n), s = Math.abs(v).toLocaleString("ru-RU") + " " + cur();
+  if (!sign) return (v < 0 ? "−" : "") + s;
+  return (v > 0 ? "+" : v < 0 ? "−" : "") + s;
+};
+const name = pid => (S.players[pid] && S.players[pid].name) || "Гость";
+const isAdmin = () => !!(S.me && S.me.isAdmin);
+
+/* ================= backend ================= */
+async function rpc(fn, args = {}){
+  if (DEMO) return mock(fn, args);
+  let r;
+  try {
+    r = await fetch(`${CFG.url}/rest/v1/rpc/${fn}`, {method: "POST", headers: {apikey: CFG.key, "Content-Type": "application/json"}, body: JSON.stringify(args)});
+  } catch { throw new Error("Нет связи с сервером. Проверьте интернет"); }
+  const txt = await r.text(); let j = null; try { j = txt ? JSON.parse(txt) : null; } catch {}
+  if (!r.ok) {
+    const msg = (j && j.message) || "Сервер не ответил, попробуйте ещё раз";
+    if (/Сессия устарела/.test(msg)) logoutLocal();
+    throw new Error(msg);
+  }
+  return j;
+}
+async function loadState(){
+  try {
+    const st = await rpc("poker_state");
+    S.players = st.players || {}; S.games = st.games || {}; S.settings = {...DEFAULTS, ...(st.settings || {})};
+    S.loaded = true; S.err = "";
+  } catch (e) { S.err = e.message; }
+  render();
+}
+async function act(fn, args, okMsg){
+  if (S.busy) return false;
+  S.busy = true; render();
+  try { await rpc(fn, {p_token: S.token, ...args}); if (okMsg) toast(okMsg); await loadState(); return true; }
+  catch (e) { toast(e.message); return false; }
+  finally { S.busy = false; render(); }
+}
+function logoutLocal(){ S.token = null; S.me = null; S.phones = null; lsSet(TOKEN_KEY, null); }
+
+/* ---------- demo backend: same functions, kept in this browser ---------- */
+const DEMO_KEY = "poker-demo-db";
+function demoDb(){
+  let d = null; try { d = JSON.parse(lsGet(DEMO_KEY) || "null"); } catch {}
+  if (d) return d;
+  const names = ["Дима", "Саша", "Лёша", "Макс", "Аня", "Костя", "Рома"];
+  d = {players: {}, sessions: {}, games: {}, photos: {}, settings: {...DEFAULTS, name: "Пятничный стол"}};
+  names.forEach((n, i) => d.players["d" + i] = {name: n, phone: "7900000000" + (i + 1), pin: null, isAdmin: i === 0, createdAt: i});
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const skill = [1, 1.7, 1.1, .8, 1.4, 1, .9];
+  for (let k = 0; k < 10; k++) {
+    const ids = Object.keys(d.players).filter((p, i) => i < 5 || rnd() > .4);
+    const order = ids.map(p => [p, rnd() * skill[+p.slice(1)]]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+    const dt = new Date(2026, 6 + Math.floor(k / 3), 4 + (k % 3) * 9);
+    d.games["dg" + k] = {date: dt.toISOString().slice(0, 10), status: "done", entry: 300, split: [3, 2, 1], refund: true,
+      holder: "d0", players: ids, out: order.slice(0, -1), createdAt: k};
+  }
+  return d;
+}
+function mock(fn, a){
+  return new Promise((resolve, reject) => setTimeout(() => {
+    const d = demoDb(); const save = () => lsSet(DEMO_KEY, JSON.stringify(d));
+    const fail = m => reject(new Error(m));
+    const norm = p => { let x = String(p || "").replace(/\D/g, ""); if (x.length === 11 && x[0] === "8") x = "7" + x.slice(1); if (x.length === 10) x = "7" + x; return x; };
+    const auth = () => { const pid = d.sessions[a.p_token]; if (!pid || !d.players[pid]) { fail("Сессия устарела, войдите заново"); return null; } return pid; };
+    const admin = () => { const pid = auth(); if (!pid) return null; if (!d.players[pid].isAdmin) { fail("Это может делать только админ лиги"); return null; } return pid; };
+    switch (fn) {
+      case "poker_state": {
+        const players = {}; for (const [id, p] of Object.entries(d.players)) players[id] = {name: p.name, isAdmin: p.isAdmin, registered: !!p.pin, createdAt: p.createdAt};
+        const games = {}; for (const [id, g] of Object.entries(d.games)) games[id] = {...g, hasPhoto: !!d.photos[id]};
+        return resolve({players, games, settings: d.settings});
+      }
+      case "poker_photo": return resolve(d.photos[a.p_game] || null);
+      case "poker_login": {
+        if (!/^\d{4}$/.test(a.p_pin)) return fail("PIN — это 4 цифры");
+        const ph = norm(a.p_phone); const id = Object.keys(d.players).find(k => d.players[k].phone === ph);
+        if (!id) return fail("Этого номера нет в лиге. Попросите админа добавить вас");
+        const p = d.players[id]; let first = false;
+        if (!p.pin) { p.pin = a.p_pin; first = true; } else if (p.pin !== a.p_pin) return resolve({error: "Неверный PIN"});
+        const t = uid(); d.sessions[t] = id; save();
+        return resolve({token: t, playerId: id, isAdmin: p.isAdmin, firstTime: first});
+      }
+      case "poker_whoami": { const pid = d.sessions[a.p_token]; return resolve(pid && d.players[pid] ? {playerId: pid, isAdmin: d.players[pid].isAdmin} : null); }
+      case "poker_logout": delete d.sessions[a.p_token]; save(); return resolve(null);
+      case "poker_change_pin": { const pid = auth(); if (!pid) return; if (d.players[pid].pin !== a.p_old) return fail("Старый PIN неверный"); if (!/^\d{4}$/.test(a.p_new)) return fail("Новый PIN — это 4 цифры"); d.players[pid].pin = a.p_new; save(); return resolve(null); }
+      case "poker_rename": { const pid = auth(); if (!pid) return; d.players[pid].name = String(a.p_name).trim().slice(0, 24); save(); return resolve(null); }
+      case "poker_admin_players": { if (!admin()) return; const r = {}; for (const [id, p] of Object.entries(d.players)) r[id] = {phone: p.phone}; return resolve(r); }
+      case "poker_save_player": {
+        const me = admin(); if (!me) return;
+        const ph = a.p_phone ? norm(a.p_phone) : null;
+        if (ph && Object.entries(d.players).some(([k, p]) => p.phone === ph && k !== a.p_id)) return fail("Этот номер уже у другого игрока");
+        if (a.p_id === me && !a.p_is_admin) return fail("Нельзя снять админа с самого себя");
+        const old = d.players[a.p_id];
+        d.players[a.p_id] = {...(old || {createdAt: Date.now()}), name: String(a.p_name).trim(), phone: ph, isAdmin: !!a.p_is_admin, pin: old && old.phone === ph ? old.pin : null};
+        save(); return resolve(null);
+      }
+      case "poker_delete_player": { const me = admin(); if (!me) return; if (a.p_id === me) return fail("Нельзя удалить самого себя"); delete d.players[a.p_id]; save(); return resolve(null); }
+      case "poker_reset_pin": { if (!admin()) return; if (d.players[a.p_id]) d.players[a.p_id].pin = null; save(); return resolve(null); }
+      case "poker_save_game": { if (!admin()) return; const g = {...a.p_data}; delete g.hasPhoto; d.games[a.p_id] = g; save(); return resolve(null); }
+      case "poker_delete_game": { if (!admin()) return; delete d.games[a.p_id]; delete d.photos[a.p_id]; save(); return resolve(null); }
+      case "poker_save_photo": { if (!admin()) return; if (a.p_data) d.photos[a.p_game] = a.p_data; else delete d.photos[a.p_game]; try { save(); } catch {} return resolve(null); }
+      case "poker_save_settings": { if (!admin()) return; d.settings = a.p_data; save(); return resolve(null); }
+    }
+    fail("Неизвестная команда");
+  }, 150));
+}
+
+/* ================= tournament math ================= */
+function prizeTable(n, entry, split, refund){
+  const pool = n * entry;
+  if (n < 2) return {pool, prizes: [pool]};
+  const k = Math.max(1, Math.min(split.length, n - 1));
+  const back = refund && k >= 3 ? entry : 0;
+  const top = back ? k - 1 : k;
+  const w = split.slice(0, top), ws = w.reduce((a, b) => a + b, 0), rest = pool - back;
+  const prizes = w.map(x => Math.floor(rest * x / ws / 10) * 10);
+  prizes[0] += rest - prizes.reduce((a, b) => a + b, 0);
+  if (back) prizes.push(back);
+  return {pool, prizes};
+}
+function results(g){
+  const n = g.players.length, out = g.out || [];
+  const {pool, prizes} = prizeTable(n, g.entry, g.split || [3, 2, 1], g.refund !== false);
+  const res = {};
+  out.forEach((p, i) => { res[p] = {place: n - i}; });
+  const alive = g.players.filter(p => !out.includes(p));
+  if (alive.length === 1) res[alive[0]] = {place: 1};
+  for (const p of Object.keys(res)) { const pr = prizes[res[p].place - 1] || 0; res[p].prize = pr; res[p].net = pr - g.entry; }
+  return {res, alive, pool, prizes, n, finished: alive.length === 1};
+}
+const allGames = () => Object.entries(S.games).map(([id, g]) => ({id, ...g})).filter(g => Array.isArray(g.players));
+const doneGames = () => allGames().filter(g => g.status === "done").sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.createdAt || 0) - (b.createdAt || 0));
+const liveGame = () => allGames().find(g => g.status === "live") || null;
+const orderOf = g => { const R = results(g); return Object.keys(R.res).sort((a, b) => R.res[a].place - R.res[b].place); };
+
+function compute(){
+  const games = doneGames(), P = {};
+  const ensure = pid => P[pid] || (P[pid] = {id: pid, rating: 1000, hist: [1000], games: 0, wins: 0, cashes: 0, total: 0, places: [], log: [],
+    lastDelta: 0, maxDelta: 0, bubble: false, firstOut: false, comeback: false, above: {}, below: {}});
+  Object.keys(S.players).forEach(ensure);
+  for (const g of games) {
+    const R = results(g); if (!R.finished) continue;
+    const ids = Object.keys(R.res); ids.forEach(ensure);
+    const k = R.prizes.length, d = {}; ids.forEach(p => d[p] = 0);
+    for (const a of ids) for (const b of ids) if (a !== b) {
+      const sa = R.res[a].place < R.res[b].place ? 1 : 0;
+      const ea = 1 / (1 + Math.pow(10, (P[b].rating - P[a].rating) / 400));
+      d[a] += 32 * (sa - ea) / (ids.length - 1);
+      if (sa) { P[a].below[b] = (P[a].below[b] || 0) + 1; P[b].above[a] = (P[b].above[a] || 0) + 1; }
+    }
+    for (const p of ids) {
+      const s = P[p], r = R.res[p], cashed = r.prize > 0, last3 = s.log.slice(-3);
+      if (cashed && last3.length === 3 && last3.every(x => !x.cashed)) s.comeback = true;
+      s.rating += d[p]; s.lastDelta = d[p]; s.maxDelta = Math.max(s.maxDelta, d[p]); s.hist.push(s.rating);
+      s.games++; if (r.place === 1) s.wins++; if (cashed) s.cashes++;
+      s.total += r.net; s.places.push(r.place);
+      if (r.place === k + 1) s.bubble = true;
+      if (r.place === R.n && R.n > 2) s.firstOut = true;
+      s.log.push({gid: g.id, date: g.date, place: r.place, n: R.n, cashed, net: r.net, prize: r.prize});
+    }
+  }
+  const list = Object.values(P).filter(p => S.players[p.id]);
+  const ranked = list.filter(p => p.games > 0).sort((a, b) => b.rating - a.rating);
+  const fresh = list.filter(p => p.games === 0).sort((a, b) => name(a.id).localeCompare(name(b.id)));
+  const mostLoss = list.filter(p => p.games).sort((a, b) => a.total - b.total)[0];
+  const topWins = list.slice().sort((a, b) => b.wins - a.wins);
+  const shark = topWins[0] && topWins[0].wins >= 2 && (!topWins[1] || topWins[1].wins < topWins[0].wins) ? topWins[0] : null;
+  return {P, ranked, fresh, games, mostLoss, shark};
+}
+
+/* ================= statuses & achievements ================= */
+const LEVELS = [
+  {n: "Рыба", min: -Infinity}, {n: "Любитель", min: 960}, {n: "Регуляр", min: 1000},
+  {n: "Акула", min: 1040}, {n: "Профи", min: 1080}, {n: "Легенда", min: 1120},
+];
+function statusOf(p){
+  if (p.games < 3) return {n: "Новичок", next: "статуса", pct: p.games / 3, hint: `ещё ${3 - p.games} ${plural(3 - p.games, "вечер", "вечера", "вечеров")} до статуса`};
+  let i = 0; for (let j = 0; j < LEVELS.length; j++) if (p.rating >= LEVELS[j].min) i = j;
+  const L = LEVELS[i], N = LEVELS[i + 1];
+  if (!N) return {n: L.n, pct: 1, hint: "высший статус"};
+  const lo = isFinite(L.min) ? L.min : N.min - 40;
+  const pct = Math.max(0, Math.min(1, (p.rating - lo) / (N.min - lo)));
+  return {n: L.n, pct, hint: `→ ${N.n}: ещё ${Math.ceil(N.min - p.rating)} очк.`};
+}
+function achievements(p, C){
+  let streak = 0, c = 0; for (const x of p.log) { c = x.cashed ? c + 1 : 0; streak = Math.max(streak, c); }
+  const A = (g, t, d, cur, goal) => ({g, t, d, cur: Math.min(cur, goal), goal, on: cur >= goal});
+  return [
+    A("A♠", "Первая кровь", "Попасть в призы", p.cashes, 1),
+    A("♛", "Чемпион", "Выиграть вечер", p.wins, 1),
+    A("♛5", "Серийный победитель", "Выиграть 5 вечеров", p.wins, 5),
+    A("3×", "Горячая рука", "Три вечера подряд в призах", streak, 3),
+    A("10", "Стабильный", "Попасть в топ-3 десять раз", p.cashes, 10),
+    A("↗", "Восходящая звезда", "Набрать +15 рейтинга за вечер", Math.round(p.maxDelta), 15),
+    A("◯", "Пузырь", "Вылететь сразу за призовыми", p.bubble ? 1 : 0, 1),
+    A("↺", "Феникс", "Призы после трёх вечеров без денег", p.comeback ? 1 : 0, 1),
+    A("7♣", "Камикадзе", "Вылететь самым первым", p.firstOut ? 1 : 0, 1),
+    A("J♦", "Завсегдатай", "Сыграть 10 вечеров", p.games, 10),
+    A("K♣", "Ветеран", "Сыграть 30 вечеров", p.games, 30),
+    A("♛♛", "Акула", "Больше всех побед в лиге", C.shark && C.shark.id === p.id ? 1 : 0, 1),
+    A("$", "Банкомат", "Самый большой общий минус в лиге", C.mostLoss && C.mostLoss.id === p.id && p.total < 0 ? 1 : 0, 1),
+  ];
+}
+function titleFor(p, i, total){
+  if (i === 0) return "Дон стола";
+  if (i === total - 1 && total > 2) return "Спонсор вечера";
+  if (p.lastDelta > 12) return "На взлёте";
+  if (p.lastDelta < -12) return "В пике";
+  return "";
+}
+function headline(g){
+  const R = results(g); if (!R.finished) return "Вечер без победителя";
+  const order = orderOf(g);
+  const w = name(order[0]), first = name(order[order.length - 1]), second = order[1] ? name(order[1]) : "";
+  const opts = [`${w} забирает ${money(R.res[order[0]].prize)}`, `${w} выигрывает, ${first} первым уходит из-за стола`,
+    `${w} дожимает ${second} в хедз-апе`, `Вечер имени ${w}: банк ${money(R.pool)}`];
+  return opts[hash(g.id) % opts.length];
+}
+
+/* ================= small renderers ================= */
+function spark(hist, w = 90, h = 26, full){
+  if (hist.length < 2) return "";
+  const min = Math.min(...hist), max = Math.max(...hist), span = max - min || 1;
+  const pts = hist.map((v, i) => [(i / (hist.length - 1)) * (w - 4) + 2, h - 3 - ((v - min) / span) * (h - 6)]);
+  const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const c = hist[hist.length - 1] >= hist[0] ? "--pos" : "--neg", last = pts[pts.length - 1];
+  return `<svg width="${full ? "100%" : w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true" style="display:block">
+    <path d="${d} L ${last[0].toFixed(1)} ${h} L 2 ${h} Z" fill="var(${c})" opacity=".12"/>
+    <path d="${d}" fill="none" stroke="var(${c})" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+const pcard = (rank, pid) => { const s = suitOf(pid); return `<div class="pcard ${isRed(s) ? "red" : ""}" aria-hidden="true"><span class="c tl">${rank}<br>${s}</span><span class="mid">${s}</span><span class="c br">${rank}<br>${s}</span></div>`; };
+const miniCard = (rank, pid) => { const s = suitOf(pid); return `<span class="mini ${isRed(s) ? "red" : ""}" aria-hidden="true">${rank}<span>${s}</span></span>`; };
+const formDots = log => `<span class="form" title="Последние вечера: золото — победа, зелёный — в призах">${log.slice(-5).map(x => `<i class="${x.place === 1 ? "g" : x.cashed ? "w" : "l"}"></i>`).join("")}</span>`;
+const prizeChips = prizes => `<div class="prizes">${prizes.map((x, i) => `<span class="prize"><span class="place cash">${i + 1}</span><b>${money(x)}</b></span>`).join("")}</div>`;
+const empty = (big, title, text, cta) => `<div class="panel empty"><div class="big">${big}</div><h2>${title}</h2><p class="muted" style="max-width:44ch">${text}</p>${cta || ""}</div>`;
+
+/* ================= views ================= */
+function vLogin(){
+  const s = DEMO ? `<div class="banner"><span><b>Демо-лига.</b> Войдите по номеру <b class="num">+7 900 000-00-01</b> (админ) или …02–07, PIN — любые 4 цифры.</span></div>` : "";
+  return `<section class="login">
+    <div class="fan">${["A","K","Q"].map((r, i) => { const su = ["♠","♥","♣"][i]; return `<div class="pcard ${isRed(su) ? "red" : ""}" style="left:calc(50% - 42px + ${(i - 1) * 46}px);transform:rotate(${(i - 1) * 12}deg) translateY(${Math.abs(i - 1) * 8}px)"><span class="c tl">${r}<br>${su}</span><span class="mid">${su}</span><span class="c br">${r}<br>${su}</span></div>`; }).join("")}</div>
+    <div style="text-align:center;display:flex;flex-direction:column;gap:6px"><h2>Вход в личный кабинет</h2><p class="muted">Номер телефона, который вы дали админу лиги, и ваш PIN из 4 цифр.</p></div>
+    ${s}
+    <form id="loginForm" class="panel">
+      <label class="fld">Номер телефона<input type="tel" id="l-phone" autocomplete="tel" inputmode="tel" placeholder="+7 900 000-00-00" value="${esc(lsGet("poker-phone") || "")}" required></label>
+      <label class="fld">PIN<input type="password" id="l-pin" class="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="current-password" placeholder="••••" required></label>
+      <p class="muted" style="font-size:13px">Впервые? Придумайте PIN сейчас — он сохранится, и дальше вход будет по нему.</p>
+      ${S.loginErr ? `<p class="err">${esc(S.loginErr)}</p>` : ""}
+      <button class="btn wide" type="submit" ${S.busy ? "disabled" : ""}>${S.busy ? "Вхожу…" : "Войти"}</button>
+    </form>
+    <button class="btn ghost" data-act="guest">Посмотреть рейтинг без входа</button>
+  </section>`;
+}
+
+function profileBlock(pid, own){
+  const C = compute(), p = C.P[pid];
+  if (!p || !S.players[pid]) return empty("?", "Игрок не найден", "Возможно, его удалили из лиги.", `<a class="btn" href="#rating">К рейтингу</a>`);
+  const rank = C.ranked.findIndex(x => x.id === pid);
+  const st = statusOf(p), ach = achievements(p, C);
+  const nem = Object.entries(p.above).sort((a, b) => b[1] - a[1])[0], vic = Object.entries(p.below).sort((a, b) => b[1] - a[1])[0];
+  const avg = p.places.length ? (p.places.reduce((a, b) => a + b, 0) / p.places.length).toFixed(1).replace(".", ",") : "—";
+  const best = p.places.length ? Math.min(...p.places) : null;
+  const nm = name(pid);
+  let html = `<section class="me">
+    <div class="top">${pcard(rank >= 0 ? RANKS[Math.min(rank, 12)] : "·", pid)}
+      <div style="min-width:0;display:flex;flex-direction:column;gap:6px">
+        ${own && S.editName ? `<form id="renameForm" class="row" style="gap:6px"><input type="text" id="r-name" maxlength="24" value="${esc(nm)}" style="flex:1"><button class="btn sm" style="background:var(--felt-ink);color:var(--felt)" type="submit">OK</button></form>`
+          : `<div class="name">${esc(nm)}${own ? `<button data-act="edit-name" aria-label="Изменить имя">✎</button>` : ""}</div>`}
+        <div class="line"><span><b>${Math.round(p.rating)}</b> очк.</span><span><b>${p.games}</b> ${plural(p.games, "игра", "игры", "игр")}</span><span><b>${p.wins}</b> ${plural(p.wins, "победа", "победы", "побед")}</span>${rank >= 0 ? `<span><b>#${rank + 1}</b> из ${C.ranked.length}</span>` : ""}</div>
+      </div></div>
+    <div class="status"><div class="r1"><span class="badge">${st.n}</span><span>${st.hint}</span></div><div class="bar"><i style="width:${Math.round(st.pct * 100)}%"></i></div></div>
+  </section>`;
+  if (p.hist.length > 1) html += `<section class="panel" style="gap:6px"><div class="row spread"><span class="eyebrow">Рейтинг по вечерам</span><span class="num muted" style="font-size:12px">${Math.round(Math.min(...p.hist))}–${Math.round(Math.max(...p.hist))}</span></div>${spark(p.hist, 320, 64, true)}</section>`;
+  html += `<div class="stats">
+    <div class="stat"><span>В призах</span><b>${p.games ? Math.round(p.cashes / p.games * 100) : 0}%</b></div>
+    <div class="stat"><span>Ср. место</span><b>${avg}</b></div>
+    <div class="stat"><span>Лучшее место</span><b>${best ?? "—"}</b></div>
+    <div class="stat"><span>Топ-3</span><b>${p.cashes}</b></div>
+    <div class="stat"><span>Итого</span><b class="${p.total >= 0 ? "pos" : "neg"}">${money(p.total, true)}</b></div>
+    <div class="stat"><span>Последний вечер</span><b>${p.log.length ? p.log[p.log.length - 1].place + " место" : "—"}</b></div>
+    <div class="stat"><span>Злой гений</span><b class="t">${nem ? esc(name(nem[0])) : "—"}</b><span>${nem ? `выше ${own ? "тебя" : "него"} ${nem[1]} ${plural(nem[1], "раз", "раза", "раз")}` : "кто чаще всех обходит"}</span></div>
+    <div class="stat"><span>Любимая жертва</span><b class="t">${vic ? esc(name(vic[0])) : "—"}</b><span>${vic ? `ниже ${vic[1]} ${plural(vic[1], "раз", "раза", "раз")}` : "кого обходит чаще всех"}</span></div>
+  </div>`;
+  html += `<section style="display:flex;flex-direction:column;gap:10px"><div class="row spread"><h2>Достижения</h2><span class="muted">Открыто <b>${ach.filter(a => a.on).length}</b> из ${ach.length}</span></div>
+    <div class="ach">${ach.map(a => `<div class="badge-a ${a.on ? "" : "off"}"><span class="g">${a.g}</span><b>${a.t}</b><span>${esc(a.d)}</span>
+      ${a.goal > 1 ? `<div class="pr"><div class="bar"><i style="width:${Math.round(a.cur / a.goal * 100)}%"></i></div><small>${a.cur}/${a.goal}</small></div>` : ""}</div>`).join("")}</div></section>`;
+  if (p.log.length) {
+    html += `<section class="panel"><h3>История</h3><table class="res"><tbody>${p.log.slice().reverse().slice(0, 12).map(x => `<tr><td><span class="place ${x.cashed ? "cash" : ""}">${x.place === 1 ? "♛" : x.place}</span> ${fmtDate(x.date)} <span class="muted" style="font-size:12px">· из ${x.n}</span></td><td class="r ${x.net >= 0 ? "pos" : "neg"}">${money(x.net, true)}</td></tr>`).join("")}</tbody></table></section>`;
+  }
+  return html;
+}
+
+function vHome(){
+  if (!S.me) return vLogin();
+  let html = profileBlock(S.me.playerId, true);
+  const lg = liveGame();
+  if (lg && lg.players.includes(S.me.playerId)) html = `<div class="banner"><span><b>Идёт игра.</b> Вы за столом, банк ${money(results(lg).pool)}.</span></div>` + html;
+  html += `<section class="panel"><h3>Аккаунт</h3>
+    ${S.pinForm ? `<form id="pinForm" class="row">
+        <label class="fld">Старый PIN<input type="password" id="p-old" inputmode="numeric" maxlength="4" class="num"></label>
+        <label class="fld">Новый PIN<input type="password" id="p-new" inputmode="numeric" maxlength="4" class="num"></label>
+        <button class="btn" type="submit">Сохранить</button></form>`
+      : `<div class="row"><button class="btn ghost sm" data-act="pin-form">Сменить PIN</button><button class="btn ghost sm" data-act="logout">Выйти</button></div>`}
+  </section>`;
+  return html;
+}
+
+function vRating(){
+  if (!S.loaded) return "";
+  const C = compute();
+  if (!C.ranked.length) return empty("♠♥♣♦", "Рейтинг появится после первого вечера", "Как только админ запишет первый вечер, здесь будет таблица лиги.");
+  const L = C.ranked[0], mine = S.me && S.me.playerId;
+  let html = `<a class="hero" href="#p-${L.id}" style="text-decoration:none;color:inherit">${pcard("A", L.id)}
+    <div style="min-width:0;display:flex;flex-direction:column;gap:4px"><span class="eyebrow">Лидер лиги · Дон стола</span><div class="name">${esc(name(L.id))}</div>
+    <div class="num muted" style="font-size:13px">${Math.round(L.rating)} очк. · ${L.wins} ${plural(L.wins, "победа", "победы", "побед")} · ${money(L.total, true)}</div></div></a>`;
+  html += `<div class="row spread"><h2>Таблица</h2><span class="muted" style="font-size:12px">Ранг карты = место · очки Эло</span></div><div class="board">`;
+  C.ranked.forEach((p, i) => {
+    const t = titleFor(p, i, C.ranked.length);
+    html += `<a class="lrow ${p.id === mine ? "mine" : ""}" href="#p-${p.id}">${miniCard(RANKS[Math.min(i, 12)], p.id)}
+      <span style="min-width:0;display:flex;flex-direction:column;gap:3px"><span class="nm">${esc(name(p.id))}${p.id === mine ? ` <span class="tag on">вы</span>` : ""}</span>
+      <span class="sub">${formDots(p.log)}${p.wins ? `<span>♛×${p.wins}</span>` : ""}<span class="num ${p.total >= 0 ? "pos" : "neg"}">${money(p.total, true)}</span>${t ? `<span>· ${t}</span>` : ""}</span></span>
+      <span class="rt"><span class="big">${Math.round(p.rating)}</span><small class="${p.lastDelta >= 0 ? "pos" : "neg"}">${p.lastDelta >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(p.lastDelta))}</small>${spark(p.hist, 64, 18)}</span></a>`;
+  });
+  C.fresh.forEach(p => { html += `<a class="lrow ${p.id === mine ? "mine" : ""}" href="#p-${p.id}">${miniCard("·", p.id)}<span style="min-width:0"><span class="nm">${esc(name(p.id))}</span><span class="sub">ещё не играл</span></span><span class="rt"><span class="big muted">1000</span></span></a>`; });
+  html += `</div>`;
+  const pool = C.games.reduce((a, g) => a + results(g).pool, 0);
+  html += `<div class="stats"><div class="stat"><span>Вечеров</span><b>${C.games.length}</b></div><div class="stat"><span>Разыграно</span><b>${money(pool)}</b></div>
+    ${C.shark ? `<div class="stat"><span>Больше всех побед</span><b>♛×${C.shark.wins}</b><span>${esc(name(C.shark.id))}</span></div>` : ""}</div>`;
+  return html;
+}
+
+function vNights(){
+  if (!S.loaded) return "";
+  const games = doneGames().reverse(), mine = S.me && S.me.playerId;
+  if (!games.length) return empty("♣", "Здесь будет хроника вечеров", "После каждого вечера — места, призы и фото последней раздачи.");
+  return `<h2>Вечера</h2>` + games.map(g => {
+    const R = results(g), ids = orderOf(g), k = "del-" + g.id, ph = S.photos[g.id];
+    return `<article class="panel night"><span class="eyebrow">${fmtDate(g.date)} · ${R.n} ${plural(R.n, "игрок", "игрока", "игроков")} по ${money(g.entry)} · банк ${money(R.pool)}</span>
+      <div class="head">${esc(headline(g))}</div>
+      ${g.note ? `<p>${esc(g.note)}</p>` : ""}
+      <table class="res"><tbody>${ids.map(p => { const r = R.res[p]; return `<tr class="${p === mine ? "mine" : ""}"><td><span class="place ${r.prize ? "cash" : ""}">${r.place === 1 ? "♛" : r.place}</span> <a href="#p-${p}" style="color:inherit">${esc(name(p))}</a></td><td class="r">${r.prize ? `<b>${money(r.prize)}</b> <span class="${r.net >= 0 ? "pos" : "neg"}" style="font-size:12px">${money(r.net, true)}</span>` : `<span class="neg">${money(r.net, true)}</span>`}</td></tr>`; }).join("")}</tbody></table>
+      ${g.hasPhoto ? (ph === "loading" ? `<p class="muted">Загружаю фото…</p>` : ph ? `<img class="photo" src="${ph}" alt="Последняя раздача вечера ${fmtDate(g.date)}">` : `<button class="btn ghost sm" data-act="photo" data-id="${g.id}">Фото последней раздачи</button>`) : ""}
+      ${g.holder ? `<span class="muted" style="font-size:13px">Деньги собирал(а) ${esc(name(g.holder))}</span>` : ""}
+      ${isAdmin() ? `<div class="row"><button class="btn ghost sm" data-act="edit-game" data-id="${g.id}">Исправить</button>
+        <button class="btn danger sm ${S.armed === k ? "armed" : ""}" data-act="delgame" data-id="${g.id}">${S.armed === k ? "Точно удалить?" : "Удалить"}</button></div>` : ""}</article>`;
+  }).join("");
+}
+
+/* ---------- admin ---------- */
+function vAdmin(){
+  if (!isAdmin()) return empty("♠", "Только для админа", "Записывать вечера может админ лиги или тот, кого он назначит.");
+  const tabs = [["result", "Записать вечер"], ["live", "Стол вживую"], ["players", "Игроки"], ["rules", "Правила"]];
+  return `<div class="chips">${tabs.map(([k, t]) => `<button class="chip" data-act="atab" data-id="${k}" aria-pressed="${S.adminTab === k}">${t}${k === "live" && liveGame() ? " •" : ""}</button>`).join("")}</div>`
+    + ({result: aResult, live: aLive, players: aPlayers, rules: aRules})[S.adminTab]();
+}
+function newForm(){ return {id: null, date: today(), entry: S.settings.entry || 300, order: [], holder: "", note: "", photo: undefined, hadPhoto: false}; }
+function aResult(){
+  const f = S.form || (S.form = newForm());
+  const ids = Object.keys(S.players).sort((a, b) => name(a).localeCompare(name(b)));
+  const pt = prizeTable(f.order.length, f.entry, parseSplit(S.settings.split), S.settings.refund !== false);
+  const photoState = f.photo ? `<img class="photo" src="${f.photo}" alt="Фото раздачи">` : f.photo === null ? `<p class="muted">Фото будет удалено</p>` : f.hadPhoto ? `<p class="muted">Фото уже загружено</p>` : "";
+  return `<section class="panel"><div><span class="eyebrow">${f.id ? "Исправление вечера" : "Новый вечер"}</span><h2>Кто какое место занял</h2></div>
+    <p class="muted" style="font-size:13px">Нажимайте на игроков по порядку мест: сначала победителя, потом второго, третьего и дальше до последнего.</p>
+    <div class="chips">${ids.map(p => `<button class="chip" data-act="f-add" data-id="${p}" ${f.order.includes(p) ? "disabled" : ""}>+ ${esc(name(p))}</button>`).join("")}</div>
+    ${f.order.length ? `<div class="order">${f.order.map((p, i) => `<div class="o"><span class="place ${pt.prizes[i] ? "cash" : ""}">${i + 1}</span><span class="nm">${esc(name(p))}</span>
+        <span class="ctl">${pt.prizes[i] ? `<b>${money(pt.prizes[i])}</b>` : ""}<button class="iconbtn" data-act="f-up" data-id="${i}" aria-label="Выше" ${i === 0 ? "disabled" : ""}>↑</button><button class="iconbtn" data-act="f-down" data-id="${i}" aria-label="Ниже" ${i === f.order.length - 1 ? "disabled" : ""}>↓</button><button class="iconbtn" data-act="f-del" data-id="${i}" aria-label="Убрать">✕</button></span></div>`).join("")}</div>` : ""}
+    <div class="row"><label class="fld">Дата<input type="date" id="f-date" value="${esc(f.date)}"></label>
+      <label class="fld">Ставка с человека<input type="number" id="f-entry" inputmode="numeric" min="0" step="50" value="${f.entry}"></label></div>
+    <label class="fld">Деньги собирал<select id="f-holder"><option value="">не важно</option>${f.order.map(p => `<option value="${p}" ${p === f.holder ? "selected" : ""}>${esc(name(p))}</option>`).join("")}</select></label>
+    <label class="fld">Комментарий<input type="text" id="f-note" maxlength="140" placeholder="Например: финал на ривере, флеш против стрита" value="${esc(f.note)}"></label>
+    <div class="row"><label class="btn ghost sm" style="cursor:pointer">Фото последней раздачи<input type="file" id="f-photo" accept="image/*" hidden></label>
+      ${f.photo || f.hadPhoto ? `<button class="btn ghost sm" data-act="f-nophoto">Убрать фото</button>` : ""}</div>
+    ${photoState}
+    ${f.order.length >= 2 ? `<div class="transfers"><span class="eyebrow">Банк ${money(pt.pool)}</span>${f.order.slice(0, pt.prizes.length).map((p, i) => `<div class="t"><span>${i + 1} место · ${esc(name(p))}</span><b class="num">${money(pt.prizes[i])}</b></div>`).join("")}</div>` : ""}
+    <div class="row"><button class="btn" data-act="f-save" ${f.order.length < 2 || S.busy ? "disabled" : ""}>${S.busy ? "Сохраняю…" : f.id ? "Сохранить изменения" : "Записать вечер"}</button>
+      ${f.id || f.order.length ? `<button class="btn ghost" data-act="f-reset">Очистить</button>` : ""}</div></section>`;
+}
+function aLive(){
+  const g = liveGame(), pids = Object.keys(S.players).sort((a, b) => name(a).localeCompare(name(b)));
+  if (!g) {
+    const L = S.live, picked = L.picked || (L.picked = new Set(pids)), entry = L.entry ?? S.settings.entry ?? 300;
+    const pt = prizeTable(picked.size, entry, parseSplit(S.settings.split), S.settings.refund !== false);
+    return `<section class="panel"><div><span class="eyebrow">Стол вживую</span><h2>Кто сегодня играет?</h2></div>
+      <p class="muted" style="font-size:13px">По ходу игры жмите «Вылетел» — места и призы посчитаются сами, а игроки увидят, что идёт игра.</p>
+      <div class="chips">${pids.map(p => `<button class="chip" data-act="pick" data-id="${p}" aria-pressed="${picked.has(p)}">${esc(name(p))}</button>`).join("")}</div>
+      <div class="row"><label class="fld">Дата<input type="date" id="d-date" value="${esc(L.date)}"></label>
+        <label class="fld">Ставка<input type="number" id="d-entry" inputmode="numeric" min="0" step="50" value="${entry}"></label></div>
+      <label class="fld">Деньги собирает<select id="d-holder"><option value="">не важно</option>${pids.filter(p => picked.has(p)).map(p => `<option value="${p}" ${p === L.holder ? "selected" : ""}>${esc(name(p))}</option>`).join("")}</select></label>
+      ${picked.size >= 2 ? `<div><span class="eyebrow">Банк ${money(pt.pool)}</span><div style="margin-top:6px">${prizeChips(pt.prizes)}</div></div>` : ""}
+      <button class="btn" data-act="start" ${picked.size < 2 || S.busy ? "disabled" : ""}>Начать (${picked.size})</button></section>`;
+  }
+  const R = results(g), out = g.out || [];
+  let html = `<section class="panel"><div><span class="eyebrow">Идёт игра · ${fmtDate(g.date)}</span><h2>Банк <span class="num">${money(R.pool)}</span></h2>${g.holder ? `<span class="muted" style="font-size:13px">банк держит ${esc(name(g.holder))}</span>` : ""}</div>${prizeChips(R.prizes)}`;
+  if (R.finished) {
+    const w = R.alive[0], paid = Object.keys(R.res).filter(p => R.res[p].prize > 0).sort((a, b) => R.res[a].place - R.res[b].place);
+    html += `<div class="winner"><span class="eyebrow" style="color:inherit;opacity:.8">Победитель</span><span class="name">${esc(name(w))}</span><span class="num">${money(R.res[w].prize)}</span></div>
+      <div class="transfers"><span class="eyebrow">${g.holder ? esc(name(g.holder)) + " выдаёт призы" : "Выдать призы"}</span>${paid.map(p => `<div class="t"><span>${R.res[p].place} место · ${esc(name(p))}</span><b class="num">${money(R.res[p].prize)}</b></div>`).join("")}</div>`;
+  } else {
+    html += `<span class="eyebrow">В игре · ${R.alive.length}</span>` + R.alive.map(p => `<div class="seat"><div class="nm">${esc(name(p))}</div><button class="btn ghost sm" data-act="bust" data-id="${p}" ${S.busy ? "disabled" : ""}>Вылетел</button></div>`).join("");
+    const late = pids.filter(p => !g.players.includes(p));
+    if (late.length && !out.length) html += `<div><span class="eyebrow">Подсел позже</span><div class="chips" style="margin-top:6px">${late.map(p => `<button class="chip" data-act="join" data-id="${p}">+ ${esc(name(p))}</button>`).join("")}</div></div>`;
+  }
+  if (out.length) html += `<span class="eyebrow">Вылетели</span>` + out.slice().reverse().map((p, i) => { const r = R.res[p]; return `<div class="seat"><div class="row" style="gap:6px;min-width:0"><span class="place ${r.prize ? "cash" : ""}">${r.place}</span><span class="nm">${esc(name(p))}</span></div><div class="row" style="gap:6px">${r.prize ? `<b class="num">${money(r.prize)}</b>` : ""}${i === 0 && !R.finished ? `<button class="btn ghost sm" data-act="unbust">Вернуть</button>` : ""}</div></div>`; }).join("");
+  html += `<div class="row">${R.finished ? `<button class="btn" data-act="finish" ${S.busy ? "disabled" : ""}>Записать вечер</button><button class="btn ghost" data-act="unbust">Шаг назад</button>` : ""}
+    <button class="btn danger ${S.armed === "cancel" ? "armed" : ""}" data-act="cancel">${S.armed === "cancel" ? "Точно отменить?" : "Отменить вечер"}</button></div></section>`;
+  return html;
+}
+function aPlayers(){
+  if (!S.phones) { rpc("poker_admin_players", {p_token: S.token}).then(r => { S.phones = r || {}; render(); }).catch(e => toast(e.message)); S.phones = {}; }
+  const ids = Object.keys(S.players).sort((a, b) => name(a).localeCompare(name(b))), ep = S.editPlayer, np = S.newPlayer;
+  return `<section class="panel"><h2>Добавить игрока</h2>
+    <form id="addForm" style="display:flex;flex-direction:column;gap:10px">
+      <div class="row"><label class="fld">Имя<input type="text" id="n-name" maxlength="24" value="${esc(np.name)}" required></label>
+        <label class="fld">Телефон<input type="tel" id="n-phone" inputmode="tel" placeholder="+7 900 000-00-00" value="${esc(np.phone)}"></label></div>
+      <label class="chk"><input type="checkbox" id="n-admin" ${np.admin ? "checked" : ""}> Может записывать вечера (админ)</label>
+      <button class="btn" type="submit" ${S.busy ? "disabled" : ""}>Добавить</button></form>
+    <p class="muted" style="font-size:13px">Скиньте другу ссылку на сайт: он войдёт по этому номеру и сам придумает PIN.</p></section>
+  <section class="panel" style="gap:0"><h2 style="margin-bottom:8px">Игроки · ${ids.length}</h2>${ids.map(p => {
+    const pl = S.players[p], phone = S.phones[p] && S.phones[p].phone;
+    if (ep && ep.id === p) return `<form class="prow" id="editForm" style="grid-template-columns:1fr"><div class="row"><label class="fld">Имя<input type="text" id="e-name" maxlength="24" value="${esc(ep.name)}"></label><label class="fld">Телефон<input type="tel" id="e-phone" value="${esc(ep.phone)}"></label></div>
+      <label class="chk"><input type="checkbox" id="e-admin" ${ep.admin ? "checked" : ""}> Админ</label>
+      <div class="row"><button class="btn sm" type="submit">Сохранить</button><button class="btn ghost sm" type="button" data-act="e-cancel">Отмена</button>
+        <button class="btn ghost sm" type="button" data-act="resetpin" data-id="${p}">Сбросить PIN</button>
+        <button class="btn danger sm ${S.armed === "delp-" + p ? "armed" : ""}" type="button" data-act="delplayer" data-id="${p}">${S.armed === "delp-" + p ? "Удалить? История останется" : "Удалить"}</button></div>
+      <p class="muted" style="font-size:12px">При смене номера PIN сбрасывается — игрок придумает новый при входе.</p></form>`;
+    return `<div class="prow"><div style="min-width:0"><div style="font-weight:700">${esc(pl.name)} ${pl.isAdmin ? `<span class="tag on">админ</span>` : ""} ${pl.registered ? `<span class="tag">заходил</span>` : ""}</div><div class="muted num" style="font-size:13px">${phone ? fmtPhone(phone) : "без номера"}</div></div>
+      <button class="btn ghost sm" data-act="e-open" data-id="${p}">Изменить</button></div>`;
+  }).join("")}</section>`;
+}
+function aRules(){
+  const ex = prizeTable(6, S.settings.entry || 300, parseSplit(S.settings.split), S.settings.refund !== false);
+  return `<section class="panel"><h2>Правила лиги</h2>
+    <form id="rulesForm" style="display:flex;flex-direction:column;gap:12px">
+    <div class="row"><label class="fld">Название<input type="text" id="s-name" maxlength="40" value="${esc(S.settings.name)}"></label>
+      <label class="fld" style="max-width:100px">Валюта<input type="text" id="s-cur" maxlength="4" value="${esc(cur())}"></label></div>
+    <div class="row"><label class="fld">Ставка по умолчанию<input type="number" id="s-entry" min="0" step="50" value="${S.settings.entry}"></label>
+      <label class="fld">Деление банка<input type="text" id="s-split" maxlength="20" value="${esc(S.settings.split)}"></label></div>
+    <label class="chk"><input type="checkbox" id="s-refund" ${S.settings.refund !== false ? "checked" : ""}> Третье место возвращает свою ставку (уходит в ноль)</label>
+    <div><span class="eyebrow">Пример: 6 игроков по ${money(S.settings.entry || 300)}</span><div style="margin-top:6px">${prizeChips(ex.prizes)}</div></div>
+    <p class="muted" style="font-size:13px">С галочкой: третьему возвращается ставка, остальное делят первый и второй как 3:2. Без галочки банк делится как 3:2:1. «1» — всё победителю.</p>
+    <button class="btn" type="submit" ${S.busy ? "disabled" : ""}>Сохранить правила</button></form></section>`;
+}
+
+/* ================= render ================= */
+function route(){
+  const h = (location.hash || "").slice(1);
+  if (h.startsWith("p-")) return {name: "profile", id: h.slice(2)};
+  if (["home", "rating", "nights", "admin"].includes(h)) return {name: h};
+  return {name: S.me ? "home" : "rating"};
+}
+function render(){
+  const r = route();
+  const tabs = [];
+  if (S.me) tabs.push(["home", "♠", "Кабинет"]);
+  tabs.push(["rating", "♛", "Рейтинг"], ["nights", "♣", "Вечера"]);
+  if (isAdmin()) tabs.push(["admin", "✎", "Админ"]);
+  if (!S.me) tabs.push(["home", "→", "Войти"]);
+  const showTabs = S.me || S.guest;
+  $("#tabbar").hidden = !showTabs;
+  const active = r.name === "profile" ? (S.me && r.id === S.me.playerId ? "home" : "rating") : r.name;
+  $("#tabs").innerHTML = tabs.map(([k, ic, t]) => `<a href="#${k}" ${k === active ? 'aria-current="page"' : ""}><span class="ic">${ic}</span>${t}${k === "admin" && liveGame() ? '<span class="dot"></span>' : ""}</a>`).join("");
+  $("#leagueName").textContent = S.settings.name || DEFAULTS.name;
+  document.title = S.settings.name || DEFAULTS.name;
+  const n = doneGames().length;
+  $("#seasonLine").innerHTML = n ? `${n} ${plural(n, "вечер", "вечера", "вечеров")}<br>${Object.keys(S.players).length} игроков` : "";
+  let note = "";
+  if (DEMO) note = `<div class="banner"><span><b>Демо.</b> Выдуманные игроки, всё хранится только в этом браузере.</span><button class="btn ghost sm" data-act="demo-reset">Сбросить демо</button></div>`;
+  if (S.err) note += `<div class="banner"><span>${esc(S.err)}</span><button class="btn sm" data-act="reload">Повторить</button></div>`;
+  $("#notice").innerHTML = note;
+
+  let html;
+  if (!S.me && !S.guest) html = vLogin();
+  else if (!S.loaded) html = S.err ? "" : `<p class="muted spin">Загружаю лигу…</p>`;
+  else if (r.name === "profile") html = (S.players[r.id] ? `<a href="#rating" class="muted" style="font-size:14px;text-decoration:none">← Рейтинг</a>` : "") + profileBlock(r.id, S.me && r.id === S.me.playerId);
+  else html = ({home: vHome, rating: vRating, nights: vNights, admin: vAdmin})[r.name]();
+
+  const a = document.activeElement; const keepId = a && a.id && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.type !== "file" ? a.id : null;
+  const keepVal = keepId ? a.value : null;
+  $("#view").innerHTML = html;
+  if (keepId) { const el = document.getElementById(keepId); if (el) { el.value = keepVal; el.focus(); } }
+}
+let toastT;
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3500); }
+
+/* ================= actions ================= */
+const saveGame = (id, data) => act("poker_save_game", {p_id: id, p_data: data});
+const cloneGame = g => { const c = JSON.parse(JSON.stringify(g)); delete c.id; delete c.hasPhoto; return c; };
+function compressImage(file){
+  return new Promise((resolve, reject) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      let q = .75, out = c.toDataURL("image/jpeg", q);
+      while (out.length > 800000 && q > .35) { q -= .1; out = c.toDataURL("image/jpeg", q); }
+      resolve(out);
+    };
+    img.onerror = () => reject(new Error("Не получилось открыть фото"));
+    img.src = url;
+  });
+}
+
+document.addEventListener("click", async e => {
+  const el = e.target.closest("[data-act]"); if (!el) { if (S.armed) { S.armed = null; render(); } return; }
+  const a = el.dataset.act, id = el.dataset.id, prev = S.armed; S.armed = null;
+  const f = S.form, g = liveGame();
+  switch (a) {
+    case "guest": S.guest = true; location.hash = "#rating"; break;
+    case "logout": try { await rpc("poker_logout", {p_token: S.token}); } catch {} logoutLocal(); S.guest = false; location.hash = ""; break;
+    case "edit-name": S.editName = true; render(); setTimeout(() => { const i = $("#r-name"); if (i) i.focus(); }, 0); return;
+    case "pin-form": S.pinForm = true; break;
+    case "reload": S.err = ""; loadState(); return;
+    case "demo-reset": lsSet(DEMO_KEY, null); logoutLocal(); location.hash = ""; location.reload(); return;
+    case "photo": {
+      S.photos[id] = "loading"; render();
+      try { S.photos[id] = await rpc("poker_photo", {p_game: id}) || null; } catch (err) { S.photos[id] = undefined; toast(err.message); }
+      break;
+    }
+    case "atab": S.adminTab = id; break;
+    // result form
+    case "f-add": f.order.push(id); break;
+    case "f-up": { const i = +id; [f.order[i - 1], f.order[i]] = [f.order[i], f.order[i - 1]]; break; }
+    case "f-down": { const i = +id; [f.order[i + 1], f.order[i]] = [f.order[i], f.order[i + 1]]; break; }
+    case "f-del": { const [p] = f.order.splice(+id, 1); if (f.holder === p) f.holder = ""; break; }
+    case "f-nophoto": f.photo = null; break;
+    case "f-reset": S.form = newForm(); break;
+    case "f-save": {
+      const gid = f.id || uid(), old = f.id ? S.games[f.id] : null;
+      const data = {date: f.date || today(), status: "done", entry: Math.max(0, +f.entry || 0), split: parseSplit(S.settings.split), refund: S.settings.refund !== false,
+        holder: f.holder || null, players: f.order.slice(), out: f.order.slice(1).reverse(), note: f.note.trim(),
+        createdAt: old && old.createdAt || Date.now(), finishedAt: Date.now()};
+      if (await saveGame(gid, data)) {
+        if (f.photo !== undefined) await act("poker_save_photo", {p_game: gid, p_data: f.photo || ""});
+        delete S.photos[gid];
+        S.form = newForm(); toast("Вечер записан. Рейтинг пересчитан"); location.hash = "#nights";
+      }
+      return;
+    }
+    case "edit-game": {
+      const og = S.games[id];
+      S.form = {id, date: og.date, entry: og.entry, order: orderOf({id, ...og}), holder: og.holder || "", note: og.note || "", photo: undefined, hadPhoto: !!og.hasPhoto};
+      S.adminTab = "result"; location.hash = "#admin"; return;
+    }
+    case "delgame": if (prev !== "del-" + id) { S.armed = "del-" + id; break; } await act("poker_delete_game", {p_id: id}, "Вечер удалён"); return;
+    // live
+    case "pick": { const s = S.live.picked; s.has(id) ? s.delete(id) : s.add(id); break; }
+    case "start": {
+      const L = S.live, players = [...L.picked].filter(p => S.players[p]);
+      await saveGame(uid(), {date: L.date || today(), status: "live", entry: L.entry ?? S.settings.entry ?? 300, split: parseSplit(S.settings.split),
+        refund: S.settings.refund !== false, holder: L.holder || null, players, out: [], createdAt: Date.now()});
+      S.live = {picked: null, entry: null, holder: null, date: today()}; return;
+    }
+    case "bust": if (g) { const c = cloneGame(g); c.out = [...(c.out || []), id]; await saveGame(g.id, c); } return;
+    case "unbust": if (g && (g.out || []).length) { const c = cloneGame(g); c.out.pop(); await saveGame(g.id, c); } return;
+    case "join": if (g) { const c = cloneGame(g); c.players.push(id); await saveGame(g.id, c); } return;
+    case "finish": if (g) { const c = cloneGame(g); c.status = "done"; c.finishedAt = Date.now(); if (await saveGame(g.id, c)) { toast("Вечер записан"); location.hash = "#nights"; } } return;
+    case "cancel": if (g) { if (prev !== "cancel") { S.armed = "cancel"; break; } await act("poker_delete_game", {p_id: g.id}, "Вечер отменён"); } return;
+    // players
+    case "e-open": { const ph = S.phones && S.phones[id] && S.phones[id].phone; S.editPlayer = {id, name: S.players[id].name, phone: ph ? fmtPhone(ph) : "", admin: S.players[id].isAdmin}; break; }
+    case "e-cancel": S.editPlayer = null; break;
+    case "resetpin": await act("poker_reset_pin", {p_id: id}, "PIN сброшен — игрок задаст новый при входе"); return;
+    case "delplayer": if (prev !== "delp-" + id) { S.armed = "delp-" + id; break; } if (await act("poker_delete_player", {p_id: id}, "Игрок удалён")) { S.editPlayer = null; S.phones = null; } return;
+  }
+  render();
+});
+
+document.addEventListener("change", async e => {
+  const el = e.target, f = S.form;
+  if (el.id === "f-date") f.date = el.value;
+  else if (el.id === "f-entry") { f.entry = Math.max(0, +el.value || 0); render(); }
+  else if (el.id === "f-holder") f.holder = el.value;
+  else if (el.id === "f-note") f.note = el.value;
+  else if (el.id === "f-photo" && el.files && el.files[0]) {
+    try { f.photo = await compressImage(el.files[0]); } catch (err) { toast(err.message); }
+    render();
+  }
+  else if (el.id === "d-date") S.live.date = el.value;
+  else if (el.id === "d-entry") { S.live.entry = Math.max(0, +el.value || 0); render(); }
+  else if (el.id === "d-holder") S.live.holder = el.value || null;
+  else if (el.id === "n-name") S.newPlayer.name = el.value;
+  else if (el.id === "n-phone") S.newPlayer.phone = el.value;
+  else if (el.id === "n-admin") S.newPlayer.admin = el.checked;
+  else if (el.id === "e-name" && S.editPlayer) S.editPlayer.name = el.value;
+  else if (el.id === "e-phone" && S.editPlayer) S.editPlayer.phone = el.value;
+  else if (el.id === "e-admin" && S.editPlayer) S.editPlayer.admin = el.checked;
+});
+document.addEventListener("input", e => { if (e.target.id === "f-note" && S.form) S.form.note = e.target.value; });
+
+document.addEventListener("submit", async e => {
+  e.preventDefault();
+  const id = e.target.id;
+  if (id === "loginForm") {
+    const phone = $("#l-phone").value, pin = $("#l-pin").value.trim();
+    S.loginErr = ""; S.busy = true; render();
+    try {
+      const r = await rpc("poker_login", {p_phone: phone, p_pin: pin});
+      if (r && r.error) { S.loginErr = r.error; }
+      else {
+        S.token = r.token; S.me = {playerId: r.playerId, isAdmin: r.isAdmin}; lsSet(TOKEN_KEY, r.token); lsSet("poker-phone", phone);
+        if (r.firstTime) toast("PIN сохранён. Добро пожаловать в лигу!");
+        location.hash = "#home"; await loadState();
+      }
+    } catch (err) { S.loginErr = err.message; }
+    S.busy = false; render(); return;
+  }
+  if (id === "renameForm") { const v = $("#r-name").value.trim(); if (v && await act("poker_rename", {p_name: v}, "Имя сохранено")) S.editName = false; render(); return; }
+  if (id === "pinForm") { if (await act("poker_change_pin", {p_old: $("#p-old").value, p_new: $("#p-new").value}, "PIN изменён")) S.pinForm = false; render(); return; }
+  if (id === "addForm") {
+    const np = {name: $("#n-name").value.trim(), phone: $("#n-phone").value.trim(), admin: $("#n-admin").checked};
+    if (!np.name) return;
+    if (Object.values(S.players).some(p => p.name.toLowerCase() === np.name.toLowerCase())) { toast("Игрок с таким именем уже есть"); return; }
+    S.newPlayer = np;
+    if (await act("poker_save_player", {p_id: uid(), p_name: np.name, p_phone: np.phone, p_is_admin: np.admin}, "Игрок добавлен")) { S.newPlayer = {name: "", phone: "", admin: false}; S.phones = null; render(); }
+    return;
+  }
+  if (id === "editForm") {
+    const ep = S.editPlayer; ep.name = $("#e-name").value.trim(); ep.phone = $("#e-phone").value.trim(); ep.admin = $("#e-admin").checked;
+    if (await act("poker_save_player", {p_id: ep.id, p_name: ep.name, p_phone: ep.phone, p_is_admin: ep.admin}, "Сохранено")) { S.editPlayer = null; S.phones = null; render(); }
+    return;
+  }
+  if (id === "rulesForm") {
+    const s = {...S.settings, name: $("#s-name").value.trim() || DEFAULTS.name, currency: $("#s-cur").value.trim() || "₽",
+      entry: Math.max(0, +$("#s-entry").value || 0), split: parseSplit($("#s-split").value).join(":"), refund: $("#s-refund").checked};
+    await act("poker_save_settings", {p_data: s}, "Правила сохранены");
+  }
+});
+window.addEventListener("hashchange", () => { S.armed = null; S.editName = false; render(); window.scrollTo(0, 0); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && (S.me || S.guest)) loadState(); });
+setInterval(() => { if (!document.hidden && (S.me || S.guest) && !S.busy && (liveGame() || location.hash === "#admin")) loadState(); }, 20000);
+
+/* ================= boot ================= */
+(async function boot(){
+  render();
+  if (S.token) {
+    try { const w = await rpc("poker_whoami", {p_token: S.token}); if (w) S.me = w; else logoutLocal(); }
+    catch (e) { S.err = e.message; }
+  }
+  if (S.me) { await loadState(); if (!location.hash) location.hash = "#home"; }
+  render();
+})();
+// Guest and login screens also need the league data (rating, names).
+window.addEventListener("hashchange", () => { if (S.guest && !S.loaded) loadState(); });
+document.addEventListener("click", e => { if (e.target.closest('[data-act="guest"]')) loadState(); });
+})();
+</script>
+</body>
+</html>

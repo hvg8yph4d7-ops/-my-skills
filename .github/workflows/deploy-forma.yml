@@ -1,10 +1,10 @@
-# Публикует приложение «Форма» и сайт WOODNEXT (/woodnext/) на GitHub Pages при каждом изменении в main.
+# Публикует приложение «Форма», сайт WOODNEXT (/woodnext/) и «Покерную лигу» (/poker/) на GitHub Pages при каждом изменении в main.
 name: Deploy Forma
 
 on:
   push:
     branches: [main]
-    paths: ['forma/**', 'woodnext/**', '.github/workflows/deploy-forma.yml']
+    paths: ['forma/**', 'woodnext/**', 'poker/**', '.github/workflows/deploy-forma.yml']
   workflow_dispatch:
 
 permissions:
@@ -35,6 +35,10 @@ jobs:
         run: |
           cp -r ../woodnext dist/woodnext
           rm -rf dist/woodnext/netlify dist/woodnext/apps-script dist/woodnext/_source dist/woodnext/*.md dist/woodnext/package.json
+      - name: Добавить «Покерную лигу»
+        run: |
+          mkdir -p dist/poker
+          cp ../poker/index.html dist/poker/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: forma/dist
