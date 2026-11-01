@@ -120,7 +120,7 @@ table.res td.r{text-align:right;font-family:var(--f-num);white-space:nowrap;padd
 .seat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
 .seat:first-of-type{border-top:0}
 .seat .nm{font-weight:700;font-size:16px;overflow-wrap:anywhere}
-.stack{display:inline-flex;gap:2px;vertical-align:middle;margin-left:4px}
+.unused-stack{display:inline-flex;gap:2px;vertical-align:middle;margin-left:4px}
 .stack i{width:12px;height:12px;border-radius:50%;background:var(--brass);border:2px dashed rgba(255,255,255,.55)}
 .seat .ctrl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .seat input{width:110px}
@@ -143,6 +143,15 @@ table.res td.r{text-align:right;font-family:var(--f-num);white-space:nowrap;padd
 .empty{text-align:center;padding:28px 16px;display:flex;flex-direction:column;gap:12px;align-items:center}
 .empty .big{font-size:40px;letter-spacing:.2em}
 @media (prefers-reduced-motion:no-preference){.pcard{transition:transform .3s}.hero:hover .pcard{transform:rotate(2deg) translateY(-3px)}}
+.prizes{display:flex;gap:8px;flex-wrap:wrap}
+.prize{display:flex;align-items:baseline;gap:6px;background:var(--surface-2);border-radius:999px;padding:6px 12px;font-size:14px}
+.prize b{font-family:var(--f-num)}
+.place{font-family:var(--f-display);font-weight:800;font-size:13px;min-width:30px;color:var(--muted)}
+.place.cash{color:var(--brass)}
+.form i.g{background:var(--brass)}
+.winner{background:var(--felt);color:var(--felt-ink);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.winner .name{font-family:var(--f-display);font-weight:800;font-size:24px}
+select{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:9px 11px;min-width:0}
 </style>
 
 <div class="wrap">
@@ -165,6 +174,7 @@ table.res td.r{text-align:right;font-family:var(--f-num);white-space:nowrap;padd
 <div id="sheet"></div>
 <div id="toast" class="toast" hidden></div>
 
+
 <script>
 (function(){
 "use strict";
@@ -180,33 +190,32 @@ const suitOf = id => SUITS[hash(id) % 4];
 const isRed = s => s === "♥" || s === "♦";
 const fmtDate = iso => { try { return new Date(iso + "T12:00:00").toLocaleDateString("ru-RU", {day:"numeric", month:"long", year:"numeric"}); } catch { return iso; } };
 const plural = (n, a, b, c) => { n = Math.abs(n) % 100; const n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; };
+const DEFAULTS = {name: "Покерная лига", currency: "₽", entry: 300, split: "3:2:1"};
+const parseSplit = str => { const a = String(str || "").split(/[:\s/,-]+/).map(Number).filter(x => x > 0); return a.length ? a.slice(0, 6) : [3, 2, 1]; };
 
 /* ---------- state ---------- */
 const S = {
   mode: "loading",            // loading | db | local | demo
-  players: {}, games: {}, settings: {name: "Покерная лига", currency: "₽", buyIn: 1000},
-  readOnly: false, stale: false,
-  real: null,                 // stashed real data while demo is shown
-  profile: null,              // player id for profile sheet
-  draft: {date: today(), buyIn: null, picked: null},
-  armed: null,                // id of armed delete button
+  players: {}, games: {}, settings: {...DEFAULTS},
+  readOnly: false, stale: false, real: null, profile: null,
+  draft: {date: today(), entry: null, picked: null, holder: null},
+  armed: null,
 };
 let db = null;
+const cur = () => S.settings.currency || "₽";
 const money = (n, sign) => {
   const v = Math.round(n);
-  const s = Math.abs(v).toLocaleString("ru-RU") + " " + (S.settings.currency || "₽");
+  const s = Math.abs(v).toLocaleString("ru-RU") + " " + cur();
   if (!sign) return (v < 0 ? "−" : "") + s;
   return (v > 0 ? "+" : v < 0 ? "−" : "") + s;
 };
 
-/* ---------- storage layer ---------- */
-const LS_KEY = "poker-league-local-v1";
+/* ---------- storage ---------- */
+const LS_KEY = "poker-league-local-v2";
 function lsLoad(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch { return null; } }
 function lsSave(){ try { localStorage.setItem(LS_KEY, JSON.stringify({players:S.players, games:S.games, settings:S.settings})); } catch {} }
-
 const queues = {};
 function queued(path, fn){ const p = (queues[path] || Promise.resolve()).then(fn, fn); queues[path] = p.catch(() => {}); return p; }
-
 function writeErr(e){
   if (e && e.code === "invalid_argument") { S.readOnly = true; toast("Нет прав на запись. Попросите владельца лиги дать вам доступ редактора."); render(); }
   else if (e && e.code === "quota_exceeded") toast("Хранилище заполнено, удалите старые вечера.");
@@ -215,125 +224,119 @@ function writeErr(e){
 async function put(coll, id, data){
   if (S.mode === "demo") { toast("Это пример — изменения не сохраняются"); return; }
   if (coll === "settings") S.settings = data; else S[coll][id] = data;
-  if (S.mode === "local") { lsSave(); render(); return; }
   render();
+  if (S.mode === "local") { lsSave(); return; }
   const path = coll + "/" + id;
   try { await queued(path, () => db.doc(path).set(data)); } catch (e) { writeErr(e); }
 }
 async function del(coll, id){
   if (S.mode === "demo") { toast("Это пример — изменения не сохраняются"); return; }
   delete S[coll][id];
-  if (S.mode === "local") { lsSave(); render(); return; }
   render();
+  if (S.mode === "local") { lsSave(); return; }
   const path = coll + "/" + id;
   try { await queued(path, () => db.doc(path).delete()); } catch (e) { writeErr(e); }
 }
 
-/* ---------- math ---------- */
-const gameNets = g => {
-  const out = {};
-  for (const [pid, e] of Object.entries(g.entries || {})) {
-    const bi = (e.buyIns || []).reduce((a, b) => a + b, 0);
-    out[pid] = {buyIn: bi, cashOut: e.cashOut, net: (e.cashOut == null ? NaN : e.cashOut - bi), rebuys: (e.buyIns || []).length};
-  }
-  return out;
-};
-function settle(nets){
-  const debt = [], cred = [];
-  for (const [pid, n] of Object.entries(nets)) { if (n < -0.5) debt.push([pid, -n]); else if (n > 0.5) cred.push([pid, n]); }
-  debt.sort((a, b) => b[1] - a[1]); cred.sort((a, b) => b[1] - a[1]);
-  const res = []; let i = 0, j = 0;
-  while (i < debt.length && j < cred.length) {
-    const amt = Math.min(debt[i][1], cred[j][1]);
-    if (amt > 0.5) res.push({from: debt[i][0], to: cred[j][0], amount: Math.round(amt)});
-    debt[i][1] -= amt; cred[j][1] -= amt;
-    if (debt[i][1] < 0.5) i++; if (cred[j][1] < 0.5) j++;
-  }
-  return res;
+/* ---------- tournament math ---------- */
+// game: {date, status, entry, split:[3,2,1], holder, players:[pid], out:[pid] (first busted first), createdAt}
+function prizeTable(n, entry, split){
+  const pool = n * entry;
+  if (n < 2) return {pool, prizes: [pool]};
+  const k = Math.max(1, Math.min(split.length, n - 1));
+  const w = split.slice(0, k), ws = w.reduce((a, b) => a + b, 0);
+  const prizes = w.map(x => Math.floor(pool * x / ws / 10) * 10);
+  prizes[0] += pool - prizes.reduce((a, b) => a + b, 0);
+  return {pool, prizes};
 }
-const doneGames = () => Object.entries(S.games).map(([id, g]) => ({id, ...g})).filter(g => g.status === "done")
+function results(g){
+  const n = g.players.length, out = g.out || [];
+  const {pool, prizes} = prizeTable(n, g.entry, g.split || [3, 2, 1]);
+  const res = {};
+  out.forEach((p, i) => { res[p] = {place: n - i}; });
+  const alive = g.players.filter(p => !out.includes(p));
+  if (alive.length === 1) res[alive[0]] = {place: 1};
+  for (const p of Object.keys(res)) { const pr = prizes[res[p].place - 1] || 0; res[p].prize = pr; res[p].net = pr - g.entry; }
+  return {res, alive, pool, prizes, n, finished: alive.length === 1};
+}
+const doneGames = () => Object.entries(S.games).map(([id, g]) => ({id, ...g})).filter(g => g.status === "done" && Array.isArray(g.players))
   .sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.createdAt || 0) - (b.createdAt || 0));
-const liveGame = () => { const e = Object.entries(S.games).find(([, g]) => g.status === "live"); return e ? {id: e[0], ...e[1]} : null; };
+const liveGame = () => { const e = Object.entries(S.games).find(([, g]) => g.status === "live" && Array.isArray(g.players)); return e ? {id: e[0], ...e[1]} : null; };
+const name = pid => (S.players[pid] && S.players[pid].name) || "Гость";
+const cloneGame = g => { const c = JSON.parse(JSON.stringify(g)); delete c.id; return c; };
 
 function compute(){
   const games = doneGames();
   const P = {};
-  const ensure = pid => P[pid] || (P[pid] = {id: pid, rating: 1000, hist: [1000], games: 0, wins: 0, total: 0, best: -Infinity, worst: Infinity,
-    nets: [], maxRebuys: 0, doubled: false, lastDelta: 0, paid: {}, got: {}, comeback: false});
-  for (const pid of Object.keys(S.players)) ensure(pid);
-  let record = null;
+  const ensure = pid => P[pid] || (P[pid] = {id: pid, rating: 1000, hist: [1000], games: 0, wins: 0, cashes: 0, total: 0,
+    places: [], log: [], lastDelta: 0, bubble: false, firstOut: false, comeback: false, above: {}, below: {}});
+  Object.keys(S.players).forEach(ensure);
+  let biggestPool = null;
   for (const g of games) {
-    const nets = gameNets(g); const ids = Object.keys(nets).filter(p => !isNaN(nets[p].net));
-    ids.forEach(ensure);
-    const deltas = {}; ids.forEach(p => deltas[p] = 0);
-    const K = 32;
+    const R = results(g); if (!R.finished) continue;
+    const ids = Object.keys(R.res); ids.forEach(ensure);
+    const k = R.prizes.length;
+    const d = {}; ids.forEach(p => d[p] = 0);
     for (const a of ids) for (const b of ids) if (a !== b) {
-      const sa = nets[a].net > nets[b].net ? 1 : nets[a].net < nets[b].net ? 0 : .5;
+      const sa = R.res[a].place < R.res[b].place ? 1 : 0;
       const ea = 1 / (1 + Math.pow(10, (P[b].rating - P[a].rating) / 400));
-      deltas[a] += K * (sa - ea) / (ids.length - 1);
+      d[a] += 32 * (sa - ea) / (ids.length - 1);
+      if (sa) { P[a].below[b] = (P[a].below[b] || 0) + 1; P[b].above[a] = (P[b].above[a] || 0) + 1; }
     }
-    const flat = {}; ids.forEach(p => flat[p] = nets[p].net);
-    for (const t of settle(flat)) { P[t.from].paid[t.to] = (P[t.from].paid[t.to] || 0) + t.amount; P[t.to].got[t.from] = (P[t.to].got[t.from] || 0) + t.amount; }
+    if (!biggestPool || R.pool > biggestPool.pool) biggestPool = {pool: R.pool, date: g.date};
     for (const p of ids) {
-      const s = P[p], n = nets[p].net;
-      const prev3 = s.nets.slice(-3);
-      if (n > 0 && prev3.length === 3 && prev3.every(x => x.net < 0)) s.comeback = true;
-      s.rating += deltas[p]; s.lastDelta = deltas[p]; s.hist.push(s.rating);
-      s.games++; if (n > 0) s.wins++; s.total += n;
-      s.best = Math.max(s.best, n); s.worst = Math.min(s.worst, n);
-      s.nets.push({gid: g.id, net: n, date: g.date});
-      s.maxRebuys = Math.max(s.maxRebuys, nets[p].rebuys);
-      if (nets[p].buyIn > 0 && nets[p].cashOut >= nets[p].buyIn * 2) s.doubled = true;
-      if (!record || n > record.net) record = {pid: p, net: n};
+      const s = P[p], r = R.res[p], cashed = r.prize > 0;
+      const last3 = s.log.slice(-3);
+      if (cashed && last3.length === 3 && last3.every(x => !x.cashed)) s.comeback = true;
+      s.rating += d[p]; s.lastDelta = d[p]; s.hist.push(s.rating);
+      s.games++; if (r.place === 1) s.wins++; if (cashed) s.cashes++;
+      s.total += r.net; s.places.push(r.place);
+      if (r.place === k + 1) s.bubble = true;
+      if (r.place === R.n && R.n > 2) s.firstOut = true;
+      s.log.push({gid: g.id, place: r.place, cashed, net: r.net});
     }
   }
   const list = Object.values(P).filter(p => S.players[p.id]);
   const ranked = list.filter(p => p.games > 0).sort((a, b) => b.rating - a.rating);
-  const fresh = list.filter(p => p.games === 0).sort((a, b) => (S.players[a.id].name || "").localeCompare(S.players[b.id].name || ""));
+  const fresh = list.filter(p => p.games === 0).sort((a, b) => name(a.id).localeCompare(name(b.id)));
   const mostLoss = list.filter(p => p.games).sort((a, b) => a.total - b.total)[0];
-  return {P, ranked, fresh, games, record, mostLoss};
+  const topWins = list.slice().sort((a, b) => b.wins - a.wins);
+  const shark = topWins[0] && topWins[0].wins >= 2 && (!topWins[1] || topWins[1].wins < topWins[0].wins) ? topWins[0] : null;
+  return {P, ranked, fresh, games, mostLoss, shark, biggestPool};
 }
 
-/* ---------- achievements ---------- */
+/* ---------- achievements & titles ---------- */
 function achievements(p, C){
-  const streak = (() => { let best = 0, cur = 0; for (const x of p.nets) { cur = x.net > 0 ? cur + 1 : 0; best = Math.max(best, cur); } return best; })();
-  const enemy = Object.entries(p.paid).sort((a, b) => b[1] - a[1])[0];
+  let streak = 0, cur = 0; for (const x of p.log) { cur = x.cashed ? cur + 1 : 0; streak = Math.max(streak, cur); }
   return [
-    {g:"A♠", t:"Первая кровь", d:"Первый вечер в плюсе", on: p.wins > 0},
-    {g:"3×", t:"Горячая рука", d:"Три вечера подряд в плюсе", on: streak >= 3},
-    {g:"2×", t:"Удвоение", d:"Вывел вдвое больше, чем закупил", on: p.doubled},
-    {g:"↺", t:"Феникс", d:"Плюс после трёх минусов подряд", on: p.comeback},
-    {g:"♦♦♦", t:"Ребай-король", d:"Три и больше закупа за вечер", on: p.maxRebuys >= 3},
+    {g:"A♠", t:"Первая кровь", d:"Первый раз в призах", on: p.cashes > 0},
+    {g:"♛", t:"Чемпион", d:"Взял первое место", on: p.wins > 0},
+    {g:"3×", t:"Горячая рука", d:"Три вечера подряд в призах", on: streak >= 3},
+    {g:"◯", t:"Пузырь", d:"Вылетел сразу за призовыми", on: p.bubble},
+    {g:"↺", t:"Феникс", d:"В призах после трёх вечеров без денег", on: p.comeback},
+    {g:"7♣", t:"Камикадзе", d:"Вылетел самым первым", on: p.firstOut},
     {g:"10", t:"Завсегдатай", d:"Десять вечеров за столом", on: p.games >= 10},
-    {g:"♛", t:"Акула", d:"Рекорд лиги за один вечер", on: !!(C.record && C.record.pid === p.id && C.record.net > 0)},
+    {g:"♛♛", t:"Акула", d:"Больше всех побед в лиге", on: !!(C.shark && C.shark.id === p.id)},
     {g:"$", t:"Банкомат", d:"Самый большой общий минус в лиге", on: !!(C.mostLoss && C.mostLoss.id === p.id && p.total < 0)},
-    {g:"Q♥", t:"Заклятый друг", d: enemy ? "Больше всех платишь: " + name(enemy[0]) : "Тот, кому ты платишь чаще всех", on: !!enemy},
   ];
 }
-const name = pid => (S.players[pid] && S.players[pid].name) || "Гость";
-function titleFor(p, rankIdx, total){
-  if (rankIdx === 0) return "Дон стола";
-  if (rankIdx === total - 1 && total > 2) return "Спонсор вечера";
+function titleFor(p, i, total){
+  if (i === 0) return "Дон стола";
+  if (i === total - 1 && total > 2) return "Спонсор вечера";
   if (p.lastDelta > 12) return "На взлёте";
   if (p.lastDelta < -12) return "В пике";
   return "";
 }
-
-/* ---------- headlines for the chronicle ---------- */
 function headline(g){
-  const nets = gameNets(g); const ids = Object.keys(nets).filter(p => !isNaN(nets[p].net));
-  if (!ids.length) return "Тихий вечер";
-  ids.sort((a, b) => nets[b].net - nets[a].net);
-  const w = name(ids[0]), l = name(ids[ids.length - 1]);
-  const wn = money(nets[ids[0]].net), ln = money(-nets[ids[ids.length - 1]].net);
-  const reb = ids.slice().sort((a, b) => nets[b].rebuys - nets[a].rebuys)[0];
+  const R = results(g); if (!R.finished) return "Вечер без победителя";
+  const order = Object.keys(R.res).sort((a, b) => R.res[a].place - R.res[b].place);
+  const w = name(order[0]), first = name(order[order.length - 1]), second = order[1] ? name(order[1]) : "";
   const opts = [
-    `${w} забирает ${wn}, ${l} оплачивает банкет`,
-    `${w} снова за кассой: ${wn} в плюс`,
-    `${l} оставил на столе ${ln}. ${w} говорит спасибо`,
-    `Вечер имени ${w}: ${wn}`,
+    `${w} забирает ${money(R.res[order[0]].prize)}`,
+    `${w} выигрывает, ${first} первым уходит с фишками в никуда`,
+    `${w} дожимает ${second} в хедз-апе`,
+    `Вечер имени ${w}: банк ${money(R.pool)}`,
   ];
-  if (nets[reb].rebuys >= 3) opts.push(`${name(reb)} закупался ${nets[reb].rebuys} раза, а забрал всё ${w}`);
   return opts[hash(g.id) % opts.length];
 }
 
@@ -341,126 +344,124 @@ function headline(g){
 function spark(hist, w = 90, h = 26){
   if (hist.length < 2) return "";
   const min = Math.min(...hist), max = Math.max(...hist), span = max - min || 1;
-  const pts = hist.map((v, i) => [ (i / (hist.length - 1)) * (w - 4) + 2, h - 3 - ((v - min) / span) * (h - 6) ]);
+  const pts = hist.map((v, i) => [(i / (hist.length - 1)) * (w - 4) + 2, h - 3 - ((v - min) / span) * (h - 6)]);
   const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
-  const up = hist[hist.length - 1] >= hist[0];
-  const last = pts[pts.length - 1];
+  const c = hist[hist.length - 1] >= hist[0] ? "--pos" : "--neg", last = pts[pts.length - 1];
   return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
-    <path d="${d} L ${last[0].toFixed(1)} ${h} L 2 ${h} Z" fill="var(${up ? "--pos" : "--neg"})" opacity=".12"/>
-    <path d="${d}" fill="none" stroke="var(${up ? "--pos" : "--neg"})" stroke-width="1.6" stroke-linejoin="round"/>
-    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.4" fill="var(${up ? "--pos" : "--neg"})"/></svg>`;
+    <path d="${d} L ${last[0].toFixed(1)} ${h} L 2 ${h} Z" fill="var(${c})" opacity=".12"/>
+    <path d="${d}" fill="none" stroke="var(${c})" stroke-width="1.6" stroke-linejoin="round"/>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.4" fill="var(${c})"/></svg>`;
 }
 const miniCard = (rank, pid) => { const s = suitOf(pid); return `<span class="mini ${isRed(s) ? "red" : ""}" aria-hidden="true">${rank}<span>${s}</span></span>`; };
-const formDots = nets => `<span class="form" title="Последние вечера">${nets.slice(-5).map(x => `<i class="${x.net > 0 ? "w" : x.net < 0 ? "l" : ""}"></i>`).join("")}</span>`;
+const formDots = log => `<span class="form" title="Последние вечера: золото — победа, зелёный — в призах">${log.slice(-5).map(x => `<i class="${x.place === 1 ? "g" : x.cashed ? "w" : "l"}"></i>`).join("")}</span>`;
+const prizeChips = prizes => `<div class="prizes">${prizes.map((x, i) => `<span class="prize"><span class="place cash">${i + 1}</span><b>${money(x)}</b></span>`).join("")}</div>`;
 
 /* ---------- views ---------- */
+function emptyState(){
+  return `<div class="panel empty"><div class="big">♠<span style="color:var(--red-suit)">♥</span>♣<span style="color:var(--red-suit)">♦</span></div>
+    <h2>Лига пока пустая</h2>
+    <p class="muted" style="max-width:46ch">Добавьте друзей во вкладке «Игроки», потом проведите вечер во вкладке «Стол»: отмечайте, кто вылетел, а места, призы и рейтинг посчитаются сами.</p>
+    <div class="row" style="justify-content:center"><a class="btn" href="#players">Добавить игроков</a>
+    ${S.mode !== "demo" ? `<button class="btn ghost" data-act="demo-on">Показать на примере</button>` : ""}</div></div>`;
+}
+
 function vRating(){
-  const C = compute();
   if (!Object.keys(S.players).length) return emptyState();
+  const C = compute();
   if (!C.ranked.length) return `<div class="panel empty"><div class="big">♠♥♣♦</div><h2>Рейтинг появится после первого вечера</h2>
-    <p class="muted">Откройте «Стол», отметьте закупы, а в конце впишите, кто сколько вывел.</p><a class="btn" href="#live">Начать вечер</a></div>`;
+    <p class="muted">Откройте «Стол», отметьте игроков и по ходу игры жмите «Вылетел».</p><a class="btn" href="#live">Начать вечер</a></div>`;
   const L = C.ranked[0], s = suitOf(L.id);
   let html = `<section class="hero" aria-label="Лидер">
     <div class="pcard ${isRed(s) ? "red" : ""}"><span class="c tl">A<br>${s}</span><span class="mid">${s}</span><span class="c br">A<br>${s}</span></div>
     <div class="who"><span class="eyebrow" style="color:inherit;opacity:.75">Лидер лиги</span>
       <div class="name">${esc(name(L.id))}</div>
-      <div class="meta num">${Math.round(L.rating)} очк. · ${L.games} ${plural(L.games,"вечер","вечера","вечеров")} · ${money(L.total, true)}</div>
+      <div class="meta num">${Math.round(L.rating)} очк. · ${L.wins} ${plural(L.wins,"победа","победы","побед")} · ${money(L.total, true)}</div>
       <span class="title">Дон стола</span></div></section>`;
-  html += `<div class="row spread"><h2>Таблица</h2><span class="muted" style="font-size:12px">Ранг карты = место. Очки — рейтинг Эло по вечерам</span></div><div class="board">`;
+  html += `<div class="row spread"><h2>Таблица</h2><span class="muted" style="font-size:12px">Ранг карты = место. Очки — рейтинг Эло по занятым местам</span></div><div class="board">`;
   C.ranked.forEach((p, i) => {
     const t = titleFor(p, i, C.ranked.length);
     html += `<button class="lrow" data-act="profile" data-id="${p.id}">
       ${miniCard(RANKS[Math.min(i, RANKS.length - 1)], p.id)}
       <span style="min-width:0;display:flex;flex-direction:column;gap:3px"><span class="nm">${esc(name(p.id))}</span>
-        <span class="sub">${formDots(p.nets)}<span class="num ${p.total >= 0 ? "pos" : "neg"}">${money(p.total, true)}</span>${t ? `<span>· ${t}</span>` : ""}</span></span>
+        <span class="sub">${formDots(p.log)}${p.wins ? `<span>♛×${p.wins}</span>` : ""}<span class="num ${p.total >= 0 ? "pos" : "neg"}">${money(p.total, true)}</span>${t ? `<span>· ${t}</span>` : ""}</span></span>
       <span class="rt"><span class="big">${Math.round(p.rating)}</span>
-        <small class="${p.lastDelta >= 0 ? "pos" : "neg"}">${p.lastDelta >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(p.lastDelta))}</small>${spark(p.hist, 70, 20)}</span>
-    </button>`;
+        <small class="${p.lastDelta >= 0 ? "pos" : "neg"}">${p.lastDelta >= 0 ? "▲" : "▼"} ${Math.abs(Math.round(p.lastDelta))}</small>${spark(p.hist, 70, 20)}</span></button>`;
   });
   C.fresh.forEach(p => {
     html += `<button class="lrow" data-act="profile" data-id="${p.id}">${miniCard("·", p.id)}
       <span style="min-width:0"><span class="nm">${esc(name(p.id))}</span><span class="sub">ещё не играл</span></span><span class="rt"><span class="big muted">1000</span></span></button>`;
   });
   html += `</div>`;
-  const facts = [];
-  if (C.record) facts.push(["Рекорд вечера", money(C.record.net, true), name(C.record.pid)]);
-  facts.push(["Сыграно вечеров", String(C.games.length), ""]);
-  const bank = C.games.reduce((a, g) => a + Object.values(gameNets(g)).reduce((x, y) => x + y.buyIn, 0), 0);
-  facts.push(["Прошло через банк", money(bank), ""]);
+  const prizeMoney = C.games.reduce((a, g) => a + results(g).pool, 0);
+  const facts = [["Сыграно вечеров", String(C.games.length), ""], ["Разыграно призовых", money(prizeMoney), ""]];
+  if (C.shark) facts.unshift(["Больше всех побед", "♛×" + C.shark.wins, name(C.shark.id)]);
+  else if (C.biggestPool) facts.push(["Самый большой банк", money(C.biggestPool.pool), fmtDate(C.biggestPool.date)]);
   html += `<div class="stats">${facts.map(f => `<div class="stat"><span>${f[0]}</span><b>${f[1]}</b>${f[2] ? `<span>${esc(f[2])}</span>` : ""}</div>`).join("")}</div>`;
   return html;
-}
-
-function emptyState(){
-  return `<div class="panel empty"><div class="big">♠<span style="color:var(--red-suit)">♥</span>♣<span style="color:var(--red-suit)">♦</span></div>
-    <h2>Лига пока пустая</h2>
-    <p class="muted" style="max-width:46ch">Добавьте друзей во вкладке «Игроки», потом проведите вечер во вкладке «Стол». Рейтинг, ачивки и расчёт «кто кому должен» посчитаются сами.</p>
-    <div class="row" style="justify-content:center"><a class="btn" href="#players">Добавить игроков</a>
-    ${S.mode !== "demo" ? `<button class="btn ghost" data-act="demo-on">Показать на примере</button>` : ""}</div></div>`;
 }
 
 function vLive(){
   const g = liveGame();
   const pids = Object.keys(S.players);
+  const ro = S.readOnly ? "disabled" : "";
   if (!g) {
     if (!pids.length) return emptyState();
-    const picked = S.draft.picked || new Set(pids);
-    S.draft.picked = picked;
-    const bi = S.draft.buyIn ?? S.settings.buyIn ?? 1000;
+    const picked = S.draft.picked || (S.draft.picked = new Set(pids));
+    const entry = S.draft.entry ?? S.settings.entry ?? 300;
+    const split = parseSplit(S.settings.split);
+    const pt = prizeTable(picked.size, entry, split);
+    const sorted = pids.slice().sort((a, b) => name(a).localeCompare(name(b)));
+    const holder = S.draft.holder && picked.has(S.draft.holder) ? S.draft.holder : "";
     return `<section class="panel"><div><span class="eyebrow">Новый вечер</span><h2>Кто сегодня за столом?</h2></div>
-      <div class="chips">${pids.sort((a, b) => name(a).localeCompare(name(b))).map(p => `<button class="chip" data-act="pick" data-id="${p}" aria-pressed="${picked.has(p)}">${esc(name(p))}</button>`).join("")}</div>
+      <div class="chips">${sorted.map(p => `<button class="chip" data-act="pick" data-id="${p}" aria-pressed="${picked.has(p)}">${esc(name(p))}</button>`).join("")}</div>
       <div class="row"><label class="fld">Дата<input type="date" id="d-date" value="${esc(S.draft.date)}"></label>
-        <label class="fld">Закуп<input type="number" id="d-buyin" inputmode="numeric" min="0" step="100" value="${bi}"></label></div>
-      <button class="btn" data-act="start" ${picked.size < 2 || S.readOnly ? "disabled" : ""}>Раздать фишки (${picked.size})</button>
-      <p class="muted" style="font-size:13px;margin:0">Каждому сразу запишется один закуп. Ребаи добавляйте по ходу игры кнопкой «+».</p></section>`;
+        <label class="fld">Взнос с человека<input type="number" id="d-entry" inputmode="numeric" min="0" step="50" value="${entry}"></label>
+        <label class="fld">Деньги собирает<select id="d-holder"><option value="">не важно</option>${sorted.filter(p => picked.has(p)).map(p => `<option value="${p}" ${p === holder ? "selected" : ""}>${esc(name(p))}</option>`).join("")}</select></label></div>
+      ${picked.size >= 2 ? `<div><span class="eyebrow">Банк ${money(pt.pool)} · призы ${split.slice(0, pt.prizes.length).join(":")}</span><div style="margin-top:6px">${prizeChips(pt.prizes)}</div></div>` : ""}
+      <button class="btn" data-act="start" ${picked.size < 2 || ro ? "disabled" : ""}>Начать турнир (${picked.size})</button></section>`;
   }
-  const nets = gameNets(g);
-  const ids = Object.keys(g.entries);
-  const bank = ids.reduce((a, p) => a + nets[p].buyIn, 0);
-  const outSum = ids.reduce((a, p) => a + (nets[p].cashOut || 0), 0);
-  const allOut = ids.every(p => nets[p].cashOut != null);
-  const diff = outSum - bank;
-  const ro = S.readOnly ? "disabled" : "";
-  let html = `<section class="panel"><div class="row spread"><div><span class="eyebrow">Идёт игра · ${fmtDate(g.date)}</span><h2>Банк <span class="num">${money(bank)}</span></h2></div>
-     <label class="fld" style="max-width:130px;flex:0">Ребай<input type="number" id="g-buyin" inputmode="numeric" min="0" step="100" value="${g.buyIn}" ${ro}></label></div>`;
-  for (const p of ids) {
-    const n = nets[p], cnt = n.rebuys;
-    html += `<div class="seat"><div style="min-width:0"><div class="nm">${esc(name(p))}<span class="stack">${"<i></i>".repeat(Math.min(cnt, 6))}</span></div>
-        <div class="muted num" style="font-size:13px">закуп ${money(n.buyIn)}${cnt > 1 ? ` · ${cnt} ${plural(cnt,"раз","раза","раз")}` : ""}${n.cashOut != null ? ` · <span class="${n.net >= 0 ? "pos" : "neg"}">${money(n.net, true)}</span>` : ""}</div></div>
-      <div class="ctrl"><button class="btn ghost sm" data-act="unbuy" data-id="${p}" aria-label="Убрать закуп" ${cnt < 1 || ro ? "disabled" : ""}>−</button>
-        <button class="btn sm" data-act="rebuy" data-id="${p}" ${ro}>+ ${(g.buyIn || 0).toLocaleString("ru-RU")}</button>
-        <input type="number" inputmode="numeric" min="0" step="50" placeholder="вывел" id="out-${p}" data-act="cashout" data-id="${p}" value="${n.cashOut ?? ""}" aria-label="Вывел ${esc(name(p))}" ${ro}></div></div>`;
-  }
-  const late = Object.keys(S.players).filter(p => !g.entries[p]);
-  if (late.length) html += `<div><span class="eyebrow">Подсел позже</span><div class="chips" style="margin-top:6px">${late.map(p => `<button class="chip" data-act="join" data-id="${p}" ${ro}>+ ${esc(name(p))}</button>`).join("")}</div></div>`;
-  if (allOut) {
-    html += `<div class="balance ${Math.abs(diff) < 1 ? "ok" : "bad"}">${Math.abs(diff) < 1 ? "Фишки сходятся с банком" : diff > 0 ? `Выведено на ${money(diff)} больше банка — проверьте подсчёт` : `Не хватает ${money(-diff)} до банка — проверьте подсчёт`}</div>`;
-    const flat = {}; ids.forEach(p => flat[p] = nets[p].net);
-    const tr = settle(flat);
-    if (tr.length) html += `<div class="transfers"><span class="eyebrow">Кто кому переводит</span>${tr.map(t => `<div class="t"><span>${esc(name(t.from))} → ${esc(name(t.to))}</span><b class="num">${money(t.amount)}</b></div>`).join("")}</div>`;
+  const R = results(g);
+  const out = g.out || [];
+  let html = `<section class="panel"><div class="row spread"><div><span class="eyebrow">Идёт игра · ${fmtDate(g.date)}</span>
+      <h2>Банк <span class="num">${money(R.pool)}</span></h2>${g.holder ? `<span class="muted" style="font-size:13px">банк держит ${esc(name(g.holder))}</span>` : ""}</div></div>
+    ${prizeChips(R.prizes)}`;
+  if (R.finished) {
+    const w = R.alive[0];
+    html += `<div class="winner"><span class="eyebrow" style="color:inherit;opacity:.8">Победитель</span><span class="name">${esc(name(w))}</span><span class="num">${money(R.res[w].prize)}</span></div>`;
+    const paid = Object.keys(R.res).filter(p => R.res[p].prize > 0).sort((a, b) => R.res[a].place - R.res[b].place);
+    html += `<div class="transfers"><span class="eyebrow">${g.holder ? esc(name(g.holder)) + " выдаёт призы" : "Выдать призы"}</span>${paid.map(p => `<div class="t"><span>${R.res[p].place} место · ${esc(name(p))}${p === g.holder ? " (оставляет себе)" : ""}</span><b class="num">${money(R.res[p].prize)}</b></div>`).join("")}</div>`;
   } else {
-    const left = ids.filter(p => nets[p].cashOut == null).length;
-    html += `<div class="balance">Осталось вписать вывод: ${left} ${plural(left,"игрок","игрока","игроков")}</div>`;
+    html += `<div><span class="eyebrow">В игре · ${R.alive.length}</span></div>`;
+    for (const p of R.alive) {
+      html += `<div class="seat"><div class="nm">${esc(name(p))}</div><div class="ctrl"><button class="btn ghost sm" data-act="bust" data-id="${p}" ${ro}>Вылетел</button></div></div>`;
+    }
+    const late = pids.filter(p => !g.players.includes(p));
+    if (late.length && !out.length) html += `<div><span class="eyebrow">Подсел позже</span><div class="chips" style="margin-top:6px">${late.map(p => `<button class="chip" data-act="join" data-id="${p}" ${ro}>+ ${esc(name(p))}</button>`).join("")}</div></div>`;
   }
-  const armedFinish = S.armed === "finish";
-  html += `<div class="row"><button class="btn" data-act="finish" ${!allOut || ro ? "disabled" : ""}>${allOut && Math.abs(diff) >= 1 ? (armedFinish ? "Да, записать как есть" : "Записать с расхождением") : "Закончить вечер"}</button>
+  if (out.length) {
+    html += `<div><span class="eyebrow">Вылетели</span></div>`;
+    out.slice().reverse().forEach((p, i) => {
+      const r = R.res[p];
+      html += `<div class="seat"><div class="row" style="gap:6px;min-width:0"><span class="place ${r.prize ? "cash" : ""}">${r.place}</span><span class="nm">${esc(name(p))}</span></div>
+        <div class="ctrl">${r.prize ? `<b class="num">${money(r.prize)}</b>` : ""}${i === 0 && !R.finished ? `<button class="btn ghost sm" data-act="unbust" ${ro}>Вернуть</button>` : ""}</div></div>`;
+    });
+  }
+  html += `<div class="row">${R.finished ? `<button class="btn" data-act="finish" ${ro}>Записать вечер</button><button class="btn ghost" data-act="unbust" ${ro}>Шаг назад</button>` : ""}
      <button class="btn danger ${S.armed === "cancel" ? "armed" : ""}" data-act="cancel" ${ro}>${S.armed === "cancel" ? "Точно отменить вечер?" : "Отменить вечер"}</button></div></section>`;
   return html;
 }
 
 function vNights(){
   const games = doneGames().reverse();
-  if (!games.length) return Object.keys(S.players).length ? `<div class="panel empty"><div class="big">♣</div><h2>Здесь будет хроника вечеров</h2><p class="muted">После каждого вечера — заголовок, итоги и расчёт переводов.</p><a class="btn" href="#live">Начать вечер</a></div>` : emptyState();
+  if (!games.length) return Object.keys(S.players).length ? `<div class="panel empty"><div class="big">♣</div><h2>Здесь будет хроника вечеров</h2><p class="muted">После каждого вечера — заголовок, места и кому сколько досталось.</p><a class="btn" href="#live">Начать вечер</a></div>` : emptyState();
   return `<h2>Хроника</h2>` + games.map(g => {
-    const nets = gameNets(g); const ids = Object.keys(nets).filter(p => !isNaN(nets[p].net)).sort((a, b) => nets[b].net - nets[a].net);
-    const flat = {}; ids.forEach(p => flat[p] = nets[p].net);
-    const tr = settle(flat);
-    const bank = ids.reduce((a, p) => a + nets[p].buyIn, 0);
+    const R = results(g);
+    const ids = Object.keys(R.res).sort((a, b) => R.res[a].place - R.res[b].place);
     const k = "del-" + g.id;
-    return `<article class="panel night"><span class="eyebrow">${fmtDate(g.date)} · банк ${money(bank)}</span>
+    return `<article class="panel night"><span class="eyebrow">${fmtDate(g.date)} · ${R.n} ${plural(R.n,"игрок","игрока","игроков")} по ${money(g.entry)} · банк ${money(R.pool)}</span>
       <div class="head">${esc(headline(g))}</div>
-      <table class="res"><tbody>${ids.map((p, i) => `<tr><td>${i === 0 ? "♛ " : ""}${esc(name(p))}<span class="muted" style="font-size:12px"> · закуп ${money(nets[p].buyIn)}</span></td><td class="r ${nets[p].net >= 0 ? "pos" : "neg"}">${money(nets[p].net, true)}</td></tr>`).join("")}</tbody></table>
-      ${tr.length ? `<details><summary class="muted" style="cursor:pointer;font-size:13px">Кто кому переводил</summary><div class="transfers" style="margin-top:8px">${tr.map(t => `<div class="t"><span>${esc(name(t.from))} → ${esc(name(t.to))}</span><b class="num">${money(t.amount)}</b></div>`).join("")}</div></details>` : ""}
+      <table class="res"><tbody>${ids.map(p => { const r = R.res[p]; return `<tr><td><span class="place ${r.prize ? "cash" : ""}">${r.place === 1 ? "♛" : r.place}</span> ${esc(name(p))}</td><td class="r">${r.prize ? `<b>${money(r.prize)}</b> <span class="${r.net >= 0 ? "pos" : "neg"}" style="font-size:12px">${money(r.net, true)}</span>` : `<span class="neg">${money(r.net, true)}</span>`}</td></tr>`; }).join("")}</tbody></table>
+      ${g.holder ? `<span class="muted" style="font-size:13px">Деньги собирал ${esc(name(g.holder))}</span>` : ""}
       ${S.readOnly || S.mode === "demo" ? "" : `<div class="row"><button class="btn ghost sm" data-act="reopen" data-id="${g.id}">Исправить</button>
         <button class="btn danger sm ${S.armed === k ? "armed" : ""}" data-act="delgame" data-id="${g.id}">${S.armed === k ? "Точно удалить?" : "Удалить"}</button></div>`}</article>`;
   }).join("");
@@ -469,14 +470,18 @@ function vNights(){
 function vPlayers(){
   const ids = Object.keys(S.players).sort((a, b) => name(a).localeCompare(name(b)));
   const ro = S.readOnly ? "disabled" : "";
+  const ex = prizeTable(6, S.settings.entry || 300, parseSplit(S.settings.split));
   return `<section class="panel"><h2>Игроки</h2>
     <form id="addForm" class="row"><input type="text" id="newName" placeholder="Имя" maxlength="24" style="flex:1" ${ro}><button class="btn" type="submit" ${ro}>Добавить</button></form>
     ${ids.length ? `<div class="chips">${ids.map(p => `<button class="chip" data-act="profile" data-id="${p}">${suitOf(p)} ${esc(name(p))}</button>`).join("")}</div>` : `<p class="muted" style="margin:0">Пока никого. Впишите друзей по одному.</p>`}
   </section>
-  <section class="panel"><h2>Настройки лиги</h2>
+  <section class="panel"><h2>Правила лиги</h2>
     <div class="row"><label class="fld">Название<input type="text" id="s-name" maxlength="40" value="${esc(S.settings.name)}" ${ro}></label>
-      <label class="fld" style="max-width:110px">Валюта<input type="text" id="s-cur" maxlength="4" value="${esc(S.settings.currency)}" ${ro}></label>
-      <label class="fld" style="max-width:140px">Закуп по умолчанию<input type="number" id="s-buyin" min="0" step="100" value="${S.settings.buyIn}" ${ro}></label></div>
+      <label class="fld" style="max-width:100px">Валюта<input type="text" id="s-cur" maxlength="4" value="${esc(cur())}" ${ro}></label></div>
+    <div class="row"><label class="fld">Взнос по умолчанию<input type="number" id="s-entry" min="0" step="50" value="${S.settings.entry}" ${ro}></label>
+      <label class="fld">Деление банка<input type="text" id="s-split" maxlength="20" value="${esc(S.settings.split)}" ${ro}></label></div>
+    <div><span class="eyebrow">Пример: 6 игроков по ${money(S.settings.entry || 300)}</span><div style="margin-top:6px">${prizeChips(ex.prizes)}</div></div>
+    <p class="muted" style="font-size:13px;margin:0">«3:2:1» — банк делится на 6 частей: 3 части первому, 2 второму, 1 третьему. Можно вписать «1» (всё победителю) или «5:3:2». Если игроков мало, призовых мест на одно меньше, чем игроков.</p>
     <p class="muted" style="font-size:13px;margin:0">${S.mode === "db" ? "Данные лиги общие: всё, что вы вводите, видят все, кому открыта эта страница." : S.mode === "local" ? "Сейчас данные хранятся только в этом браузере." : ""}</p>
   </section>`;
 }
@@ -485,7 +490,9 @@ function vProfile(pid){
   const C = compute(); const p = C.P[pid]; if (!p || !S.players[pid]) return "";
   const rank = C.ranked.findIndex(x => x.id === pid);
   const ach = achievements(p, C);
-  const got = Object.entries(p.got).sort((a, b) => b[1] - a[1])[0];
+  const nemesis = Object.entries(p.above).sort((a, b) => b[1] - a[1])[0];
+  const victim = Object.entries(p.below).sort((a, b) => b[1] - a[1])[0];
+  const avg = p.places.length ? (p.places.reduce((a, b) => a + b, 0) / p.places.length).toFixed(1).replace(".", ",") : "—";
   const k = "delp-" + pid;
   return `<div class="sheet-bg" data-act="close"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(name(pid))}">
     <div class="row spread"><div class="row">${miniCard(rank >= 0 ? RANKS[Math.min(rank, 12)] : "·", pid)}<div><h2>${esc(name(pid))}</h2><span class="muted" style="font-size:13px">${rank >= 0 ? `${rank + 1}-е место · ${Math.round(p.rating)} очк.` : "Ещё не играл"}</span></div></div>
@@ -493,11 +500,12 @@ function vProfile(pid){
     ${p.hist.length > 1 ? `<div>${spark(p.hist, 320, 60).replace('width="320"', 'width="100%" preserveAspectRatio="none"')}</div>` : ""}
     <div class="stats">
       <div class="stat"><span>Вечеров</span><b>${p.games}</b></div>
-      <div class="stat"><span>В плюсе</span><b>${p.games ? Math.round(p.wins / p.games * 100) : 0}%</b></div>
+      <div class="stat"><span>Побед</span><b>${p.wins}</b></div>
+      <div class="stat"><span>В призах</span><b>${p.games ? Math.round(p.cashes / p.games * 100) : 0}%</b></div>
+      <div class="stat"><span>Среднее место</span><b>${avg}</b></div>
       <div class="stat"><span>Итого</span><b class="${p.total >= 0 ? "pos" : "neg"}">${money(p.total, true)}</b></div>
-      <div class="stat"><span>Лучший вечер</span><b>${p.games ? money(p.best, true) : "—"}</b></div>
-      <div class="stat"><span>Худший вечер</span><b>${p.games ? money(p.worst, true) : "—"}</b></div>
-      <div class="stat"><span>Чаще всех платит тебе</span><b style="font-family:var(--f-body);font-size:15px">${got ? esc(name(got[0])) : "—"}</b>${got ? `<span class="num">${money(got[1])}</span>` : ""}</div>
+      <div class="stat"><span>Злой гений</span><b style="font-family:var(--f-body);font-size:15px">${nemesis ? esc(name(nemesis[0])) : "—"}</b><span>${nemesis ? `выше тебя ${nemesis[1]} ${plural(nemesis[1],"раз","раза","раз")}` : "кто чаще всех тебя обходит"}</span></div>
+      <div class="stat"><span>Любимая жертва</span><b style="font-family:var(--f-body);font-size:15px">${victim ? esc(name(victim[0])) : "—"}</b><span>${victim ? `ниже тебя ${victim[1]} ${plural(victim[1],"раз","раза","раз")}` : "кого ты обходишь чаще всех"}</span></div>
     </div>
     <h3>Ачивки <span class="muted num" style="font-weight:500">${ach.filter(a => a.on).length}/${ach.length}</span></h3>
     <div class="ach">${ach.map(a => `<div class="badge ${a.on ? "" : "off"}"><span class="g">${a.g}</span><b>${a.t}</b><span>${esc(a.d)}</span></div>`).join("")}</div>
@@ -511,14 +519,12 @@ const route = () => { const h = (location.hash || "").slice(1); return ROUTES[h]
 function render(){
   const r = route();
   document.querySelectorAll("#tabs a").forEach(a => {
-    const on = a.getAttribute("href") === "#" + r;
-    a.toggleAttribute("aria-current", false); if (on) a.setAttribute("aria-current", "page");
+    a.removeAttribute("aria-current"); if (a.getAttribute("href") === "#" + r) a.setAttribute("aria-current", "page");
     if (a.getAttribute("href") === "#live") a.innerHTML = "Стол" + (liveGame() ? '<span class="dot" title="Идёт игра"></span>' : "");
   });
-  $("#leagueName").textContent = S.settings.name || "Покерная лига";
+  $("#leagueName").textContent = S.settings.name || DEFAULTS.name;
   const n = doneGames().length;
   $("#seasonLine").textContent = n ? `${n} ${plural(n, "вечер", "вечера", "вечеров")} · ${Object.keys(S.players).length} игроков` : "";
-
   let note = "";
   if (S.mode === "loading") note = `<div class="banner">Загружаю лигу…</div>`;
   else if (S.mode === "demo") note = `<div class="banner"><span><b>Пример.</b> Имена и цифры выдуманы, ничего не сохраняется.</span><button class="btn sm" data-act="demo-off">Вернуться к своей лиге</button></div>`;
@@ -526,47 +532,40 @@ function render(){
   else if (S.readOnly) note = `<div class="banner">Вы смотрите лигу без права записи. Вносить вечера может владелец и те, кому он дал доступ редактора.</div>`;
   else if (S.stale) note = `<div class="banner">Не получается достучаться до хранилища — данные могут быть устаревшими.</div>`;
   $("#notice").innerHTML = note;
-
-  // keep focus and in-progress typing across re-renders
   const a = document.activeElement; const keepId = a && a.id && a.tagName === "INPUT" ? a.id : null;
-  const keepVal = keepId ? a.value : null; let sel = null; try { sel = keepId ? [a.selectionStart, a.selectionEnd] : null; } catch {}
+  const keepVal = keepId ? a.value : null;
   $("#view").innerHTML = `<div class="wrap" style="max-width:none">${S.mode === "loading" ? "" : ROUTES[r]()}</div>`;
   $("#sheet").innerHTML = S.profile ? vProfile(S.profile) : "";
-  if (keepId) { const el = document.getElementById(keepId); if (el) { el.value = keepVal; el.focus(); try { if (sel && sel[0] != null) el.setSelectionRange(sel[0], sel[1]); } catch {} } }
+  if (keepId) { const el = document.getElementById(keepId); if (el) { el.value = keepVal; el.focus(); } }
 }
 let toastT;
 function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
 
 /* ---------- actions ---------- */
-function disarm(){ if (S.armed) { S.armed = null; } }
 document.addEventListener("click", e => {
-  const el = e.target.closest("[data-act]"); if (!el) { if (S.armed) { disarm(); render(); } return; }
+  const el = e.target.closest("[data-act]"); if (!el) { if (S.armed) { S.armed = null; render(); } return; }
   const act = el.dataset.act, id = el.dataset.id;
   if (act === "close") { if (e.target === el || el.tagName === "BUTTON") { S.profile = null; S.armed = null; render(); } return; }
-  if (act === "cashout") return;
   const prevArmed = S.armed; S.armed = null;
   const g = liveGame();
   switch (act) {
     case "profile": S.profile = id; break;
     case "pick": { const s = S.draft.picked; s.has(id) ? s.delete(id) : s.add(id); break; }
     case "start": {
-      const bi = Math.max(0, Number($("#d-buyin").value) || 0); const date = $("#d-date").value || today();
-      const entries = {}; for (const p of S.draft.picked) if (S.players[p]) entries[p] = {buyIns: [bi], cashOut: null};
-      put("games", uid(), {date, status: "live", buyIn: bi, entries, createdAt: Date.now()}); S.draft.picked = null; return;
+      const entry = Math.max(0, Number($("#d-entry").value) || 0), date = $("#d-date").value || today();
+      const players = [...S.draft.picked].filter(p => S.players[p]);
+      const holder = $("#d-holder").value || null;
+      put("games", uid(), {date, status: "live", entry, split: parseSplit(S.settings.split), holder, players, out: [], createdAt: Date.now()});
+      S.draft.picked = null; S.draft.entry = null; return;
     }
-    case "rebuy": if (g) { const ge = structuredClone(g); delete ge.id; ge.entries[id].buyIns.push(g.buyIn || 0); put("games", g.id, ge); } return;
-    case "unbuy": if (g) { const ge = structuredClone(g); delete ge.id; ge.entries[id].buyIns.pop(); put("games", g.id, ge); } return;
-    case "join": if (g) { const ge = structuredClone(g); delete ge.id; ge.entries[id] = {buyIns: [g.buyIn || 0], cashOut: null}; put("games", g.id, ge); } return;
-    case "finish": if (g) {
-      const nets = gameNets(g); const diff = Object.values(nets).reduce((a, n) => a + n.net, 0);
-      if (Math.abs(diff) >= 1 && prevArmed !== "finish") { S.armed = "finish"; break; }
-      const ge = structuredClone(g); delete ge.id; ge.status = "done"; ge.finishedAt = Date.now(); put("games", g.id, ge);
-      location.hash = "#nights"; toast("Вечер записан. Рейтинг пересчитан");
-    } return;
+    case "bust": if (g) { const c = cloneGame(g); c.out = [...(c.out || []), id]; put("games", g.id, c); } return;
+    case "unbust": if (g && (g.out || []).length) { const c = cloneGame(g); c.out.pop(); put("games", g.id, c); } return;
+    case "join": if (g) { const c = cloneGame(g); c.players.push(id); put("games", g.id, c); } return;
+    case "finish": if (g) { const c = cloneGame(g); c.status = "done"; c.finishedAt = Date.now(); put("games", g.id, c); location.hash = "#nights"; toast("Вечер записан. Рейтинг пересчитан"); } return;
     case "cancel": if (g) { if (prevArmed !== "cancel") { S.armed = "cancel"; break; } del("games", g.id); toast("Вечер отменён"); } return;
     case "reopen": {
       if (liveGame()) { toast("Сначала закончите вечер, который идёт сейчас"); break; }
-      const ge = structuredClone(S.games[id]); ge.status = "live"; put("games", id, ge); location.hash = "#live"; return;
+      const c = JSON.parse(JSON.stringify(S.games[id])); c.status = "live"; put("games", id, c); location.hash = "#live"; return;
     }
     case "delgame": if (prevArmed !== "del-" + id) { S.armed = "del-" + id; break; } del("games", id); toast("Вечер удалён"); return;
     case "delplayer": if (prevArmed !== "delp-" + id) { S.armed = "delp-" + id; break; } S.profile = null; del("players", id); toast("Игрок удалён"); return;
@@ -577,26 +576,20 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("change", e => {
   const el = e.target;
-  if (el.dataset.act === "cashout") {
-    const g = liveGame(); if (!g) return;
-    const v = el.value.trim() === "" ? null : Math.max(0, Number(el.value) || 0);
-    const ge = structuredClone(g); delete ge.id;
-    if (!ge.entries[el.dataset.id] || ge.entries[el.dataset.id].cashOut === v) return;
-    ge.entries[el.dataset.id].cashOut = v; el.blur(); put("games", g.id, ge); return;
-  }
-  if (el.id === "g-buyin") { const g = liveGame(); if (!g) return; const ge = structuredClone(g); delete ge.id; ge.buyIn = Math.max(0, Number(el.value) || 0); el.blur(); put("games", g.id, ge); return; }
   if (el.id === "d-date") { S.draft.date = el.value; return; }
-  if (el.id === "d-buyin") { S.draft.buyIn = Number(el.value) || 0; return; }
-  if (["s-name", "s-cur", "s-buyin"].includes(el.id)) {
-    const s = {...S.settings, name: $("#s-name").value.trim() || "Покерная лига", currency: $("#s-cur").value.trim() || "₽", buyIn: Math.max(0, Number($("#s-buyin").value) || 0)};
+  if (el.id === "d-entry") { S.draft.entry = Math.max(0, Number(el.value) || 0); el.blur(); render(); return; }
+  if (el.id === "d-holder") { S.draft.holder = el.value || null; return; }
+  if (["s-name", "s-cur", "s-entry", "s-split"].includes(el.id)) {
+    const s = {...S.settings, name: $("#s-name").value.trim() || DEFAULTS.name, currency: $("#s-cur").value.trim() || "₽",
+      entry: Math.max(0, Number($("#s-entry").value) || 0), split: parseSplit($("#s-split").value).join(":")};
     el.blur(); put("settings", "main", s); toast("Сохранено");
   }
 });
-document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.dataset && e.target.dataset.act === "cashout") e.target.blur(); if (e.key === "Escape" && S.profile) { S.profile = null; render(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && S.profile) { S.profile = null; render(); } });
 document.addEventListener("submit", e => {
   if (e.target.id !== "addForm") return; e.preventDefault();
   const inp = $("#newName"); const nm = inp.value.trim(); if (!nm) return;
-  if (Object.values(S.players).some(p => p.name.toLowerCase() === nm.toLowerCase())) { toast("Такой игрок уже есть"); return; }
+  if (Object.values(S.players).some(p => (p.name || "").toLowerCase() === nm.toLowerCase())) { toast("Такой игрок уже есть"); return; }
   inp.value = ""; put("players", uid(), {name: nm, createdAt: Date.now()});
 });
 window.addEventListener("hashchange", () => { S.armed = null; render(); window.scrollTo(0, 0); });
@@ -604,33 +597,32 @@ window.addEventListener("hashchange", () => { S.armed = null; render(); window.s
 /* ---------- demo ---------- */
 function startDemo(){
   S.real = {players: S.players, games: S.games, settings: S.settings, mode: S.mode};
-  const names = ["Дима", "Саша", "Лёша", "Макс", "Аня", "Костя"];
+  const names = ["Дима", "Саша", "Лёша", "Макс", "Аня", "Костя", "Рома"];
   const players = {}; names.forEach((n, i) => players["demo" + i] = {name: n, createdAt: i});
-  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const skill = [1, 1.7, 1.1, .8, 1.4, 1, .9];
   const games = {};
-  for (let k = 0; k < 9; k++) {
-    const entries = {}; const ids = Object.keys(players).filter(() => rnd() > .12);
-    let bank = 0;
-    ids.forEach(p => { const n = 1 + Math.floor(rnd() * rnd() * 4); entries[p] = {buyIns: Array(n).fill(1000), cashOut: 0}; bank += n * 1000; });
-    const w = ids.map(p => Math.pow(rnd(), 1.6) * (p === "demo1" ? 1.6 : 1)); const ws = w.reduce((a, b) => a + b, 0);
-    let left = bank; ids.forEach((p, i) => { const v = i === ids.length - 1 ? left : Math.round(bank * w[i] / ws / 50) * 50; entries[p].cashOut = v; left -= v; });
-    const d = new Date(2026, 6 + Math.floor(k / 2), 3 + (k % 2) * 14);
-    games["dg" + k] = {date: d.toISOString().slice(0, 10), status: "done", buyIn: 1000, entries, createdAt: k};
+  for (let k = 0; k < 10; k++) {
+    const ids = Object.keys(players).filter((p, i) => i < 5 || rnd() > .4);
+    const order = ids.map(p => [p, rnd() * skill[+p.slice(4)]]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+    const d = new Date(2026, 6 + Math.floor(k / 3), 4 + (k % 3) * 9);
+    games["dg" + k] = {date: d.toISOString().slice(0, 10), status: "done", entry: 300, split: [3, 2, 1], holder: ids[k % ids.length],
+      players: ids, out: order.slice(0, -1), createdAt: k};
   }
-  S.players = players; S.games = games; S.settings = {name: "Пятничный стол", currency: "₽", buyIn: 1000}; S.mode = "demo";
+  S.players = players; S.games = games; S.settings = {...DEFAULTS, name: "Пятничный стол"}; S.mode = "demo";
   location.hash = "#rating"; render();
 }
 function stopDemo(){ const r = S.real; S.players = r.players; S.games = r.games; S.settings = r.settings; S.mode = r.mode; S.real = null; S.profile = null; render(); }
 
 /* ---------- boot ---------- */
 function goLocal(){
-  const d = lsLoad(); if (d) { S.players = d.players || {}; S.games = d.games || {}; S.settings = {...S.settings, ...(d.settings || {})}; }
+  const d = lsLoad(); if (d) { S.players = d.players || {}; S.games = d.games || {}; S.settings = {...DEFAULTS, ...(d.settings || {})}; }
   S.mode = "local"; render();
 }
 function apply(coll, snap){
   const map = {}; snap.docs.forEach(d => { map[d.id] = d.data(); });
   const target = S.mode === "demo" && S.real ? S.real : S;
-  if (coll === "settings") target.settings = {...{name: "Покерная лига", currency: "₽", buyIn: 1000}, ...(map.main || {})};
+  if (coll === "settings") target.settings = {...DEFAULTS, ...(map.main || {})};
   else target[coll] = map;
 }
 async function boot(){
@@ -643,9 +635,7 @@ async function boot(){
   let pending = 3; const t = setTimeout(() => { S.stale = true; render(); }, 10000);
   const done = snap => { if (!snap.metadata.fromCache && pending > 0) { pending--; if (!pending) { clearTimeout(t); S.stale = false; } } };
   const fail = e => { clearTimeout(t); if (e && e.code !== "revoked") S.stale = true; render(); };
-  for (const coll of ["players", "games", "settings"]) {
-    db.collection(coll).onSnapshot(snap => { apply(coll, snap); done(snap); render(); }, fail);
-  }
+  for (const coll of ["players", "games", "settings"]) db.collection(coll).onSnapshot(snap => { apply(coll, snap); done(snap); render(); }, fail);
   render();
 }
 boot();
