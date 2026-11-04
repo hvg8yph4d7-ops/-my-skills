@@ -100,6 +100,13 @@ function Details({ a, diff }: { a: Action; diff?: DiffRow[] }) {
   return <div className="action-details">{lines.map((l, i) => <div key={i} className={l.startsWith('Итого') ? 'total' : ''}>{l}</div>)}</div>;
 }
 
+/** «Думаю… 12 с» — видно, что советник не завис. */
+function Thinking() {
+  const [sec, setSec] = useState(0);
+  useEffect(() => { const id = setInterval(() => setSec(x => x + 1), 1000); return () => clearInterval(id); }, []);
+  return <div className="bubble assistant dim">Думаю…{sec >= 3 ? ` ${sec} с` : ''}</div>;
+}
+
 /** Вложения в пузыре: превью фото или значок документа. */
 function Files({ files }: { files: NonNullable<StoredTurn['files']> }) {
   return (
@@ -371,7 +378,7 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
             )}
           </div>
         ))}
-        {busy && <div className="bubble assistant dim">Думаю…</div>}
+        {busy && <Thinking />}
         <div ref={endRef} />
       </div>
 

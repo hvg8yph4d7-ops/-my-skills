@@ -30,7 +30,33 @@ const busy = (status: number) => status === 500 || status === 502 || status === 
  * Запрос с повторами: «модель перегружена» (5xx) у бесплатного Gemini бывает часто и проходит за секунды.
  * Два повтора с паузой, потом — одна попытка на соседней модели (Flash ↔ Flash-Lite).
  */
+/**
+ * Сколько модели «думать» перед ответом. Flash по умолчанию думает сама сколько хочет — на большом дневнике
+ * это минута и дольше. Для записей и советов хватает немного: у Gemini 3 — уровень low, у 2.x — бюджет 512 токенов.
+ */
+const thinking = (model: string) => (/gemini-2\./i.test(model) ? { thinkingBudget: 512 } : { thinkingLevel: 'low' });
+
+/** Добавить ограничение размышлений в запрос генерации (если модель его не поймёт — call повторит без него). */
+function withThinking(model: string, body: unknown) {
+  const b = body as { generationConfig?: Record<string, unknown> } | undefined;
+  if (!b || typeof b !== 'object') return body;
+  return { ...b, generationConfig: { ...b.generationConfig, thinkingConfig: thinking(model) } };
+}
+
 async function call(key: string, path: string, body?: unknown) {
+  const m = path.match(/^\/models\/([^:]+):(.+)$/);
+  if (m && body) {
+    try { return await callRetry(key, path, withThinking(m[1], body)); }
+    catch (e) {
+      // Модель не знает такой настройки размышлений — тот же запрос без неё.
+      if (e instanceof GeminiHttpError && e.status === 400 && /think/i.test(e.message)) return callRetry(key, path, body);
+      throw e;
+    }
+  }
+  return callRetry(key, path, body);
+}
+
+async function callRetry(key: string, path: string, body?: unknown) {
   let lastErr: unknown;
   const m = path.match(/^\/models\/([^:]+):(.+)$/);
   for (const wait of [0, 1500, 3500]) {
@@ -55,15 +81,22 @@ async function call(key: string, path: string, body?: unknown) {
 }
 
 async function callOnce(key: string, path: string, body?: unknown) {
-  const send = () => fetch(BASE + path, {
-    method: body ? 'POST' : 'GET',
-    headers: { 'x-goog-api-key': key, ...(body ? { 'Content-Type': 'application/json' } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  // Ответа нет 2 минуты — не ждём бесконечно, честно говорим.
+  const send = () => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 120_000);
+    return fetch(BASE + path, {
+      method: body ? 'POST' : 'GET',
+      headers: { 'x-goog-api-key': key, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal,
+    }).finally(() => clearTimeout(t));
+  };
   let res: Response;
   try {
     res = await send();
   } catch (first) {
+    if ((first as Error)?.name === 'AbortError') throw new AiError('Gemini не ответил за 2 минуты. Проверь VPN и отправь ещё раз — текст остался в поле.');
     // Сеть через VPN иногда моргает — одна повторная попытка через секунду.
     await new Promise(r => setTimeout(r, 1000));
     try {
