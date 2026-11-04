@@ -218,7 +218,7 @@ export interface Settings {
   geminiModel: string; // выбирается из списка моделей, доступных ключу
   apiKey: string; // ключ Claude
   model: ModelId; // модель Claude
-  flashRev?: number; // 1 — модель Gemini уже переведена с Flash-Lite на Flash (4.11.2026)
+  flashRev?: number; // 1 — переведена на Flash, 2 — возвращена на Flash-Lite (4.11.2026)
 }
 const SETTINGS_KEY = 'settings';
 export const DEFAULT_SETTINGS: Settings = { provider: 'gemini', geminiKey: '', geminiModel: '', apiKey: '', model: 'claude-opus-5-5' };
@@ -226,9 +226,11 @@ export const DEFAULT_SETTINGS: Settings = { provider: 'gemini', geminiKey: '', g
 export async function loadSettings(): Promise<Settings> {
   const s = await tx<Partial<Settings> | undefined>('readonly', st => st.get(SETTINGS_KEY));
   const out = { ...DEFAULT_SETTINGS, ...(s || {}) };
-  // Один раз переводим с Flash-Lite на Flash той же версии (Давид: «надо, чтобы всё шло через Flash»).
-  if (out.flashRev !== 1) {
-    const next = { ...out, flashRev: 1, geminiModel: out.geminiModel.replace(/-lite/i, '') };
+  // 4.11.2026 всех перевели на Flash, лимит кончился за день — один раз возвращаем Flash-Lite той же версии.
+  if (out.flashRev !== 2) {
+    const m = out.geminiModel;
+    const lite = !m || /lite/i.test(m) ? m : /-latest$/i.test(m) ? m.replace(/-latest$/i, '-lite-latest') : m.replace(/flash/i, 'flash-lite');
+    const next = { ...out, flashRev: 2, geminiModel: lite };
     await saveSettings(next).catch(() => {});
     return next;
   }

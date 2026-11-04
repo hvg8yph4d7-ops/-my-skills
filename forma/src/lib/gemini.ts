@@ -31,7 +31,7 @@ const busy = (status: number) => status === 500 || status === 502 || status === 
  * Два повтора с паузой, потом — одна попытка на соседней модели (Flash ↔ Flash-Lite).
  */
 /**
- * Сколько модели «думать» перед ответом. Flash по умолчанию думает сама сколько хочет — на большом дневнике
+ * Сколько модели «думать» перед ответом (только не-Lite: Lite и так почти не думает). Flash по умолчанию думает сама сколько хочет — на большом дневнике
  * это минута и дольше. Для записей и советов хватает немного: у Gemini 3 — уровень low, у 2.x — бюджет 512 токенов.
  */
 const thinking = (model: string) => (/gemini-2\./i.test(model) ? { thinkingBudget: 512 } : { thinkingLevel: 'low' });
@@ -45,7 +45,7 @@ function withThinking(model: string, body: unknown) {
 
 async function call(key: string, path: string, body?: unknown) {
   const m = path.match(/^\/models\/([^:]+):(.+)$/);
-  if (m && body) {
+  if (m && body && !/lite/i.test(m[1])) {
     try { return await callRetry(key, path, withThinking(m[1], body)); }
     catch (e) {
       // Модель не знает такой настройки размышлений — тот же запрос без неё.
@@ -64,10 +64,10 @@ async function callRetry(key: string, path: string, body?: unknown) {
     try { return await callOnce(key, path, body); }
     catch (e) {
       lastErr = e;
-      // Модель убрали (404) — пробуем общий адрес «последняя Flash».
-      if (m && e instanceof GeminiHttpError && e.status === 404 && m[1] !== 'gemini-flash-latest') {
-        logError(`Gemini ${m[1]} не найдена, пробую gemini-flash-latest`);
-        return await callOnce(key, `/models/gemini-flash-latest:${m[2]}`, body);
+      // Модель убрали (404) — пробуем общий адрес «последняя Flash-Lite».
+      if (m && e instanceof GeminiHttpError && e.status === 404 && m[1] !== 'gemini-flash-lite-latest') {
+        logError(`Gemini ${m[1]} не найдена, пробую gemini-flash-lite-latest`);
+        return await callOnce(key, `/models/gemini-flash-lite-latest:${m[2]}`, body);
       }
       if (!(e instanceof GeminiHttpError && busy(e.status))) throw e;
     }
@@ -231,13 +231,12 @@ export async function geminiModels(key: string): Promise<{ id: string; name: str
 }
 
 /**
- * Модель по умолчанию: самая новая стабильная Flash (не Lite) — умнее, хотя бесплатный лимит меньше.
- * С 4.11.2026 по просьбе Давида всё идёт через Flash; раньше по умолчанию была Flash-Lite.
+ * Модель по умолчанию: самая новая стабильная Flash-Lite (у неё самый щедрый бесплатный лимит).
+ * 4.11.2026 пробовали Flash для всего — бесплатный лимит кончился за день, вернули Lite.
  */
 export function pickDefaultModel(models: { id: string }[]) {
   const stable = models.filter(m => !/preview|exp/i.test(m.id));
-  const full = stable.filter(m => !/lite/i.test(m.id));
-  return (full.find(m => !/latest/i.test(m.id)) || full[0] || stable[0] || models[0])?.id || '';
+  return (stable.find(m => /lite/i.test(m.id) && !/latest/i.test(m.id)) || stable.find(m => /lite/i.test(m.id)) || stable[0] || models[0])?.id || '';
 }
 
 /** Ответ строго по zod-схеме (для советника). При 400 — повтор со схемой в тексте промпта. */
