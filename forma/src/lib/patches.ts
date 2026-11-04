@@ -57,6 +57,14 @@ export const PATCHES: Patch[] = [
       food('Курица жареная', 165, 50, 12, 0, 309, 0, 'на 100 г ≈ Б 30, Ж 7, 187 ккал', 'estimate'),
     ], []),
   },
+  {
+    id: '2026-11-05-kcal-3400',
+    label: 'нормы подняты: 3400 ккал (было 3100)',
+    // Уже поднял сам — не трогаем.
+    skip: d => d.targets.kcal >= 3400,
+    // Вес перестал расти на 3100 → +300 ккал, в основном углеводами. Б 140·4 + Ж 95·9 + У 495·4 ≈ 3395.
+    apply: d => ({ ...d, targets: { kcal: 3400, p: 140, f: 95, c: 495, fib: 30 } }),
+  },
 ];
 
 export const pendingPatches = (d: FormaData) => (d.seedRev ? PATCHES.filter(p => !(d.patches || []).includes(p.id)) : []);
