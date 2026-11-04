@@ -20,13 +20,36 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+function txOnce<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   return openDb().then(db => new Promise<T>((resolve, reject) => {
-    const t = db.transaction(STORE, mode);
+    let t: IDBTransaction;
+    try { t = db.transaction(STORE, mode); } catch (e) { db.close(); reject(e); return; }
     const req = run(t.objectStore(STORE));
     t.oncomplete = () => { db.close(); resolve(req.result); };
     t.onerror = () => { db.close(); reject(t.error); };
+    t.onabort = () => { db.close(); reject(t.error || new Error('IndexedDB: транзакция прервана')); };
   }));
+}
+
+/**
+ * iPhone (Safari) после сна приложения иногда рвёт связь с хранилищем:
+ * «Connection to Indexed Database server lost». Обычно через долю секунды открывается снова — повторяем;
+ * не вышло за 3 попытки — один раз перезагружаем страницу (данные на телефоне при этом не теряются).
+ */
+const lostDb = (e: unknown) => /Indexed Database server lost|connection.*lost|UnknownError|InvalidStateError/i.test(`${(e as Error)?.name} ${(e as Error)?.message}`);
+async function tx<T>(mode: IDBTransactionMode, run: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+  for (let i = 0; ; i++) {
+    try { return await txOnce(mode, run); }
+    catch (e) {
+      if (!lostDb(e)) throw e;
+      if (i < 3) { await new Promise(r => setTimeout(r, 300 * (i + 1))); continue; }
+      try {
+        const last = Number(sessionStorage.getItem('forma-idb-reload') || 0);
+        if (Date.now() - last > 60_000) { sessionStorage.setItem('forma-idb-reload', String(Date.now())); location.reload(); }
+      } catch { /* без sessionStorage — просто покажем ошибку */ }
+      throw new Error('Хранилище телефона не отвечает. Закрой «Форму» и открой снова — записи не пропали.');
+    }
+  }
 }
 
 /** Приводит данные любой старой версии к текущей схеме. Сюда добавлять шаги при смене схемы. */

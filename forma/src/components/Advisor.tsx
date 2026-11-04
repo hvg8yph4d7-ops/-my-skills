@@ -152,7 +152,12 @@ export function Advisor({ data, settings, today, update, chatKey, sync, notify, 
       const remote = await sync.pull().catch(() => []);
       setTurns(remote);
       if (remote.length) saveChat(remote, chatKey).catch(() => {});
-    }).catch(() => {});
+    }).catch(async () => {
+      // Хранилище телефона не открылось — показываем копию из аккаунта, чтобы переписка не выглядела пустой
+      // (иначе первое же новое сообщение затёрло бы её).
+      const remote = sync ? await sync.pull().catch(() => []) : [];
+      setTurns(remote);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatKey]);
   const atEnd = useChatScroll(endRef, turns.length, true, busy);
