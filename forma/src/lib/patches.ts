@@ -6,8 +6,8 @@ import { applyEntry, type EntryExercise, type EntryFood } from './entry';
 
 type Patch = { id: string; label: string; skip?: (d: FormaData) => boolean; apply: (d: FormaData) => FormaData };
 
-const food = (name: string, grams: number, p: number, f: number, c: number, kcal: number, fib: number, note: string | null = null): EntryFood =>
-  ({ name, grams, p, f, c, kcal, fib, source: 'label', product: null, note });
+const food = (name: string, grams: number, p: number, f: number, c: number, kcal: number, fib: number, note: string | null = null, source: EntryFood['source'] = 'label'): EntryFood =>
+  ({ name, grams, p, f, c, kcal, fib, source, product: null, note });
 
 /** Упражнение: подходы «вес/повторы» строкой, например '50/12 70/10'. */
 const ex = (name: string, group: string, sets: string, isBench = false): EntryExercise => ({
@@ -45,6 +45,17 @@ export const PATCHES: Patch[] = [
       ex('Жим гантели из-за головы', 'трицепс', '24/10 22/12 22/12'),
       ex('Разгибания в кроссовере', 'трицепс', '50/10 50/10 45/12'),
     ]),
+  },
+  {
+    id: '2026-11-04-pasta-chicken',
+    label: 'макароны 265 г и жареная курица 165 г за 4 ноября',
+    skip: d => !!d.days.find(x => x.date === '2026-11-04')?.meals?.some(m => /курица.*жарен|жарен.*курица/i.test(m.name)),
+    apply: d => applyEntry(d, blank('2026-11-04'), [
+      // Готовые макароны: Б 3,5, Ж 0,5, У 25, 130 ккал на 100 г (правило из чата).
+      food('Макароны готовые', 265, 9, 1, 66, 345, 5, null, 'base'),
+      // Жареная курица (грудка на масле): ~Б 30, Ж 7, 187 ккал на 100 г.
+      food('Курица жареная', 165, 50, 12, 0, 309, 0, 'на 100 г ≈ Б 30, Ж 7, 187 ккал', 'estimate'),
+    ], []),
   },
 ];
 
