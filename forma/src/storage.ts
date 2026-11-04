@@ -218,13 +218,21 @@ export interface Settings {
   geminiModel: string; // выбирается из списка моделей, доступных ключу
   apiKey: string; // ключ Claude
   model: ModelId; // модель Claude
+  flashRev?: number; // 1 — модель Gemini уже переведена с Flash-Lite на Flash (4.11.2026)
 }
 const SETTINGS_KEY = 'settings';
 export const DEFAULT_SETTINGS: Settings = { provider: 'gemini', geminiKey: '', geminiModel: '', apiKey: '', model: 'claude-opus-5-5' };
 
 export async function loadSettings(): Promise<Settings> {
   const s = await tx<Partial<Settings> | undefined>('readonly', st => st.get(SETTINGS_KEY));
-  return { ...DEFAULT_SETTINGS, ...(s || {}) };
+  const out = { ...DEFAULT_SETTINGS, ...(s || {}) };
+  // Один раз переводим с Flash-Lite на Flash той же версии (Давид: «надо, чтобы всё шло через Flash»).
+  if (out.flashRev !== 1) {
+    const next = { ...out, flashRev: 1, geminiModel: out.geminiModel.replace(/-lite/i, '') };
+    await saveSettings(next).catch(() => {});
+    return next;
+  }
+  return out;
 }
 
 export async function saveSettings(s: Settings): Promise<void> {

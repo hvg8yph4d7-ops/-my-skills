@@ -32,12 +32,20 @@ const busy = (status: number) => status === 500 || status === 502 || status === 
  */
 async function call(key: string, path: string, body?: unknown) {
   let lastErr: unknown;
+  const m = path.match(/^\/models\/([^:]+):(.+)$/);
   for (const wait of [0, 1500, 3500]) {
     if (wait) await sleep(wait);
     try { return await callOnce(key, path, body); }
-    catch (e) { lastErr = e; if (!(e instanceof GeminiHttpError && busy(e.status))) throw e; }
+    catch (e) {
+      lastErr = e;
+      // Модель убрали (404) — пробуем общий адрес «последняя Flash».
+      if (m && e instanceof GeminiHttpError && e.status === 404 && m[1] !== 'gemini-flash-latest') {
+        logError(`Gemini ${m[1]} не найдена, пробую gemini-flash-latest`);
+        return await callOnce(key, `/models/gemini-flash-latest:${m[2]}`, body);
+      }
+      if (!(e instanceof GeminiHttpError && busy(e.status))) throw e;
+    }
   }
-  const m = path.match(/^\/models\/([^:]+):(.+)$/);
   if (m) {
     const other = /lite/i.test(m[1]) ? 'gemini-flash-latest' : 'gemini-flash-lite-latest';
     logError(`Gemini ${m[1]} перегружена, пробую ${other}`);
@@ -189,10 +197,14 @@ export async function geminiModels(key: string): Promise<{ id: string; name: str
   }
 }
 
-/** Модель по умолчанию: самая новая стабильная Flash-Lite (у неё самый щедрый бесплатный лимит). */
+/**
+ * Модель по умолчанию: самая новая стабильная Flash (не Lite) — умнее, хотя бесплатный лимит меньше.
+ * С 4.11.2026 по просьбе Давида всё идёт через Flash; раньше по умолчанию была Flash-Lite.
+ */
 export function pickDefaultModel(models: { id: string }[]) {
   const stable = models.filter(m => !/preview|exp/i.test(m.id));
-  return (stable.find(m => /lite/i.test(m.id)) || stable[0] || models[0])?.id || '';
+  const full = stable.filter(m => !/lite/i.test(m.id));
+  return (full.find(m => !/latest/i.test(m.id)) || full[0] || stable[0] || models[0])?.id || '';
 }
 
 /** Ответ строго по zod-схеме (для советника). При 400 — повтор со схемой в тексте промпта. */
