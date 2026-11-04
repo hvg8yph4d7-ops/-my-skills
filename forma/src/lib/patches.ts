@@ -2,12 +2,18 @@
 // Применяются один раз к дневнику с seedRev (его), отмечаются в data.patches и дальше не повторяются.
 
 import type { FormaData } from '../types';
-import { applyEntry, type EntryFood } from './entry';
+import { applyEntry, type EntryExercise, type EntryFood } from './entry';
 
 type Patch = { id: string; label: string; skip?: (d: FormaData) => boolean; apply: (d: FormaData) => FormaData };
 
 const food = (name: string, grams: number, p: number, f: number, c: number, kcal: number, fib: number, note: string | null = null): EntryFood =>
   ({ name, grams, p, f, c, kcal, fib, source: 'label', product: null, note });
+
+/** Упражнение: подходы «вес/повторы» строкой, например '50/12 70/10'. */
+const ex = (name: string, group: string, sets: string, isBench = false): EntryExercise => ({
+  name, group, isBench,
+  sets: sets.split(' ').map(x => { const [w, r] = x.split('/').map(Number); return { weight: w, reps: r, repsMax: null }; }),
+});
 
 const blank = (date: string) => ({ date, food: [], exercises: [], weight: null, supps: null, gym: null, sore: [], questions: [], comment: '' });
 
@@ -25,6 +31,20 @@ export const PATCHES: Patch[] = [
       food('Макароны Макфа, сухие', 225, 27, 3, 159, 770, 8),
       food('Чипсы Litenergy паприка', 120, 7, 48, 55, 684, 4, 'этикетка: на 100 г Б 5,5, Ж 40, У 46, 570 ккал'),
     ], []),
+  },
+  {
+    id: '2026-11-04-chest',
+    label: 'тренировка груди и трицепса за 4 ноября',
+    // Если уже записал сам (есть жим 70×10 в этот день) — не дублируем.
+    skip: d => !!d.days.find(x => x.date === '2026-11-04')?.exercises?.some(e => /жим штанги/i.test(e.name) && e.sets.some(s => s.weight === 70 && s.reps === 10)),
+    apply: d => applyEntry(d, { ...blank('2026-11-04'), gym: true }, [], [
+      ex('Жим штанги лёжа', 'грудь', '50/12 70/10 70/10 70/8', true),
+      ex('Жим гантелей лёжа', 'грудь', '28/12 28/10 28/8'),
+      ex('Хаммер на грудь', 'грудь', '25/12 25/10 20/12'),
+      ex('Бабочка', 'грудь', '50/12 50/10 45/12'),
+      ex('Жим гантели из-за головы', 'трицепс', '24/10 22/12 22/12'),
+      ex('Разгибания в кроссовере', 'трицепс', '50/10 50/10 45/12'),
+    ]),
   },
 ];
 
