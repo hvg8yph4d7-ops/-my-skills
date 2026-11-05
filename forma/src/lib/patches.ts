@@ -2,7 +2,7 @@
 // Применяются один раз к дневнику с seedRev (его), отмечаются в data.patches и дальше не повторяются.
 
 import type { FormaData } from '../types';
-import { applyEntry, type EntryExercise, type EntryFood } from './entry';
+import { applyEntry, removeMeal, type EntryExercise, type EntryFood } from './entry';
 
 type Patch = { id: string; label: string; skip?: (d: FormaData) => boolean; apply: (d: FormaData) => FormaData };
 
@@ -64,6 +64,22 @@ export const PATCHES: Patch[] = [
     skip: d => d.targets.kcal >= 3400,
     // Вес перестал расти на 3100 → +300 ккал, в основном углеводами. Б 140·4 + Ж 95·9 + У 495·4 ≈ 3395.
     apply: d => ({ ...d, targets: { kcal: 3400, p: 140, f: 95, c: 495, fib: 30 } }),
+  },
+  {
+    // Давид сам уже записал макароны 265 г и «Куриную грудку жареную» 165 г — запись выше их задвоила
+    // (проверка искала «курица», а у него «куриная»). Убираем то, что добавила запись «за тебя».
+    id: '2026-11-04-undupe',
+    label: 'убран дубль: макароны 265 г и курица жареная 165 г за 4 ноября',
+    skip: d => {
+      const meals = d.days.find(x => x.date === '2026-11-04')?.meals || [];
+      return !meals.some(m => m.name === 'Курица жареная' && m.grams === 165) || meals.filter(m => m.name === 'Макароны готовые' && m.grams === 265).length < 2;
+    },
+    apply: d => {
+      const meals = d.days.find(x => x.date === '2026-11-04')!.meals!;
+      const last = (f: (m: (typeof meals)[number]) => boolean) => meals.map((m, i) => (f(m) ? i : -1)).filter(i => i >= 0).pop()!;
+      const idx = [last(m => m.name === 'Курица жареная' && m.grams === 165), last(m => m.name === 'Макароны готовые' && m.grams === 265)].sort((a, b) => b - a);
+      return idx.reduce((x, i) => removeMeal(x, '2026-11-04', i), d);
+    },
   },
 ];
 
