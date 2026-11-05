@@ -81,6 +81,16 @@ export const PATCHES: Patch[] = [
       return idx.reduce((x, i) => removeMeal(x, '2026-11-04', i), d);
     },
   },
+  {
+    id: '2026-11-05-pasta-chicken',
+    label: 'макароны 375 г и жареная курица 250 г за 5 ноября',
+    // Уже записал сам (макароны 375 г или курица/куриное 250 г) — не дублируем. Ищем по основе «кур», не по слову целиком.
+    skip: d => !!d.days.find(x => x.date === '2026-11-05')?.meals?.some(m => (/макарон/i.test(m.name) && m.grams === 375) || (/кур/i.test(m.name) && m.grams === 250)),
+    apply: d => applyEntry(d, blank('2026-11-05'), [
+      food('Макароны готовые', 375, 13, 2, 94, 488, 7, null, 'base'),
+      food('Курица жареная', 250, 75, 18, 0, 468, 0, 'на 100 г ≈ Б 30, Ж 7, 187 ккал', 'estimate'),
+    ], []),
+  },
 ];
 
 export const pendingPatches = (d: FormaData) => (d.seedRev ? PATCHES.filter(p => !(d.patches || []).includes(p.id)) : []);
