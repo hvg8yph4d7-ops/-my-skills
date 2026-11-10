@@ -20,7 +20,7 @@ export const ActionSchema = z.object({
     'add_food', 'remove_food', 'add_exercise', 'remove_exercise', 'set_weight', 'set_marks',
     'close_day', 'reopen_day', 'set_targets', 'set_split', 'set_sore', 'set_note', 'set_bench_max', 'set_supplements',
     'update_food', 'update_exercise', 'set_day_text', 'set_day_macros', 'set_groups', 'clear_sore', 'remove_weight',
-    'remove_bench', 'set_sober_since', 'set_profile', 'move_exercise',
+    'remove_bench', 'set_sober_since', 'set_profile', 'move_exercise', 'set_holiday', 'log_drink',
   ]).describe(
     'add_food: date + food; remove_food: date + index (номер позиции «Записано в приложении»); ' +
     'add_exercise: date + exercise; remove_exercise: date + index; set_weight: date + number (кг); ' +
@@ -33,7 +33,9 @@ export const ActionSchema = z.object({
     'set_day_macros: date + macros (новый итог дня, когда правишь старые строки еды); set_groups: date + groups (группы мышц дня, пусто = не тренировался); ' +
     'clear_sore: group (снять «ещё болит»); remove_weight: date; remove_bench: date + index (номер подхода жима в этот день, с 0); ' +
     'set_sober_since: date (с какого дня без алкоголя); set_profile: profile (анкета: имя, пол, возраст, рост, вес, цель); ' +
-    'move_exercise: date + index (#N упражнения) + number (новая позиция #, с 0) — поменять порядок упражнений',
+    'move_exercise: date + index (#N упражнения) + number (новая позиция #, с 0) — поменять порядок упражнений; ' +
+    'set_holiday: date + text (праздник: день не идёт в средние и не рвёт серию; пустой text — снять отметку); ' +
+    'log_drink: date + text (что выпил) — пометка у «Без алкоголя», счётчик НЕ сбрасывается',
   ),
   summary: z.string().describe('Коротко по-русски, что изменится, например «Вес 68,6 кг на 10 октября»'),
   who: z.string().nullable().describe('Чей дневник меняем: null — самого пользователя; имя человека из раздела «Дневники других людей» — его дневник'),
@@ -233,6 +235,19 @@ export function applyAction(d: FormaData, a: Action): FormaData {
     }
     case 'set_sober_since':
       return { ...d, soberSince: needDate(a) };
+    case 'set_holiday': {
+      const date = needDate(a), note = (a.text || '').trim();
+      const day = d.days.find(x => x.date === date);
+      if (!day) {
+        if (!note) throw new Error('в этот день нет записей');
+        return { ...d, days: [...d.days, { date, holiday: note, partial: false }].sort((x, y) => x.date.localeCompare(y.date)) };
+      }
+      return mapDay(d, date, x => { const n = { ...x }; if (note) { n.holiday = note; n.partial = false; } else delete n.holiday; return n; });
+    }
+    case 'log_drink': {
+      const date = needDate(a);
+      return { ...d, drinks: [...(d.drinks || []).filter(x => x.date !== date), { date, note: (a.text || '').trim() }] };
+    }
     case 'move_exercise': {
       const date = needDate(a);
       const exs = d.days.find(x => x.date === date)?.exercises || [];
@@ -396,6 +411,8 @@ export function actionDiff(d: FormaData, a: Action): DiffRow[] {
     case 'set_bench_max': return [{ was: `${d.benchMax} кг`, now: `${a.number} кг` }];
     case 'set_supplements': return listDiff(d.supplements.map(x => `${x.time}: ${x.items}`), (a.supplements || []).map(x => `${x.time}: ${x.items}`));
     case 'set_sober_since': return [{ was: d.soberSince || '—', now: a.date || '—' }];
+    case 'set_holiday': return [{ was: day?.holiday ? `праздник: ${day.holiday}` : 'обычный день', now: a.text?.trim() ? `праздник: ${a.text.trim()}` : 'обычный день' }];
+    case 'log_drink': { const w = d.drinks?.find(x => x.date === a.date); return [{ was: w ? `выпил: ${w.note}` : undefined, now: `выпил: ${a.text?.trim() || 'алкоголь'} (счётчик «Без алкоголя» не сбрасывается)` }]; }
     case 'move_exercise': {
       const exs = day?.exercises || [];
       const list = [...exs];

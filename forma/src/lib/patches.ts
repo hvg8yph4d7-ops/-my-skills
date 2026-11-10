@@ -91,6 +91,23 @@ export const PATCHES: Patch[] = [
       food('Курица жареная', 250, 75, 18, 0, 468, 0, 'на 100 г ≈ Б 30, Ж 7, 187 ккал', 'estimate'),
     ], []),
   },
+  {
+    // 6–9 ноября праздники: пил просекко, ел как попало, ничего не записывал. Дни — праздник (не в средние, не рвут серию),
+    // счётчик «Без алкоголя» не сбрасываем, только пометка.
+    id: '2026-11-06-holidays',
+    label: '6–9 ноября отмечены праздником, просекко — пометкой у «Без алкоголя»',
+    apply: d => {
+      const dates = ['2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09'];
+      const note = 'праздники, ел как попало, не записывал';
+      const have = new Set(d.days.map(x => x.date));
+      const days = [
+        ...d.days.map(x => (dates.includes(x.date) ? { ...x, holiday: note, partial: false } : x)),
+        ...dates.filter(x => !have.has(x)).map(date => ({ date, holiday: note, partial: false })),
+      ].sort((a, b) => a.date.localeCompare(b.date));
+      const drinks = [...(d.drinks || []).filter(x => !dates.includes(x.date)), ...dates.map(date => ({ date, note: 'просекко' }))];
+      return { ...d, days, drinks };
+    },
+  },
 ];
 
 export const pendingPatches = (d: FormaData) => (d.seedRev ? PATCHES.filter(p => !(d.patches || []).includes(p.id)) : []);

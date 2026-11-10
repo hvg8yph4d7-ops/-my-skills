@@ -74,6 +74,7 @@ export function Overview({ data, today }: { data: FormaData; today: string }) {
           <div className="card-label">Без алкоголя</div>
           <BigNum v={sober} unit={plural(sober, 'день', 'дня', 'дней')} yellow />
           <div className="sub-note">с {longD(data.soberSince)} · считает сам, каждый день +1</div>
+          {!!data.drinks?.length && <div className="sub-note drinks">🥂 выпивал: {drinkRanges(data.drinks)}</div>}
         </div>
       )}
 
@@ -129,11 +130,18 @@ export function Overview({ data, today }: { data: FormaData; today: string }) {
  */
 function foodStreak(data: FormaData, today: string) {
   const has = new Set(data.days.filter(d => d.meals?.length || d.food?.length).map(d => d.date));
+  // Праздничные дни серию не рвут и в неё не идут — их просто перепрыгиваем.
+  const skip = new Set(data.days.filter(d => d.holiday).map(d => d.date));
   const [y, m, d] = today.split('-').map(Number);
   const cur = new Date(y, m - 1, d);
+  const key = () => dk(cur.getFullYear(), cur.getMonth(), cur.getDate());
   if (!has.has(today)) cur.setDate(cur.getDate() - 1);
   let n = 0;
-  while (has.has(dk(cur.getFullYear(), cur.getMonth(), cur.getDate()))) { n++; cur.setDate(cur.getDate() - 1); }
+  for (;;) {
+    while (skip.has(key())) cur.setDate(cur.getDate() - 1);
+    if (!has.has(key())) break;
+    n++; cur.setDate(cur.getDate() - 1);
+  }
   return n;
 }
 
@@ -154,4 +162,20 @@ function Flame({ n }: { n: number }) {
       <span>{n}</span>
     </div>
   );
+}
+
+/** «6–9 нояб. — просекко; 31 дек. — шампанское»: подряд идущие даты с одной пометкой склеиваются. */
+function drinkRanges(drinks: NonNullable<FormaData['drinks']>) {
+  const list = drinks.slice().sort((a, b) => a.date.localeCompare(b.date));
+  const out: { from: string; to: string; note: string }[] = [];
+  for (const x of list) {
+    const last = out[out.length - 1];
+    if (last && last.note === x.note && daysBetween(last.to, x.date) === 1) last.to = x.date;
+    else out.push({ from: x.date, to: x.date, note: x.note });
+  }
+  return out.map(r => {
+    const a = shortD(r.from), b = shortD(r.to);
+    const span = r.from === r.to ? a : a.split(' ')[1] === b.split(' ')[1] ? `${a.split(' ')[0]}–${b}` : `${a} – ${b}`;
+    return span + (r.note ? ` — ${r.note}` : '');
+  }).join('; ');
 }

@@ -267,3 +267,5 @@ select.inp { -webkit-appearance: none; appearance: none; }
 .sleep-low { color: var(--yellow); font-weight: 600; }
 .cell-sleep { font-size: 8.5px; color: var(--dim); line-height: 11px; margin-top: 1px; white-space: nowrap; }
 .cell-sleep.low { color: var(--yellow); }
+.cell-holiday { font-size: 10px; line-height: 12px; }
+.sub-note.drinks { margin-top: 4px; }

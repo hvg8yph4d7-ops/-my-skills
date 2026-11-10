@@ -47,6 +47,7 @@ export function Calendar({ data, today, update, ai }: { data: FormaData; today: 
         <div className="day-num">{d}</div>
         <div className="dot-row"><div className={'dot pill' + (m.p ? ' on' : '')} /><div className={'dot gym' + (m.g ? ' on' : '')} /></div>
         <GrpBadges data={data} k={k} />
+        {dayFor(data, k)?.holiday && <div className="cell-holiday">🎉</div>}
         {data.sleep?.[k] && <div className={'cell-sleep' + (sleepLow(data.sleep[k].min) ? ' low' : '')}>🌙{sleepShort(data.sleep[k].min)}</div>}
         {!dayFor(data, k)?.groups?.length && <div className="grp-row">{dayFor(data, k) && <div className="mini-tick" />}</div>}
       </button>,

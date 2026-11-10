@@ -60,6 +60,7 @@ export function DayBody({ e, remove, sleep, steps }: { e: Day; remove?: Remove; 
   const exs = (e.exercises || []).map(exerciseLine);
   return (
     <>
+      {e.holiday && <Blk l="Праздник">🎉 {e.holiday} — не идёт в средние и не рвёт серию</Blk>}
       {sleep && <SleepBlk s={sleep} />}
       {steps != null && <Blk l="Шаги">{stepsLine(steps)}</Blk>}
       {e.work && <Blk l="День">{e.work}</Blk>}

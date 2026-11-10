@@ -17,7 +17,7 @@ export const planDays = (d: FormaData) => Object.keys(d.split).map(Number).sort(
 
 /** Средние КБЖУ только по закрытым дням. */
 export function averages(d: FormaData): { n: number; avg: Required<Macros> } | null {
-  const full = d.days.filter(x => x.macros && !x.partial);
+  const full = d.days.filter(x => x.macros && !x.partial && !x.holiday);
   if (!full.length) return null;
   const sum = full.reduce((a, x) => {
     const m = x.macros!;

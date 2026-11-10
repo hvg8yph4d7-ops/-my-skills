@@ -48,6 +48,8 @@ export interface Day {
   supps?: string;
   macros?: Macros; // итог дня: старые строки + сумма meals
   verdict?: string;
+  /** Праздник / выходной от учёта: день не идёт в средние и не рвёт серию дней с едой. Текст — пометка («праздники, просекко»). */
+  holiday?: string;
   meals?: FoodItem[];
   exercises?: Exercise[];
 }
@@ -88,6 +90,8 @@ export interface FormaData {
   benchMax: number;
   split: Record<string, string>; // индекс дня недели (Пн=0) → что тренировать
   soberSince: string;
+  /** Когда всё-таки выпивал: счётчик «Без алкоголя» не сбрасывается, но под ним видна пометка. */
+  drinks?: { date: string; note: string }[];
   sore: Record<string, string>; // группа → дата отметки «ещё болит»
   supplements: { time: string; items: string }[];
   suppRules?: string[]; // правила приёма — подсказка под схемой добавок
