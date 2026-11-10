@@ -108,6 +108,13 @@ export const PATCHES: Patch[] = [
       return { ...d, days, drinks };
     },
   },
+  {
+    // Уточнение Давида: просекко пил только 6-го; 7–9 — просто праздник без алкоголя.
+    id: '2026-11-06-drinks-fix',
+    label: 'просекко — только 6 ноября',
+    skip: d => !(d.drinks || []).some(x => ['2026-11-07', '2026-11-08', '2026-11-09'].includes(x.date)),
+    apply: d => ({ ...d, drinks: (d.drinks || []).filter(x => !['2026-11-07', '2026-11-08', '2026-11-09'].includes(x.date)) }),
+  },
 ];
 
 export const pendingPatches = (d: FormaData) => (d.seedRev ? PATCHES.filter(p => !(d.patches || []).includes(p.id)) : []);
